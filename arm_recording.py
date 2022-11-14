@@ -11,7 +11,6 @@ import keyboard
 import openpyxl
 # from sim import Plot
 from matplotlib import pyplot as plt
-
 from plotter import Plot
 
 
@@ -95,7 +94,6 @@ class ArmRecording:
         self.ser.flush()
 
         # START OF RECORDING
-        ser_input = []
         total_time = 0
         previous_time = timer()
         while self.reading_count < self.num_measurements:  # read the specified amount of data steps from sensor array
@@ -109,7 +107,7 @@ class ArmRecording:
                 time_interval = current_time - previous_time
 
                 #####READ SERIAL INPUT #######################################################
-                if time_interval >= self.time_step:
+                if time_interval >= self.time_step or total_time == 0:
                     previous_time = current_time
                     total_time = float("{:.2f}".format(total_time + time_interval))  # limit time_interval to two digits
                     ser_input = self.ser.readline()[:-2]  # convert binary to string array
@@ -130,6 +128,7 @@ class ArmRecording:
                 self.detect_sensor_errors(datapoint, sensor_index)
 
             # write down arm position in degrees
+
             self.raw_data[self.reading_count][self.num_sensors + 1] = ser_input[self.num_sensors % ser_size]
             self.lin_data[self.reading_count][self.num_sensors + 1] = ser_input[self.num_sensors % ser_size]
             # write down orthosis position in degrees
@@ -140,11 +139,12 @@ class ArmRecording:
             if linearize_realtime:
                 self.linearize_data_unit(self.raw_data[self.reading_count], self.reading_count)
 
-            current_data = self.raw_data[self.reading_count]
+            current_data = self.raw_data[self.reading_count] if not linearize_realtime else self.lin_data[self.reading_count]
             # print(self.reading_count)
             # FIXME plotting here
-            self.plot.update_pressure_plot(current_data[1:49], current_data[49:71], current_data[71:])
+            self.plot.update_pressure_plot(current_data[1:49], current_data[49:71], current_data[71:-2])
             self.plot.update_angle_plot(current_data[0], current_data[-2], current_data[-1])
+            # print("angle: ", current_data[-2])
             plt.pause(0.001)
 
             self.detect_serial_input_errors(ser_size)
@@ -327,9 +327,7 @@ class ArmRecording:
         sys.exit("Data saved - Program closed")
 
 
-def start():
-    a = ArmRecording(0.5, 20, 80, 'COM3', 'coefficients_S10N_14nodes_final_80Sensors.csv')
-    a.save_data('data', 'twst1')
+def run_recording(path, file_name, time_recording):
+    recording = ArmRecording(0.5, time_recording, 80, 'COM3', 'coefficients_S10N_14nodes_final_80Sensors.csv')
+    recording.save_data(path, file_name)
 
-
-start()

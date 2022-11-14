@@ -1,3 +1,4 @@
+from matplotlib.widgets import Button
 import numpy as np
 import matplotlib.pyplot as plt
 from hardcoded_data import triangulation_back_bottom, triangulation_front, triangulation_back_top
@@ -7,7 +8,7 @@ from data_manager import Data
 TIME_STEP = 500
 
 # Choose which patch will be visible
-patch_display = [True, False, False]
+patch_display = [True, False, True]
 
 FORCE_LIMIT = 2
 
@@ -19,7 +20,7 @@ colorTable = [
 
 class Plot:
 
-    def __init__(self):
+    def __init__(self, time_recording):
         # Window of visualization consisting of two subplots
         self.window = None
         # Subplot with the patch to be displayed
@@ -31,8 +32,10 @@ class Plot:
 
         self.level_labels = np.linspace(0, FORCE_LIMIT, 20)
 
+        self.time_recording = time_recording
+
         # FIXME Not sure here
-        # self.real_time, self.real_angle_arm, self.real_angle_orthosis = [], [], []
+        self.real_time, self.real_angle_arm, self.real_angle_orthosis = [], [], []
 
         # Create window and subplots
         self.initiate()
@@ -54,6 +57,10 @@ class Plot:
             self.patch = self.display_back_bottom_patch()
         # Add second subplot
         self.angle_subplot, self.point_arm, self.point_orthosis = self.initiate_angle_subplot()
+
+        axes = plt.axes([0.81, 0.000001, 0.1, 0.075])
+        button = Button(axes, 'Add', color="yellow")
+        # button.on_clicked(add)
         plt.show()
 
     def update_pressure_plot(self, _pressure_front, _pressure_back_top, _pressure_back_bottom):
@@ -62,9 +69,9 @@ class Plot:
         :param _pressure_back_top: one batch of back top pressure data from recording real time
         :param _pressure_back_bottom: one batch of back bottom pressure data from recording real time
         """
-        _pressure_front[_pressure_front > FORCE_LIMIT] = FORCE_LIMIT
-        _pressure_back_top[_pressure_back_top > FORCE_LIMIT] = FORCE_LIMIT
-        _pressure_back_bottom[_pressure_back_bottom > FORCE_LIMIT] = FORCE_LIMIT
+        # _pressure_front[_pressure_front > FORCE_LIMIT] = FORCE_LIMIT
+        # _pressure_back_top[_pressure_back_top > FORCE_LIMIT] = FORCE_LIMIT
+        # _pressure_back_bottom[_pressure_back_bottom > FORCE_LIMIT] = FORCE_LIMIT
         if patch_display[0]:
             self.patch.tricontourf(
                 triangulation_front,
@@ -95,13 +102,12 @@ class Plot:
         :param _angle_orthosis: current angle of the arm (linearized)
         """
         # TODO show all check it
-        # self.real_time.append(_time)
-        # self.real_angle_arm.append(_angle_arm)
-        # self.real_angle_orthosis.append(_angle_orthosis)
-        # self.angle_subplot.plot(self.real_time, self.real_angle_arm, linewidth='3', color='#76e6b0')
-        # self.angle_subplot.plot(self.real_time, self.real_angle_orthosis, linewidth='3', color='#7953e6')
+        self.real_time.append(_time)
+        self.real_angle_arm.append(_angle_arm)
+        self.real_angle_orthosis.append(_angle_orthosis)
+        self.angle_subplot.plot(self.real_time, self.real_angle_arm, linewidth='3', color='#76e6b0')
+        self.angle_subplot.plot(self.real_time, self.real_angle_orthosis, linewidth='3', color='#7953e6')
 
-        print("time: ", _time, "angle arm: ", _angle_arm, "angle orthosis: ", _angle_orthosis)
         self.angle_subplot.plot([_time], [_angle_arm], linewidth='3', color='#76e6b0')
         self.angle_subplot.plot([_time], [_angle_orthosis], linewidth='3', color='#7953e6')
 
@@ -120,7 +126,7 @@ class Plot:
 
         subplot = self.window.add_subplot(1, 2, 2)
         subplot.set_ylim([0, 100])
-        subplot.set_xlim([0, 20])
+        subplot.set_xlim([0, self.time_recording])
         # mark arm angle at time zero
         point_arm, = subplot.plot(
             0, 0,
@@ -166,6 +172,7 @@ class Plot:
             triangulation_front,
             _pressure_front,
             self.level_labels,
+            # norm=plt.normalize(vmax=2, vmin=0),
             cmap='jet')
 
         # add color bar
