@@ -57,16 +57,18 @@ class ArmRecording:
 
         self.coeff_ref = np.array([float(coeff_data[1][0]), float(coeff_data[1][1])])
 
-        self.xi = np.asarray(coeff_data[2][:], dtype=float)
-        self.xd = np.asarray(coeff_data[3][:], dtype=float)
+        self.x_coeffs =  {
+            "up": np.asarray(coeff_data[2][:], dtype=float),
+            "down": np.asarray(coeff_data[3][:], dtype=float)
+        }
 
-        # sensor increase coefficients
-        self.yi = np.asarray(coeff_data[4:(4 + self.num_sensors)][:], dtype=float)
-        # sensor decrease coefficients
-        self.yd = np.asarray(coeff_data[(4 + self.num_sensors):(4 + self.num_sensors + self.num_sensors)][:],
+        self.y_coeffs = {
+            "up": np.asarray(coeff_data[4:(4 + self.num_sensors)][:], dtype=float),
+            "down": np.asarray(coeff_data[(4 + self.num_sensors):(4 + self.num_sensors + self.num_sensors)][:],
                              dtype=float)
+        }
 
-        self.num_nodes = len(self.xi)
+        self.num_nodes = len(self.x_coeffs["up"])
 
     def record(self, linearize_realtime=False):
 
@@ -97,6 +99,7 @@ class ArmRecording:
                 time_interval = current_time - previous_time
 
                 #####READ SERIAL INPUT #######################################################
+                ##Note: when we start reading, we do not wait the time interval
                 if time_interval >= self.time_step or total_time == 0:
                     previous_time = current_time
                     total_time = float("{:.2f}".format(total_time + time_interval))  # limit time_interval to two digits
@@ -118,12 +121,13 @@ class ArmRecording:
                 self.detect_sensor_errors(datapoint, sensor_index)
 
             # write down arm position in degrees
-
-            self.raw_data[self.reading_count][self.num_sensors + 1] = ser_input[self.num_sensors % ser_size]
-            self.lin_data[self.reading_count][self.num_sensors + 1] = ser_input[self.num_sensors % ser_size]
+            arm_angle = ser_input[self.num_sensors % ser_size]
+            self.raw_data[self.reading_count][self.num_sensors + 1] = arm_angle
+            self.lin_data[self.reading_count][self.num_sensors + 1] = arm_angle
             # write down orthosis position in degrees
-            self.raw_data[self.reading_count][self.num_sensors + 2] = ser_input[self.num_sensors + 1 % ser_size]
-            self.lin_data[self.reading_count][self.num_sensors + 2] = ser_input[self.num_sensors + 1 % ser_size]
+            orthosis_angle = ser_input[self.num_sensors + 1 % ser_size]
+            self.raw_data[self.reading_count][self.num_sensors + 2] = orthosis_angle
+            self.lin_data[self.reading_count][self.num_sensors + 2] = orthosis_angle
 
             # optional, can linearize later
             if linearize_realtime:
@@ -177,44 +181,35 @@ class ArmRecording:
 
             trailing_mean = self.trailing_mean(unit_index, sensor_index, trailing_mean_length)
 
+            x_coeffs = None
+            y_coeffs = None
+            min_n = None
+            max_n = None
             ##########################################################Check for Rising Signal######################################################
             # if prev. reading smaller than the current reading, then we have a rising signal
             if raw_data_unit[sensor_index] >= trailing_mean:
                 # print('---Rising Pressure---')
                 countr += 1
-
-                # TODO: explain the a,b,c formula
-                # TODO: Why do we search for node that can have value at most num_nodes-1 (and not num_nodes)
-
-                # WARNING- right now starting max_n in this method should be self.num_nodes - 1
-                min_n, max_n = self.find_coefficient_node(raw_data_unit[sensor_index], self.yi[sensor_index - 1][:])
-
-                a = (self.coeff_ref[0] * self.xi[min_n] + self.coeff_ref[1])
-                b = (((self.coeff_ref[0] * self.xi[max_n] + self.coeff_ref[1]) - (
-                        self.coeff_ref[0] * self.xi[min_n] + self.coeff_ref[1])) / (
-                             self.yi[sensor_index - 1][max_n] - self.yi[sensor_index - 1][min_n]))
-                c = (raw_data_unit[sensor_index] - self.yi[sensor_index - 1][min_n])
-
-                self.lin_data[unit_index][sensor_index] = a + b * c
+                x_coeffs = self.x_coeffs["up"]
+                y_coeffs = self.y_coeffs["up"]
+                min_n, max_n = self.find_coefficient_node(raw_data_unit[sensor_index], y_coeffs[sensor_index - 1][:])
 
             # pressure is falling - use falling pressure coefficients
             else:
                 countf += 1
+                x_coeffs = self.x_coeffs["down"]
+                y_coeffs = self.y_coeffs["down"]
+                min_n, max_n = self.find_coefficient_node(raw_data_unit[sensor_index], y_coeffs[sensor_index - 1], reverse=True)
 
-                # TODO: explain the a,b,c formula
-                # TODO: Why do we search for node that can have value at most num_nodes-1 (and not num_nodes)
 
-                # WARNING- right now starting max_n in this method should be self.num_nodes - 1
-                min_n, max_n = self.find_coefficient_node(raw_data_unit[sensor_index], self.yd[sensor_index - 1],
-                                                          reverse=True)
 
-                a = (self.coeff_ref[0] * self.xd[min_n] + self.coeff_ref[1])
-                b = (((self.coeff_ref[0] * self.xd[max_n] + self.coeff_ref[1]) - (
-                        self.coeff_ref[0] * self.xd[min_n] + self.coeff_ref[1])) / (
-                             self.yd[sensor_index - 1][max_n] - self.yd[sensor_index - 1][min_n]))
-                c = (raw_data_unit[sensor_index] - self.yd[sensor_index - 1][min_n])
+            a = (self.coeff_ref[0] * x_coeffs[min_n] + self.coeff_ref[1])
+            b = (((self.coeff_ref[0] * x_coeffs[max_n] + self.coeff_ref[1]) - (
+                    self.coeff_ref[0] * x_coeffs[min_n] + self.coeff_ref[1])) / (
+                         y_coeffs[sensor_index - 1][max_n] - y_coeffs[sensor_index - 1][min_n]))
+            c = (raw_data_unit[sensor_index] - y_coeffs[sensor_index - 1][min_n])
 
-                self.lin_data[unit_index][sensor_index] = a + b * c
+            self.lin_data[unit_index][sensor_index] = a + b * c
 
     # returns the node with the closes value to the sensor value
     # reverse = True -> range is sorted descending
@@ -249,8 +244,7 @@ class ArmRecording:
         if datapoint > 511:
             print('Warning!!!!!! Entering overpressure range of sensor number 0x', self.I2C_address[index])
             winsound.Beep(4000, 2)
-        if (
-                datapoint > 760):  # sensor range limit of S10N with a scaling factor of 2.4 is 767 corresponding to
+        if datapoint > 760:  # sensor range limit of S10N with a scaling factor of 2.4 is 767 corresponding to
             # 15N. This is no the max limit the sensor can handle
             print('Warning!!!!!! Absolut sensor range limit of sensor number 0x', self.I2C_address[index])
             winsound.Beep(8000, 2)
@@ -270,7 +264,6 @@ class ArmRecording:
 
         print('Saving Data in .CSV File')
 
-        # print('Transpose')
         # calculating transposing so that data can be saved in same format as calibration data from Matlab
         raw_transpose = self.raw_data.transpose()
         lin_transpose = self.lin_data.transpose()
@@ -279,11 +272,10 @@ class ArmRecording:
         # writing data to .csv file:
         # Save raw data to xlsx:
         file_raw = os.path.join(folder, file_name + '_RAW.xlsx')
-
         workbook = xlsxwriter.Workbook(file_raw)
         worksheet = workbook.add_worksheet()
-
         worksheet.write(0, 0, file_name)
+
         for col_num, data in enumerate(raw_transpose[0]):
             worksheet.write(1, col_num, data)
 
@@ -292,27 +284,29 @@ class ArmRecording:
             for col_num, data in enumerate(raw_transpose[index]):
                 worksheet.write(index + 2, col_num, data)
 
+        for i in range(self.num_sensors + 1, self.num_sensors + 3):
+            for col_num, data in enumerate(raw_transpose[i][:]):
+                worksheet.write(i + 3, col_num, data)
+
         workbook.close()
 
-        # Save linearized data to xlsx:)
-        file_lin = os.path.join(folder, file_name + '_LIN.xlsx')
 
+        file_lin = os.path.join(folder, file_name + '_LIN.xlsx')
         workbook = xlsxwriter.Workbook(file_lin)
         worksheet = workbook.add_worksheet()
-
-        # TODO: Why are we writing down values from raw data to .csv file with linearized data
-        # TODO: Questionable indexes: for example b + 3
         worksheet.write(0, 0, file_name)
-        for col_num, data in enumerate(raw_transpose[0][:]):
+
+        for col_num, data in enumerate(lin_transpose[0]):
             worksheet.write(1, col_num, data)
 
-        for b in range(self.num_sensors):
-            for col_num, data in enumerate(lin_transpose[b + 1][:]):
-                worksheet.write(b + 3, col_num, data)
+        for i in range(self.num_sensors):
+            index = i + 1
+            for col_num, data in enumerate(lin_transpose[index]):
+                worksheet.write(index + 2, col_num, data)
 
-        for b in range(self.num_sensors + 1, self.num_sensors + 3):
-            for col_num, data in enumerate(raw_transpose[b][:]):
-                worksheet.write(b + 3, col_num, data)
+        for i in range(self.num_sensors + 1, self.num_sensors + 3):
+            for col_num, data in enumerate(raw_transpose[i][:]):
+                worksheet.write(i + 3, col_num, data)
         workbook.close()
         sys.exit("Data saved - Program closed")
 
