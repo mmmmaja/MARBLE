@@ -17,7 +17,7 @@ from plotter import Plot
 
 class ArmRecording:
 
-    def __init__(self, time_step, time_recording, num_sensors, port, coeffs_file, skip_gui=False):
+    def __init__(self, time_step, time_recording, num_sensors, port, coeffs_file, skip_serial_input=False):
         self.plot = Plot()
         plt.pause(0.05)
 
@@ -46,21 +46,11 @@ class ArmRecording:
 
         self.init_coeffs(coeffs_file)
 
-        if skip_gui:
+        if skip_serial_input:
             return
         self.ser = serial.Serial(port, 57600)
         self.ser.flushInput()
 
-        self.init_ui()
-
-    def init_ui(self):
-
-        while True:
-            k = input()
-            if k is not None and k[0] == "S":
-                # self.plot = Plot()
-                self.record(linearize_realtime=False if k[1] != "R" else True)
-                break
 
     def init_coeffs(self, file):
 
