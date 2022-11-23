@@ -50,7 +50,7 @@ class LabelDataAnalysis:
             if (linearized and "LIN" not in file) or (not linearized and "RAW" not in file): continue
 
             path = self.data_folder + "/" + file
-            sample = SampleDataAnalysis(self.label,file_path=path)
+            sample = SampleDataAnalysis(self.label, file_path=path)
 
             p_sensors, rot_sensors, time_stamp = sample.sensor_values_at_arm_degrees(at_arm_degrees)
             p_sensor_values.append(p_sensors)
@@ -91,14 +91,14 @@ class SampleDataAnalysis:
     ## at index -2 is arm degree, at index -1 is orthosis degree
 
     ## either initialize from csv file, or from prebuilt arrays
-    def __init__(self, label, file_path = None,p_sensors = None,rot_sensors = None,sample_time_stamps = None):
+    def __init__(self, label, file_path=None, p_sensors=None, rot_sensors=None, sample_time_stamps=None):
 
         self.label = label
 
         if file_path is not None:
             self.file_path = file_path
             self.sheet = openpyxl.load_workbook(self.file_path).active
-            self.p_sensors,self.rot_sensors, self.sample_time_stamps = self.load_sample()
+            self.p_sensors, self.rot_sensors, self.sample_time_stamps = self.load_sample()
         if p_sensors is not None and sample_time_stamps is not None and rot_sensors is not None:
             self.p_sensors = p_sensors
             self.rot_sensors = rot_sensors
@@ -132,7 +132,7 @@ class SampleDataAnalysis:
         min_difference = abs(at_arm_degrees - self.rot_sensors[0][0])
         index = 0
 
-        for  i in range(1,self.num_time_steps):
+        for i in range(1,self.num_time_steps):
             difference = abs(at_arm_degrees - self.rot_sensors[i][0])
             if difference < min_difference:
                 index = i
@@ -202,7 +202,7 @@ class SampleDataAnalysis:
 
         return SampleDataAnalysis(p_sensors=new_p_sensors,rot_sensors=new_rot_sensors,sample_time_stamps=new_sample_time_stamps,label=self.label)
 
-    def extrema_pressure_time_stamp(self, in_range = None):
+    def extrema_pressure_time_stamp(self, in_range=None):
         if in_range is None: in_range = range(self.num_time_steps)
 
         max_i = in_range[0]
@@ -255,9 +255,9 @@ def plot_angle_data(angle):
     pass
 
 
-da = LabelDataAnalysis("C:/Users/majag/Desktop/marble/data/no_orthosis_90", Label.NO_ORTHOSIS_90)
-p_sensor_avg, p_sensor_var, rot_sensor_avg, rot_sensor_var = da.mean_variance_at_degrees(90)
-plot_pressure_data(p_sensor_avg)
+# da = LabelDataAnalysis("C:/Users/majag/Desktop/marble/data/no_orthosis_90", Label.NO_ORTHOSIS_90)
+# p_sensor_avg, p_sensor_var, rot_sensor_avg, rot_sensor_var = da.mean_variance_at_degrees(90)
+# plot_pressure_data(p_sensor_avg)
 # plot_angle_data(rot_sensor_avg)
 # print(da.mean_variance_at_degrees(90))
 

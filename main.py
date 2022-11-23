@@ -9,16 +9,16 @@ maja GUI
 """
 
 # Set to True if data is about to be recorded, otherwise read the data from the path
-RECORDING = True
+RECORDING = False
 
 # Path to the folder of the xlsx files
-data_folder_path = 'C:/Users/majag/Desktop/marble/data/correct_orthosis_0'
+data_folder_path = 'C:/Users/majag/Desktop/marble/data/correct_orthosis_90'
 
 # Determine if we want to display linearized or raw data
 linearized_data = True
 
 # Name of the file
-file_name = '15'
+file_name = '1'
 
 # Set the time of the recording
 time_recording = 10
@@ -28,7 +28,7 @@ path = os.path.join(data_folder_path, (file_name + "_LIN" if linearized_data els
 
 if RECORDING:
     from arm_recording import run_recording
-    run_recording(data_folder_path, file_name, time_recording, linearized_data)
+    run_recording(data_folder_path, file_name, time_recording)
 
 else:
     # Plot imported data

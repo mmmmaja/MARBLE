@@ -1,0 +1,147 @@
+import os
+import sys
+import numpy
+from keras.layers import Dense
+from matplotlib import pyplot as plt
+from sklearn.model_selection import train_test_split
+import tensorflow as tf
+from data_analysis import SampleDataAnalysis
+
+DATA_PATH = "C:/Users/majag/Desktop/marble/NewData"
+
+# Correct / Incorrect / No orthosis
+# labels = ['correct_orthosis', 'incorrect_orthosis', 'no_orthosis']
+
+# TODO try with the filtered data
+# check different data, what labels?
+# Check recurrent nn
+
+# Lukas pick time steps, size down input for each sample
+# Lukas why X.shape[0] 79 not 80
+
+
+def get_dataset(LIN=False):
+    X, y = [], []
+
+    for folder_name in os.listdir(DATA_PATH):
+        folder_path = os.path.join(DATA_PATH, folder_name)
+
+        for file_name in os.listdir(folder_path):
+            file_path = os.path.join(folder_path, file_name)
+
+            if (LIN and file_name[-8:-4] == 'LIN.') or (not LIN and file_name[-8:-4] == 'RAW.'):
+                analysis = SampleDataAnalysis(
+                    folder_name,
+                    file_path=file_path,
+                )
+                min_pressure, max_pressure = analysis.extrema_pressure_time_stamp()
+                max_pressure = max_pressure.flatten()
+
+                y.append(get_label(folder_name))
+                X.append(max_pressure)
+    return X, y
+
+
+def get_label(folder_name):
+    # change this shit
+    # Find corrct label for this folder
+    if 'no_orthosis' in folder_name:
+        return [0, 0, 1]
+    elif 'incorrect_orthosis' in folder_name:
+        return [0, 1, 0]
+    else:
+        return [1, 0, 0]
+
+
+def show_loss_plot(history):
+    plt.plot(history.history['loss'])
+    plt.plot(history.history['val_loss'])
+    plt.title('model loss')
+    plt.ylabel('loss')
+    plt.xlabel('epoch')
+    plt.legend(['train', 'validation'], loc='upper left')
+    plt.show()
+
+
+def show_error_plot(history):
+    print(history.history.keys())
+    plt.plot(history.history['mae'], color='magenta')
+    plt.plot(history.history['val_mae'], color='green')
+    plt.title('model error')
+    plt.ylabel('Mean absolute error [mae]')
+    plt.xlabel('epoch')
+    plt.legend(['train', 'validation'], loc='upper left')
+    plt.show()
+
+
+def get_data():
+
+    # Getting the dataset
+    X, y = get_dataset()
+    X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=42, test_size=0.3)
+    X_train, X_test = tf.convert_to_tensor(X_train), tf.convert_to_tensor(X_test)
+
+    y_train, y_test = tf.convert_to_tensor(y_train), tf.convert_to_tensor(y_test)
+
+    return X_train, X_test, y_train, y_test
+
+
+def build_model():
+
+    # Build NN
+    model = tf.keras.Sequential([
+        tf.keras.layers.Dense(units=256, activation='relu'),
+        tf.keras.layers.Dense(units=192, activation='relu'),
+        tf.keras.layers.Dense(units=128, activation='relu'),
+        tf.keras.layers.Dense(units=3, activation='softmax')
+    ])
+
+    # model.add(tf.keras.layers.Dense(32, activation='relu'))
+
+    # Compile the model
+    model.compile(loss=tf.keras.losses.mae,  # mae is short for mean absolute error
+                  optimizer=tf.keras.optimizers.SGD(),  # SGD is short for stochastic gradient descent
+                  metrics=["mae"])
+    return model
+
+
+class TFModel:
+
+    def __init__(self):
+        self.X_train, self.X_test, self.y_train, self.y_test = get_data()
+        self.model = build_model()
+
+    def train(self):
+
+        history = self.model.fit(
+            self.X_train,
+            self.y_train,
+            epochs=30,
+            batch_size=30,
+            verbose=1,
+            validation_split=0.2
+        )
+        return history
+
+
+def get_index(tf_array):
+    for j in range(len(tf_array)):
+        if tf_array[j] == 1:
+            return j
+    return None
+
+
+tf_model = TFModel()
+_history = tf_model.train()
+
+show_error_plot(_history)
+
+print("\n\n")
+prediction = tf_model.model.predict(tf_model.X_test)
+for i in range(len(prediction)):
+
+    label_prediction_index = numpy.where(prediction[i] == max(prediction[i]))[0]
+    label_index = get_index(tf_model.y_test[i])
+
+    print("pred: ", label_prediction_index, " label: ", label_index)
+

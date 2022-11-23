@@ -4,10 +4,10 @@ from hardcoded_data import triangulation_back_bottom, triangulation_front, trian
 from data_manager import Data
 
 # time step in ms with which the plot is updated. Must be multiple of the recording time step (50ms)
-TIME_STEP = 100
+TIME_STEP = 500
 
 # Choose which patch will be visible
-patch_display = [True, True, True]
+patch_display = [False, False, True]
 
 FORCE_LIMIT = 1
 
@@ -15,6 +15,8 @@ colorTable = [
     [0, 0, 255], [0, 128, 255], [0, 255, 255], [0, 255, 128], [0, 255, 0],
     [128, 255, 0], [255, 255, 0], [255, 128, 0], [255, 0, 0]
 ]
+
+pause = True
 
 
 class Plot:
@@ -53,9 +55,14 @@ class Plot:
             self.patch = self.display_back_up_patch()
         else:
             self.patch = self.display_back_bottom_patch()
+
+        # Call click func
+        cid = self.window.canvas.mpl_connect('button_press_event', onclick)
+
+        plt.show()
+
         # Add second subplot
         self.angle_subplot, self.point_arm, self.point_orthosis = self.initiate_angle_subplot()
-        plt.show()
 
     def update_pressure_plot(self, _pressure_front, _pressure_back_top, _pressure_back_bottom):
         """
@@ -237,3 +244,11 @@ class Plot:
             self.point_arm.set_data(data.time[k], data.angle_arm[k])
             self.point_orthosis.set_data(data.time[k], data.angle_orthosis[k])
             plt.pause(0.5)
+            while pause:
+                plt.pause(0.5)
+
+
+# Simple mouse click function to store coordinates
+def onclick(event):
+    global pause
+    pause = not pause

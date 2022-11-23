@@ -31,7 +31,7 @@ class Data:
         self.num_measurements = self.sheet.max_column
         self.num_sensors = self.sheet.max_row - 6 if self.path[-8:-5] == "LIN" else self.sheet.max_row - 3
         self.time = self.read_time()
-        self.time_step_recording = (self.time[1] - self.time[0]) * 1000
+        self.time_step_recording = (self.time[2] - self.time[1]) * 1000
 
         self.angle_arm, self.angle_orthosis = self.read_angles()
         self.pressure_front = self.read_pressure_front()
