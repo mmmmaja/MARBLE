@@ -1,16 +1,15 @@
-from matplotlib.widgets import Button
 import numpy as np
 import matplotlib.pyplot as plt
 from hardcoded_data import triangulation_back_bottom, triangulation_front, triangulation_back_top
 from data_manager import Data
 
 # time step in ms with which the plot is updated. Must be multiple of the recording time step (50ms)
-TIME_STEP = 500
+TIME_STEP = 100
 
 # Choose which patch will be visible
-patch_display = [True, False, True]
+patch_display = [True, True, True]
 
-FORCE_LIMIT = 2
+FORCE_LIMIT = 1
 
 colorTable = [
     [0, 0, 255], [0, 128, 255], [0, 255, 255], [0, 255, 128], [0, 255, 0],
@@ -34,7 +33,6 @@ class Plot:
 
         self.time_recording = time_recording
 
-        # FIXME Not sure here
         self.real_time, self.real_angle_arm, self.real_angle_orthosis = [], [], []
 
         # Create window and subplots
@@ -44,7 +42,7 @@ class Plot:
         # Switch on interactive plot
         plt.ion()
         plt.style.use('dark_background')
-        
+
         # Create window for two subplots
         self.window = plt.figure(figsize=(18, 8))
 
@@ -57,10 +55,6 @@ class Plot:
             self.patch = self.display_back_bottom_patch()
         # Add second subplot
         self.angle_subplot, self.point_arm, self.point_orthosis = self.initiate_angle_subplot()
-
-        axes = plt.axes([0.81, 0.000001, 0.1, 0.075])
-        button = Button(axes, 'Add', color="yellow")
-        # button.on_clicked(add)
         plt.show()
 
     def update_pressure_plot(self, _pressure_front, _pressure_back_top, _pressure_back_bottom):
@@ -69,9 +63,9 @@ class Plot:
         :param _pressure_back_top: one batch of back top pressure data from recording real time
         :param _pressure_back_bottom: one batch of back bottom pressure data from recording real time
         """
-        # _pressure_front[_pressure_front > FORCE_LIMIT] = FORCE_LIMIT
-        # _pressure_back_top[_pressure_back_top > FORCE_LIMIT] = FORCE_LIMIT
-        # _pressure_back_bottom[_pressure_back_bottom > FORCE_LIMIT] = FORCE_LIMIT
+        _pressure_front[_pressure_front > FORCE_LIMIT] = FORCE_LIMIT
+        _pressure_back_top[_pressure_back_top > FORCE_LIMIT] = FORCE_LIMIT
+        _pressure_back_bottom[_pressure_back_bottom > FORCE_LIMIT] = FORCE_LIMIT
         if patch_display[0]:
             self.patch.tricontourf(
                 triangulation_front,
@@ -238,8 +232,8 @@ class Plot:
 
         plot_step = int(TIME_STEP / data.time_step_recording)
         for k in range(1, data.num_measurements, plot_step):
-            self.update_pressure_plot(data.pressure_front[:, k], data.pressure_back_top[:, k], data.pressure_back_bottom[:, k])
+            self.update_pressure_plot(data.pressure_front[:, k], data.pressure_back_top[:, k],
+                                      data.pressure_back_bottom[:, k])
             self.point_arm.set_data(data.time[k], data.angle_arm[k])
             self.point_orthosis.set_data(data.time[k], data.angle_orthosis[k])
             plt.pause(0.5)
-

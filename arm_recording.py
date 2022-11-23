@@ -17,7 +17,7 @@ from plotter import Plot
 class ArmRecording:
 
     def __init__(self, time_step, time_recording, num_sensors, port, coeffs_file, skip_serial_input=False):
-        self.plot = Plot()
+        self.plot = Plot(time_recording)
         plt.pause(0.05)
 
         self.num_sensors = num_sensors  # please enter the number of sensors in the array. Make sure to also enter
