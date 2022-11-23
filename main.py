@@ -4,7 +4,7 @@ from plotter import Plot
 RECORDING = False
 
 # Path of the xlsx files folder
-data_folder_path = 'C:/Users/majag/Desktop/marble/data/incorrect_orthosis_down_1cm_90'
+data_folder_path = 'C:/Users/lukas/Downloads/Data/Data/no_orthosis_90'
 # Determine if we want to display linearized or raw data
 linearized_data = True
 # Name of the file

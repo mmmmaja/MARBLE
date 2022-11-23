@@ -5,7 +5,7 @@ from hardcoded_data import triangulation_back_bottom, triangulation_front, trian
 from data_manager import Data
 
 # time step in ms with which the plot is updated. Must be multiple of the recording time step (50ms)
-TIME_STEP = 500
+TIME_STEP = 100
 
 # Choose which patch will be visible
 patch_display = [True, False, True]
