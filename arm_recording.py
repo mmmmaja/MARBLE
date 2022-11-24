@@ -50,6 +50,8 @@ class ArmRecording:
         self.ser = serial.Serial(port, 57600)
         self.ser.flushInput()
 
+        self.init_gui()
+
 
     def init_coeffs(self, file):
 
@@ -70,6 +72,18 @@ class ArmRecording:
 
         self.num_nodes = len(self.x_coeffs["up"])
 
+
+    def init_gui(self):
+
+        while True:
+            in_ = input()
+
+            if in_ == "SR":
+                self.record(linearize_realtime=True)
+                break
+            elif in_ == "S":
+                self.record(linearize_realtime=False)
+                break
     def record(self, linearize_realtime=False):
 
         self.ser.flush()
