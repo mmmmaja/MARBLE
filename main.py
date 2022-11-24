@@ -1,15 +1,26 @@
 import os
 from plotter import Plot
 
-RECORDING = False
+"""
+make plot for lukas
+get neighbouring sensors
+    input, output: indexes
+maja GUI
+"""
 
-# Path of the xlsx files folder
-data_folder_path = 'C:/Users/lukas/Downloads/Data/Data/no_orthosis_90'
+# Set to True if data is about to be recorded, otherwise read the data from the path
+RECORDING = True
+
+# Path to the folder of the xlsx files
+data_folder_path = 'C:/Users/majag/Desktop/marble/data'
+
 # Determine if we want to display linearized or raw data
 linearized_data = True
-# Name of the file
-file_name = "1"
 
+# Name of the file
+file_name = 'mm'
+
+# Set the time of the recording
 time_recording = 10
 
 path = os.path.join(data_folder_path, (file_name + "_LIN" if linearized_data else file_name + "_RAW") + ".xlsx")
@@ -17,7 +28,7 @@ path = os.path.join(data_folder_path, (file_name + "_LIN" if linearized_data els
 
 if RECORDING:
     from arm_recording import run_recording
-    run_recording(path, "1", time_recording)
+    run_recording(data_folder_path, file_name, time_recording)
 
 else:
     # Plot imported data

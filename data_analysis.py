@@ -2,6 +2,9 @@ import os
 from enum import Enum
 import numpy as np
 import openpyxl
+from matplotlib import pyplot as plt
+
+from plotter import Plot
 
 
 class Label(Enum):
@@ -238,6 +241,25 @@ class SampleDataAnalysis:
 
         return self.p_sensors[:,min_i], self.p_sensors[:,max_i]
 
-da = LabelDataAnalysis("C:/Users/lukas/Downloads/Data/Data/no_orthosis_90",Label.NO_ORTHOSIS_90)
-print(da.mean_variance_at_degrees(90))
 
+def plot_pressure_data(sensor_array):
+    plot = Plot(10)
+    plt.pause(0.05)
+    plot.update_pressure_plot(sensor_array[1:49], sensor_array[49:71], sensor_array[71:])
+    plt.pause(20)
+
+
+def plot_angle_data(angle):
+    # angle[0] arm
+    # angle[1] orthosis
+    pass
+
+
+da = LabelDataAnalysis("C:/Users/majag/Desktop/marble/data/no_orthosis_90", Label.NO_ORTHOSIS_90)
+p_sensor_avg, p_sensor_var, rot_sensor_avg, rot_sensor_var = da.mean_variance_at_degrees(90)
+plot_pressure_data(p_sensor_avg)
+# plot_angle_data(rot_sensor_avg)
+# print(da.mean_variance_at_degrees(90))
+
+# add to the plot circle with radius of the value of variance
+# both avg and variance

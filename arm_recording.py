@@ -17,7 +17,7 @@ from plotter import Plot
 class ArmRecording:
 
     def __init__(self, time_step, time_recording, num_sensors, port, coeffs_file, skip_serial_input=False):
-        self.plot = Plot()
+        self.plot = Plot(time_recording)
         plt.pause(0.05)
 
         self.num_sensors = num_sensors  # please enter the number of sensors in the array. Make sure to also enter
@@ -50,8 +50,17 @@ class ArmRecording:
         self.ser = serial.Serial(port, 57600)
         self.ser.flushInput()
 
-        self.init_gui()
 
+        self.init_ui()
+
+    def init_ui(self):
+
+        while True:
+            k = input()
+            if k is not None and k[0] == "S":
+                # self.plot = Plot()
+                self.record(linearize_realtime=False if k[1] != "R" else True)
+                break
 
     def init_coeffs(self, file):
 
@@ -328,4 +337,5 @@ class ArmRecording:
 def run_recording(path, file_name, time_recording):
     recording = ArmRecording(0.5, time_recording, 80, 'COM3', 'coefficients_S10N_14nodes_final_80Sensors.csv')
     recording.save_data(path, file_name)
+
 
