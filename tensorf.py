@@ -1,7 +1,5 @@
 import os
-import sys
 import numpy
-from keras.layers import Dense
 from matplotlib import pyplot as plt
 from sklearn.model_selection import train_test_split
 import tensorflow as tf
@@ -9,8 +7,7 @@ from data_analysis import SampleDataAnalysis
 
 DATA_PATH = "C:/Users/majag/Desktop/marble/NewData"
 
-# Correct / Incorrect / No orthosis
-# labels = ['correct_orthosis', 'incorrect_orthosis', 'no_orthosis']
+LABELS = ['incorrect_orthosis', 'correct_orthosis', 'no_orthosis']
 
 # TODO try with the filtered data
 # check different data, what labels?
@@ -43,14 +40,12 @@ def get_dataset(LIN=False):
 
 
 def get_label(folder_name):
-    # change this shit
-    # Find corrct label for this folder
-    if 'no_orthosis' in folder_name:
-        return [0, 0, 1]
-    elif 'incorrect_orthosis' in folder_name:
-        return [0, 1, 0]
-    else:
-        return [1, 0, 0]
+    label = len(LABELS) * [0]
+    for j in range(len(LABELS)):
+        if LABELS[j] in folder_name:
+            label[j] = 1
+            return label
+    return None
 
 
 def show_loss_plot(history):
