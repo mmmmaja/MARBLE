@@ -21,7 +21,10 @@ pause = True
 
 class Plot:
 
-    def __init__(self, time_recording):
+    def __init__(self, time_recording, force_limit = 1):
+
+
+        self.force_limit = force_limit
         # Window of visualization consisting of two subplots
         self.window = None
         # Subplot with the patch to be displayed
@@ -31,7 +34,7 @@ class Plot:
         # Pointers updated on the angle subplot over time
         self.point_arm, self.point_orthosis = None, None
 
-        self.level_labels = np.linspace(0, FORCE_LIMIT, 20)
+        self.level_labels = np.linspace(0, self.force_limit, 20)
 
         self.time_recording = time_recording
 
@@ -66,13 +69,16 @@ class Plot:
 
     def update_pressure_plot(self, _pressure_front, _pressure_back_top, _pressure_back_bottom):
         """
+        :param force_limit:
         :param _pressure_front: one batch of front pressure data from recording real time
         :param _pressure_back_top: one batch of back top pressure data from recording real time
         :param _pressure_back_bottom: one batch of back bottom pressure data from recording real time
         """
-        _pressure_front[_pressure_front > FORCE_LIMIT] = FORCE_LIMIT
-        _pressure_back_top[_pressure_back_top > FORCE_LIMIT] = FORCE_LIMIT
-        _pressure_back_bottom[_pressure_back_bottom > FORCE_LIMIT] = FORCE_LIMIT
+
+
+        _pressure_front[_pressure_front > self.force_limit] = self.force_limit
+        _pressure_back_top[_pressure_back_top > self.force_limit] = self.force_limit
+        _pressure_back_bottom[_pressure_back_bottom > self.force_limit] = self.force_limit
         if patch_display[0]:
             self.patch.tricontourf(
                 triangulation_front,

@@ -50,6 +50,7 @@ class ArmRecording:
         self.ser = serial.Serial(port, 57600)
         self.ser.flushInput()
 
+
         self.init_ui()
 
     def init_ui(self):
@@ -60,7 +61,6 @@ class ArmRecording:
                 # self.plot = Plot()
                 self.record(linearize_realtime=False if k[1] != "R" else True)
                 break
-
 
     def init_coeffs(self, file):
 
@@ -81,6 +81,18 @@ class ArmRecording:
 
         self.num_nodes = len(self.x_coeffs["up"])
 
+
+    def init_gui(self):
+
+        while True:
+            in_ = input()
+
+            if in_ == "SR":
+                self.record(linearize_realtime=True)
+                break
+            elif in_ == "S":
+                self.record(linearize_realtime=False)
+                break
     def record(self, linearize_realtime=False):
 
         self.ser.flush()
@@ -295,6 +307,7 @@ class ArmRecording:
             for col_num, data in enumerate(raw_transpose[index]):
                 worksheet.write(index + 2, col_num, data)
 
+        ## TODO: check if working
         for i in range(self.num_sensors + 1, self.num_sensors + 3):
             for col_num, data in enumerate(raw_transpose[i][:]):
                 worksheet.write(i + 3, col_num, data)
