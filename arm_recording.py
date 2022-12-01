@@ -307,6 +307,7 @@ class ArmRecording:
             for col_num, data in enumerate(raw_transpose[index]):
                 worksheet.write(index + 2, col_num, data)
 
+        ## TODO: check if working
         for i in range(self.num_sensors + 1, self.num_sensors + 3):
             for col_num, data in enumerate(raw_transpose[i][:]):
                 worksheet.write(i + 3, col_num, data)

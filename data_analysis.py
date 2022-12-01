@@ -1,3 +1,4 @@
+import math
 import os
 from enum import Enum
 import numpy as np
@@ -39,27 +40,53 @@ class LabelDataAnalysis:
         self.dir = os.listdir(self.data_folder)
         self.label = label
 
+    def all_sensor_values(self, linearized = True):
 
 
-    def mean_variance_at_degrees(self,at_arm_degrees, linearized = True):
+        all_sensors = np.array([])
+        for file in self.dir:
+            if (linearized and "LIN" not in file) or (not linearized and "RAW" not in file): continue
+
+
+            path = self.data_folder + "/" + file
+            sample = SampleDataAnalysis(self.label, file_path=path)
+            all_sensors = np.concatenate([sample.p_sensors.flatten(), all_sensors])
+
+        return all_sensors
+
+
+
+    def mean_variance(self,at_arm_degrees = None,time_wise = False, linearized = True):
 
 
         p_sensor_values = []
         rot_sensor_values = []
+        nms = []
         for file in self.dir:
             if (linearized and "LIN" not in file) or (not linearized and "RAW" not in file): continue
-
+            nms.append(file)
             path = self.data_folder + "/" + file
             sample = SampleDataAnalysis(self.label,file_path=path)
 
-            p_sensors, rot_sensors, time_stamp = sample.sensor_values_at_arm_degrees(at_arm_degrees)
+            p_sensors = None
+            rot_sensors = None
+            if at_arm_degrees is not None:
+                p_sensors, rot_sensors, time_stamp = sample.sensor_values_at_arm_degrees(at_arm_degrees)
+            elif time_wise is False:
+                p_sensors, rot_sensors = sample.sensorwise_avg()
+            elif time_wise is True:
+                p_sensors, rot_sensors = sample.timewise_avg(sensor_range=[70,sample.num_p_sensors])
+
             p_sensor_values.append(p_sensors)
             rot_sensor_values.append(rot_sensors)
 
 
         ## MEAN
         p_sensor_avg = np.zeros(len(p_sensor_values[0]))
+        i = 0
         for sensor_values in p_sensor_values:
+            #print(nms[i])
+            i += 1
             p_sensor_avg += sensor_values
 
         p_sensor_avg = p_sensor_avg/len(p_sensor_values)
@@ -93,6 +120,10 @@ class SampleDataAnalysis:
     ## either initialize from csv file, or from prebuilt arrays
     def __init__(self, label, file_path = None,p_sensors = None,rot_sensors = None,sample_time_stamps = None):
 
+
+        self.front_path_end = 48
+        self.back_top_patch_end = 70
+
         self.label = label
 
         if file_path is not None:
@@ -115,14 +146,14 @@ class SampleDataAnalysis:
         num_columns = self.sheet.max_column
 
         sample_time_stamps = np.zeros(num_columns)
-        p_sensors = np.zeros((num_columns,num_sensors - 7))
-        rot_sensors = np.zeros((num_sensors,2))
+        p_sensors = np.zeros((num_columns,num_sensors - 6))
+        rot_sensors = np.zeros((num_columns,2))
         for i in range(num_columns):
             sample_time_stamps[i] = self.sheet.cell(2,i+1).value
             rot_sensors[i][0] = self.sheet.cell(num_sensors-1,i+1).value
             rot_sensors[i][1] = self.sheet.cell(num_sensors,i+1).value
 
-            for j in range(0,num_sensors - 7):
+            for j in range(0,num_sensors - 6):
                 p_sensors[i][j] = self.sheet.cell(j + 4,i + 1).value
 
         return p_sensors, rot_sensors, sample_time_stamps
@@ -142,6 +173,7 @@ class SampleDataAnalysis:
 
         return self.p_sensors[index], self.rot_sensors[index], self.sample_time_stamps[index]
 
+    ## average for each sensor through out time range
     def sensorwise_avg(self, avg_range = None):
         if avg_range is None: avg_range = range(self.num_time_steps)
 
@@ -154,12 +186,14 @@ class SampleDataAnalysis:
 
         return p_sensors_avg/len(avg_range), rot_sensors_avg/len(avg_range)
 
-    def timewise_avg(self):
+    ## average at each time step through out sensor range
+    def timewise_avg(self,sensor_range = None):
+        if sensor_range is None: sensor_range = [0,self.num_p_sensors]
 
         p_time_stamp_avg = np.zeros(self.num_time_steps)
         rot_time_stamp_avg = np.zeros(self.num_time_steps)
         for i in range(self.num_time_steps):
-            p_time_stamp_avg[i] = sum(self.p_sensors[i])/self.num_p_sensors
+            p_time_stamp_avg[i] = sum(self.p_sensors[i][sensor_range[0]:sensor_range[1]])/self.num_p_sensors
             rot_time_stamp_avg[i] = sum(self.rot_sensors[i])/self.num_rot_sensors
 
         return p_time_stamp_avg,rot_time_stamp_avg
@@ -242,24 +276,61 @@ class SampleDataAnalysis:
         return self.p_sensors[:,min_i], self.p_sensors[:,max_i]
 
 
-def plot_pressure_data(sensor_array):
-    plot = Plot(10)
+def plot_pressure_data(sensor_array, save_fig_as = None):
+
+
+
+    force_limit = max(sensor_array)
+    plot = Plot(10,force_limit = 100)
     plt.pause(0.05)
-    plot.update_pressure_plot(sensor_array[1:49], sensor_array[49:71], sensor_array[71:])
-    plt.pause(20)
+    plot.update_pressure_plot(sensor_array[:48], sensor_array[48:70], sensor_array[70:])
+    plt.title(save_fig_as)
+    plt.show()
+
+    if save_fig_as is not None:
+        plt.pause(5)
+        plt.savefig(save_fig_as)
+        plt.close()
 
 
-def plot_angle_data(angle):
-    # angle[0] arm
-    # angle[1] orthosis
-    pass
+def plot_time_series_data(time_range,avg_pressure_per_timestep, variance = None, save_fig_as = None):
+    if variance is None: variance = np.zeros(len(avg_pressure_per_timestep))
+
+    plt.errorbar(time_range,avg_pressure_per_timestep,yerr=variance,color="blue",ecolor="lightgrey")
+    plt.title("Mean sensor value per timestep")
+    plt.xlabel("timestep")
+    plt.ylabel("sensor value")
+    plt.title(save_fig_as)
+
+    if save_fig_as is not None:
+
+        plt.savefig(save_fig_as)
+
+    plt.show()
 
 
-da = LabelDataAnalysis("C:/Users/majag/Desktop/marble/data/no_orthosis_90", Label.NO_ORTHOSIS_90)
-p_sensor_avg, p_sensor_var, rot_sensor_avg, rot_sensor_var = da.mean_variance_at_degrees(90)
-plot_pressure_data(p_sensor_avg)
-# plot_angle_data(rot_sensor_avg)
-# print(da.mean_variance_at_degrees(90))
+#
+# data_folder = "C:/University/Marble/Data/"
+# data_dir = os.listdir(data_folder)
+# for index, labeled_data in enumerate(data_dir):
+#     if index <= -1: continue
+#     folder = data_folder + labeled_data
+#
+#     at_degrees = 0
+#     if "90" in labeled_data: at_degrees = 90
+#     elif "45" in labeled_data: at_degrees = 45
+#
+#
+#
+#     da = LabelDataAnalysis(folder, None)
+#     p_mean, p_var, rot_mean, rot_var = da.mean_variance(time_wise=True, at_arm_degrees=None, linearized=False)
+#     plot_time_series_data(np.linspace(0.5,10,20),p_mean,p_var, save_fig_as=labeled_data + "_back_bottom.png")
+#
+#     print(folder)
+#     print("Degrees: ",at_degrees)
+#     print("Actual: ", rot_mean[0])
+
+# TODO: Custimize range of sensors/ time in .mean_variance()
 
 # add to the plot circle with radius of the value of variance
 # both avg and variance
