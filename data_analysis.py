@@ -121,9 +121,11 @@ class SampleDataAnalysis:
     def __init__(self, label, file_path = None,p_sensors = None,rot_sensors = None,sample_time_stamps = None):
 
 
+        ## index at which the front patch end
         self.front_path_end = 48
+        ## index at whoch the back top patch ends
         self.back_top_patch_end = 70
-
+        ## label if this sample
         self.label = label
 
         if file_path is not None:
@@ -135,9 +137,13 @@ class SampleDataAnalysis:
             self.rot_sensors = rot_sensors
             self.sample_time_stamps = sample_time_stamps
 
+        ## actual time step of the sample
         self.time_step = self.sample_time_stamps[1] - self.sample_time_stamps[0]
+        ## number of pressure sensors
         self.num_p_sensors = len(self.p_sensors[0])
+        ## number of rotational sensors
         self.num_rot_sensors = len(self.rot_sensors[0])
+        ## number of time steps
         self.num_time_steps = len(self.sample_time_stamps)
 
     def load_sample(self):
@@ -212,13 +218,21 @@ class SampleDataAnalysis:
         return self.p_sensors[column][row]
     def get_rot_values(self,column,row):
         return self.rot_sensors[column][row]
-    def get_p_values_at(self,column):
+    def get_p_values_at_time(self,column):
         return self.p_sensors[column]
+    def get_all_p_values(self,p_index):
+        return self.p_sensors[:,p_index]
     def get_rot_values_at(self,column):
         return self.rot_sensors[column]
     def get_time_at(self,column):
         return self.sample_time_stamps[column]
 
+    def get_front_patch(self):
+        return self.p_sensors[:,:self.front_path_end]
+    def get_back_top_patch(self):
+        return self.p_sensors[:,self.front_path_end:self.back_top_patch_end]
+    def get_back_bot_patch(self):
+        return self.p_sensors[:,self.back_top_patch_end:]
 
 
 
@@ -274,6 +288,12 @@ class SampleDataAnalysis:
                 max_press = p_sum
 
         return self.p_sensors[:,min_i], self.p_sensors[:,max_i]
+
+    def copy(self):
+
+        return SampleDataAnalysis(self.label,p_sensors=np.copy(self.p_sensors),rot_sensors=np.copy(self.rot_sensors),sample_time_stamps=self.sample_time_stamps)
+
+
 
 
 def plot_pressure_data(sensor_array, save_fig_as = None):
