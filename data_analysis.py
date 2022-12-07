@@ -1,3 +1,4 @@
+import math
 import os
 from enum import Enum
 import numpy as np
@@ -144,6 +145,7 @@ class SampleDataAnalysis:
 
     def sensorwise_avg(self, avg_range = None):
         if avg_range is None: avg_range = range(self.num_time_steps)
+        else: avg_range = range(max(0,avg_range[0]),min(self.num_time_steps,avg_range[-1]+1))
 
         p_sensors_avg = np.zeros(self.num_p_sensors)
         rot_sensors_avg = np.zeros(2)
@@ -193,12 +195,13 @@ class SampleDataAnalysis:
     ## makes sample smaller in time domain, sets k time stamps, and for each computes the average of the timestamps that fall into the new time stamp range
     def shrink_sample_time_domain(self,k_shrink):
 
-        shrink_ratio = self.num_time_steps//k_shrink
+        shrink_ratio = math.ceil(self.num_time_steps/k_shrink)
 
         new_p_sensors = np.zeros((k_shrink,self.num_p_sensors))
         new_rot_sensors = np.zeros((k_shrink,self.num_rot_sensors))
         new_sample_time_stamps = np.zeros(k_shrink)
         for i in range(k_shrink):
+            ## Note if self.num_time_steps is not divisible by k_shrink, the last
             new_p_sensors[i], new_rot_sensors[i] = self.sensorwise_avg(range(i*shrink_ratio,(i+1)*shrink_ratio))
             new_sample_time_stamps[i] = self.sample_time_stamps[i*shrink_ratio]
 
