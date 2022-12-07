@@ -1,20 +1,28 @@
 import os
-import numpy
+import numpy as np
 from matplotlib import pyplot as plt
 from sklearn.model_selection import train_test_split
 import tensorflow as tf
 from data_analysis import SampleDataAnalysis
+from sklearn.metrics import accuracy_score
+from noise_filter import *
 
-DATA_PATH = "C:/Users/majag/Desktop/marble/NewData"
+
+DATA_PATH_MAJA = "C:/Users/majag/Desktop/marble/NewData"
+DATA_PATH_LUKAS = "C:/University/Marble/Data"
+
+DATA_PATH = DATA_PATH_LUKAS
 
 LABELS = ['incorrect_orthosis', 'correct_orthosis', 'no_orthosis']
 
-# TODO try with the filtered data
+# TODO try with the filtered data- sometimes the filtering causes the network to perform way better, but sometimes way worse
+
+# TODO for some reason 1_LIN incorrect orthosis down 1 cm has everywhere 0 values
 # check different data, what labels?
 # Check recurrent nn
 
 # Lukas pick time steps, size down input for each sample
-# Lukas why X.shape[0] 79 not 80
+
 
 
 def get_dataset(LIN=False):
@@ -31,6 +39,11 @@ def get_dataset(LIN=False):
                     folder_name,
                     file_path=file_path,
                 )
+
+                ## filtering
+                filtered_sensors = normal_filter_sample_sensors_global(analysis)
+                analysis = replace_filtered_sensors_normal_global(analysis,filtered_sensors)
+
                 min_pressure, max_pressure = analysis.extrema_pressure_time_stamp()
                 max_pressure = max_pressure.flatten()
 
@@ -81,30 +94,12 @@ def get_data():
     return X_train, X_test, y_train, y_test
 
 
-def build_model():
-
-    # Build NN
-    model = tf.keras.Sequential([
-        tf.keras.layers.Dense(units=256, activation='relu'),
-        tf.keras.layers.Dense(units=192, activation='relu'),
-        tf.keras.layers.Dense(units=128, activation='relu'),
-        tf.keras.layers.Dense(units=3, activation='softmax')
-    ])
-
-    # model.add(tf.keras.layers.Dense(32, activation='relu'))
-
-    # Compile the model
-    model.compile(loss=tf.keras.losses.mae,  # mae is short for mean absolute error
-                  optimizer=tf.keras.optimizers.SGD(),  # SGD is short for stochastic gradient descent
-                  metrics=["mae"])
-    return model
-
 
 class TFModel:
 
     def __init__(self):
         self.X_train, self.X_test, self.y_train, self.y_test = get_data()
-        self.model = build_model()
+        self.model = self.build_model()
 
     def train(self):
 
@@ -117,6 +112,22 @@ class TFModel:
             validation_split=0.2
         )
         return history
+    def build_model(self):
+        # Build NN
+        model = tf.keras.Sequential([
+            tf.keras.layers.Dense(units=256, activation='relu'),
+            tf.keras.layers.Dense(units=192, activation='relu'),
+            tf.keras.layers.Dense(units=128, activation='relu'),
+            tf.keras.layers.Dense(units=3, activation='softmax')
+        ])
+
+        # model.add(tf.keras.layers.Dense(32, activation='relu'))
+
+        # Compile the model
+        model.compile(loss=tf.keras.losses.mae,  # mae is short for mean absolute error
+                      optimizer=tf.keras.optimizers.SGD(),  # SGD is short for stochastic gradient descent
+                      metrics=["mae"])
+        return model
 
 
 def get_index(tf_array):
@@ -133,10 +144,11 @@ show_error_plot(_history)
 
 print("\n\n")
 prediction = tf_model.model.predict(tf_model.X_test)
+y_test_numpy = tf_model.y_test.numpy()
 for i in range(len(prediction)):
 
-    label_prediction_index = numpy.where(prediction[i] == max(prediction[i]))[0]
-    label_index = get_index(tf_model.y_test[i])
+    print("pred: ", np.argmax(prediction[i]), " label: ", np.argmax(y_test_numpy[i]))
 
-    print("pred: ", label_prediction_index, " label: ", label_index)
+
+print("Accuracy score: ", accuracy_score(np.argmax(tf_model.y_test.numpy(),axis = 1),np.argmax(prediction,axis= 1)))
 

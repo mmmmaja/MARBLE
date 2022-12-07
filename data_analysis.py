@@ -115,14 +115,14 @@ class SampleDataAnalysis:
         num_columns = self.sheet.max_column
 
         sample_time_stamps = np.zeros(num_columns)
-        p_sensors = np.zeros((num_columns,num_sensors - 7))
+        p_sensors = np.zeros((num_columns,num_sensors - 6))
         rot_sensors = np.zeros((num_sensors,2))
         for i in range(num_columns):
             sample_time_stamps[i] = self.sheet.cell(2,i+1).value
             rot_sensors[i][0] = self.sheet.cell(num_sensors-1,i+1).value
             rot_sensors[i][1] = self.sheet.cell(num_sensors,i+1).value
 
-            for j in range(0,num_sensors - 7):
+            for j in range(0,num_sensors - 6):
                 p_sensors[i][j] = self.sheet.cell(j + 4,i + 1).value
 
         return p_sensors, rot_sensors, sample_time_stamps
@@ -178,12 +178,14 @@ class SampleDataAnalysis:
         return self.p_sensors[column][row]
     def get_rot_values(self,column,row):
         return self.rot_sensors[column][row]
-    def get_p_values_at(self,column):
+    def get_p_values_at_time(self,column):
         return self.p_sensors[column]
-    def get_rot_values_at(self,column):
+    def get_rot_values_at_time(self,column):
         return self.rot_sensors[column]
     def get_time_at(self,column):
         return self.sample_time_stamps[column]
+    def get_sensor_values(self,sensor):
+        return self.p_sensors[:,sensor]
 
 
 
@@ -240,6 +242,10 @@ class SampleDataAnalysis:
                 max_press = p_sum
 
         return self.p_sensors[:,min_i], self.p_sensors[:,max_i]
+
+    def copy(self):
+
+        return SampleDataAnalysis(self.label,p_sensors=np.copy(self.p_sensors),rot_sensors=np.copy(self.rot_sensors),sample_time_stamps=np.copy(self.sample_time_stamps))
 
 
 def plot_pressure_data(sensor_array):

@@ -21,6 +21,12 @@ def normal_filter_sample_sensors_global(sample, alpha = 0.02):
     mean = np.mean(p_avg)
     stdev = np.std(p_avg)
 
+    if stdev < 0.0001:
+        print(sample.label)
+        print("MEANS: ", p_avg)
+        print("STDEV: ",stdev)
+        return []
+
 
     standard_norm_avg = (p_avg - mean) / stdev
 
@@ -33,8 +39,6 @@ def normal_filter_sample_sensors_global(sample, alpha = 0.02):
         ## if value falls out of acceptance region, add fabricated value form the distribution, we assume the sensor values are
         if not (-bound <= ns <= bound):
             filtered_sensors.append(i)
-
-    print("filtered sensors: ", filtered_sensors)
 
     return filtered_sensors
 
@@ -67,22 +71,32 @@ def normal_filter_sample_sensors_local(sample: SampleDataAnalysis, alpha = 0.02)
     return filtered_sensors
 
 
-## replaces sensors that ware filtered through out the whole time sequence
-def replace_filtered_sensors_normal_global(sample : SampleDataAnalysis, filtered_sensors):
 
-    sensorwise_avg = sample.sensorwise_avg()
-    mean = np.mean(sensorwise_avg)
-    stdev = np.std(sensorwise_avg)
+## TODO when replacing sensor value, we might want to size down the standard deviation, to not account the outliers we are replacing into the deviation
+## replaces sensors that ware filtered through out the whole time sequence
+def replace_filtered_sensors_normal_global(sample : SampleDataAnalysis, filtered_sensors, inplace = True):
+
+    p_avg, rot_avg = sample.sensorwise_avg()
+    mean = np.mean(p_avg)
+    stdev = np.std(p_avg)
+
+    if not inplace:
+        sample = sample.copy()
 
 
     for f_sensor in filtered_sensors:
 
         for time_step in range(sample.num_time_steps):
 
-            sample.p_sensors[time_step][f_sensor] = np.random.normal(mean,stdev)
+            sample.p_sensors[time_step][f_sensor] = np.random.normal(mean,stdev*1)
+
+    return sample
 
 ## replaces sensors that we filtered for each time step
-def replace_filtered_sensors_normal_local(sample : SampleDataAnalysis, filtered_sensors):
+def replace_filtered_sensors_normal_local(sample : SampleDataAnalysis, filtered_sensors, inplace = True):
+
+    if not inplace:
+        sample = sample.copy()
 
     for i, filtered_sensors_at in enumerate(filtered_sensors):
 
@@ -95,38 +109,42 @@ def replace_filtered_sensors_normal_local(sample : SampleDataAnalysis, filtered_
 
             sample.p_sensors[i][f_sensor] = np.random.normal(mean,stdev)
 
+    return sample
 
 
 
 
 
 
-data_folder = "C:/University/Marble/Data/"
-data_dir = os.listdir(data_folder)
+
+if __name__ == "__main__":
+
+    data_folder = "C:/University/Marble/Data/"
+    data_dir = os.listdir(data_folder)
 
 
-for index, labeled_data in enumerate(data_dir):
-    if index > 100: continue
-    folder = data_folder + labeled_data + "/"
+    for index, labeled_data in enumerate(data_dir):
+        if index > 100: continue
+        folder = data_folder + labeled_data + "/"
 
-    label_dir = os.listdir(folder)
+        label_dir = os.listdir(folder)
 
-    if "90" in labeled_data or "45" in labeled_data: x = 1
-    else: continue
+        if "90" in labeled_data or "45" in labeled_data: x = 1
+        else: continue
 
-    if labeled_data != "incorrect_orthosis_up_1cm_90": continue
+        if labeled_data != "incorrect_orthosis_up_1cm_90": continue
 
-    for sample_ in label_dir:
-        print(sample_)
-        if "LIN" in sample_: continue
+        for sample_ in label_dir:
+            print(sample_)
+            if "LIN" in sample_: continue
 
-        sample_path = folder + sample_
-        sample = SampleDataAnalysis(labeled_data +"_"+ sample_,file_path=sample_path)
-        fs = normal_filter_sample_sensors_local(sample)
-        print(fs)
-        print("\n\n")
+            sample_path = folder + sample_
+            sample = SampleDataAnalysis(labeled_data +"_"+ sample_,file_path=sample_path)
+            fs = normal_filter_sample_sensors_local(sample)
+            print(fs)
+            print("\n\n")
 
-        time.sleep(5)
+            time.sleep(5)
 
 
 
