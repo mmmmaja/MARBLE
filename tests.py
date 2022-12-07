@@ -1,6 +1,3 @@
-
-
-
 from noise_filter import *
 import matplotlib.pyplot as plt
 from scipy.stats import norm
