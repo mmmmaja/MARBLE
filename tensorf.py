@@ -40,14 +40,14 @@ def build_FF_model():
                   optimizer=tf.keras.optimizers.SGD(),  # SGD is short for stochastic gradient descent
                   metrics=["mae"])
 
-    print(model.summary())
+    # print(model.summary())
     return model
 
 def build_RNN_model():
     model = tf.keras.Sequential([
         tf.keras.layers.Input(shape=(3, 80)),
         tf.keras.layers.SimpleRNN(units=40),
-        tf.keras.layers.Dense(units=3, activation='softmax'),
+        tf.keras.layers.Dense(units=len(LABELS), activation='softmax'),
     ])
 
     # model.add(tf.keras.layers.Dense(32, activation='relu'))
@@ -77,31 +77,33 @@ class TFModel:
         for folder_name in os.listdir(path):
             folder_path = os.path.join(path, folder_name)
 
-            for file_name in os.listdir(folder_path):
-                file_path = os.path.join(folder_path, file_name)
+            label = self.get_label(folder_name)
+            if label:
+                for file_name in os.listdir(folder_path):
+                    file_path = os.path.join(folder_path, file_name)
 
-                if (LIN and file_name[-8:-4] == 'LIN.') or (not LIN and file_name[-8:-4] == 'RAW.'):
-                    analysis = SampleDataAnalysis(
-                        folder_name,
-                        file_path=file_path,
-                    )
+                    if (LIN and file_name[-8:-4] == 'LIN.') or (not LIN and file_name[-8:-4] == 'RAW.'):
+                        analysis = SampleDataAnalysis(
+                            folder_name,
+                            file_path=file_path,
+                        )
 
-                    if filter_noise:
-                        filtered_sensors = normal_filter_sample_sensors_global(analysis)
-                        analysis = replace_filtered_sensors_normal_global(analysis, filtered_sensors)
-
-
-                    x_point = None
-                    if RNN:
-                        analysis = analysis.shrink_sample_time_domain(3)
-                        x_point = analysis.p_sensors
-                    else:
-                        min_pressure, max_pressure = analysis.extrema_pressure_time_stamp()
-                        x_point = max_pressure.flatten()
+                        if filter_noise:
+                            filtered_sensors = normal_filter_sample_sensors_global(analysis)
+                            analysis = replace_filtered_sensors_normal_global(analysis, filtered_sensors)
 
 
-                    y.append(self.get_label(folder_name))
-                    X.append(x_point)
+                        x_point = None
+                        if RNN:
+                            analysis = analysis.shrink_sample_time_domain(3)
+                            x_point = analysis.p_sensors
+                        else:
+                            min_pressure, max_pressure = analysis.extrema_pressure_time_stamp()
+                            x_point = max_pressure.flatten()
+
+
+                        y.append(label)
+                        X.append(x_point)
         return X, y
 
     def get_label(self,folder_name):
@@ -158,7 +160,7 @@ class TFModel:
 
 
 
-tf_model = TFModel(model=build_RNN_model(),dataset_path=DATA_PATH,filter_noise=False,rnn=True)
+tf_model = TFModel(model=build_FF_model(),dataset_path=DATA_PATH,filter_noise=True,rnn=False)
 
 tf_model.train()
 tf_model.show_error_plot()

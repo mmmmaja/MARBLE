@@ -7,6 +7,8 @@ from matplotlib import pyplot as plt
 
 from plotter import Plot
 
+DATA_PATH_MAJA = "C:/Users/majag/Desktop/marble/NewData"
+DATA_PATH_LUKAS = "C:/University/Marble/Data"
 
 class Label(Enum):
 
@@ -69,8 +71,8 @@ class LabelDataAnalysis:
         for sensor_values in  rot_sensor_values:
             rot_sensor_avg += sensor_values
         rot_sensor_avg = rot_sensor_avg/len(rot_sensor_values)
-        ## Variance
 
+        ## Variance
         p_sensor_var = np.zeros(len(p_sensor_values[0]))
         for sensor_values in p_sensor_values:
             p_sensor_var += (p_sensor_avg - sensor_values)**2
@@ -88,6 +90,10 @@ class LabelDataAnalysis:
 
 
 class SampleDataAnalysis:
+    ## Hardcoded index ranges of each of the three sensors arrays on the arm
+    front_range = (0, 48)
+    top_range = (48, 70)
+    bot_range = (70, 80)
 
     ## at index -2 is arm degree, at index -1 is orthosis degree
 
@@ -110,6 +116,8 @@ class SampleDataAnalysis:
         self.num_rot_sensors = len(self.rot_sensors[0])
         self.num_time_steps = len(self.sample_time_stamps)
 
+
+
     def load_sample(self):
 
         num_sensors = self.sheet.max_row
@@ -128,7 +136,7 @@ class SampleDataAnalysis:
 
         return p_sensors, rot_sensors, sample_time_stamps
 
-    def sensor_values_at_arm_degrees(self, at_arm_degrees):
+    def sensor_values_at_arm_degrees(self, at_arm_degrees, range_ = (0,80)):
 
         min_difference = abs(at_arm_degrees - self.rot_sensors[0][0])
         index = 0
@@ -141,7 +149,7 @@ class SampleDataAnalysis:
             if difference < 10e-5:
                 break
 
-        return self.p_sensors[index], self.rot_sensors[index], self.sample_time_stamps[index]
+        return self.p_sensors[index][range_[0]:range_[1]], self.rot_sensors[index], self.sample_time_stamps[index]
 
     def sensorwise_avg(self, avg_range = None):
         if avg_range is None: avg_range = range(self.num_time_steps)
@@ -170,9 +178,9 @@ class SampleDataAnalysis:
         p_avg,rot_avg = self.sensorwise_avg(range(0,self.num_time_steps))
         return sum(p_avg)/len(p_avg), sum(rot_avg)/len(rot_avg)
 
-    def avg_at_arm_degrees(self,at_arm_degrees):
+    def avg_at_arm_degrees(self,at_arm_degrees, range_ = (0,80)):
 
-        p_values,rot_values,time_stamp = self.sensor_values_at_arm_degrees(at_arm_degrees)
+        p_values,rot_values,time_stamp = self.sensor_values_at_arm_degrees(at_arm_degrees, range_ = range_)
 
         return sum(p_values)/len(p_values), sum(rot_values)/len(rot_values)
 
@@ -188,8 +196,6 @@ class SampleDataAnalysis:
         return self.sample_time_stamps[column]
     def get_sensor_values(self,sensor):
         return self.p_sensors[:,sensor]
-
-
 
 
     ## makes sample smaller in time domain, sets k time stamps, and for each computes the average of the timestamps that fall into the new time stamp range
@@ -257,12 +263,42 @@ def plot_pressure_data(sensor_array):
     plot.update_pressure_plot(sensor_array[1:49], sensor_array[49:71], sensor_array[71:])
     plt.pause(20)
 
+def plot_pressure_degree_relation(label, max_deg, range_ = (0,80)):
+
+
+    da = LabelDataAnalysis(DATA_PATH_LUKAS + "/" + label, Label.NO_ORTHOSIS_90)
+    scale = 0.1
+
+    deg_range = []
+    pressures = []
+    stds = []
+    for d in range(max_deg + 1):
+        deg_range.append(d)
+        p_sensor_avg, p_sensor_var, rot_sensor_avg, rot_sensor_var = da.mean_variance_at_degrees(d, linearized=False)
+        pressures.append(np.mean(p_sensor_avg[range_[0]:range_[1]]))
+        stds.append(np.std(p_sensor_avg[range_[0]:range_[1]])*scale)
+
+    plt.errorbar(deg_range,pressures,yerr=stds, fmt = "o", color = "black",ecolor="palevioletred",elinewidth=2)
+    plt.xlabel("degrees of rotation")
+    plt.xlabel("average pressure")
+    plt.title(label)
+    plt.show()
+
+
+
+
 
 def plot_angle_data(angle):
     # angle[0] arm
     # angle[1] orthosis
     pass
 
+
+dir = os.listdir(DATA_PATH_LUKAS)
+
+for folder in dir:
+    print(int(folder.split("_")[-1]))
+    plot_pressure_degree_relation(label=folder,max_deg=int(folder.split("_")[-1]), range_=SampleDataAnalysis.front_range)
 
 # da = LabelDataAnalysis("C:/Users/majag/Desktop/marble/data/no_orthosis_90", Label.NO_ORTHOSIS_90)
 # p_sensor_avg, p_sensor_var, rot_sensor_avg, rot_sensor_var = da.mean_variance_at_degrees(90)
