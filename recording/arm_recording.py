@@ -1,6 +1,5 @@
 import os.path
 import numpy as np
-# import matplotlib.pyplot as plt
 import serial
 from timeit import default_timer as timer
 import csv
@@ -9,9 +8,8 @@ import xlsxwriter
 import winsound
 import keyboard
 import openpyxl
-# from sim import Plot
 from matplotlib import pyplot as plt
-from plotter import Plot
+from recording.plotter import Plot
 
 
 class ArmRecording:
@@ -50,7 +48,6 @@ class ArmRecording:
         self.ser = serial.Serial(port, 57600)
         self.ser.flushInput()
 
-
         self.init_ui()
 
     def init_ui(self):
@@ -68,7 +65,7 @@ class ArmRecording:
 
         self.coeff_ref = np.array([float(coeff_data[1][0]), float(coeff_data[1][1])])
 
-        self.x_coeffs =  {
+        self.x_coeffs = {
             "up": np.asarray(coeff_data[2][:], dtype=float),
             "down": np.asarray(coeff_data[3][:], dtype=float)
         }
@@ -76,11 +73,10 @@ class ArmRecording:
         self.y_coeffs = {
             "up": np.asarray(coeff_data[4:(4 + self.num_sensors)][:], dtype=float),
             "down": np.asarray(coeff_data[(4 + self.num_sensors):(4 + self.num_sensors + self.num_sensors)][:],
-                             dtype=float)
+                               dtype=float)
         }
 
         self.num_nodes = len(self.x_coeffs["up"])
-
 
     def init_gui(self):
 
@@ -93,6 +89,7 @@ class ArmRecording:
             elif in_ == "S":
                 self.record(linearize_realtime=False)
                 break
+
     def record(self, linearize_realtime=False):
 
         self.ser.flush()
@@ -156,7 +153,8 @@ class ArmRecording:
             if linearize_realtime:
                 self.linearize_data_unit(self.raw_data[self.reading_count], self.reading_count)
 
-            current_data = self.raw_data[self.reading_count] if not linearize_realtime else self.lin_data[self.reading_count]
+            current_data = self.raw_data[self.reading_count] if not linearize_realtime else self.lin_data[
+                self.reading_count]
             # print(self.reading_count)
             # FIXME plotting here
             self.plot.update_pressure_plot(current_data[1:49], current_data[49:71], current_data[71:-2])
@@ -222,9 +220,8 @@ class ArmRecording:
                 countf += 1
                 x_coeffs = self.x_coeffs["down"]
                 y_coeffs = self.y_coeffs["down"]
-                min_n, max_n = self.find_coefficient_node(raw_data_unit[sensor_index], y_coeffs[sensor_index - 1], reverse=True)
-
-
+                min_n, max_n = self.find_coefficient_node(raw_data_unit[sensor_index], y_coeffs[sensor_index - 1],
+                                                          reverse=True)
 
             a = (self.coeff_ref[0] * x_coeffs[min_n] + self.coeff_ref[1])
             b = (((self.coeff_ref[0] * x_coeffs[max_n] + self.coeff_ref[1]) - (
@@ -314,7 +311,6 @@ class ArmRecording:
 
         workbook.close()
 
-
         file_lin = os.path.join(folder, file_name + '_LIN.xlsx')
         workbook = xlsxwriter.Workbook(file_lin)
         worksheet = workbook.add_worksheet()
@@ -336,7 +332,5 @@ class ArmRecording:
 
 
 def run_recording(path, file_name, time_recording):
-    recording = ArmRecording(0.5, time_recording, 80, 'COM3', 'coefficients_S10N_14nodes_final_80Sensors.csv')
+    recording = ArmRecording(0.5, time_recording, 80, 'COM3', '../coefficients_S10N_14nodes_final_80Sensors.csv')
     recording.save_data(path, file_name)
-
-

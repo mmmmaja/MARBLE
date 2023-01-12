@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from hardcoded_data import triangulation_back_bottom, triangulation_front, triangulation_back_top
-from data_manager import Data
+from recording.hardcoded_data import triangulation_back_bottom, triangulation_front, triangulation_back_top
+from recording.data_manager import Data
 
 # time step in ms with which the plot is updated. Must be multiple of the recording time step (50ms)
 TIME_STEP = 500
@@ -21,8 +21,7 @@ pause = True
 
 class Plot:
 
-    def __init__(self, time_recording, force_limit = 1):
-
+    def __init__(self, time_recording, force_limit=1):
 
         self.force_limit = force_limit
         # Window of visualization consisting of two subplots
@@ -74,7 +73,6 @@ class Plot:
         :param _pressure_back_top: one batch of back top pressure data from recording real time
         :param _pressure_back_bottom: one batch of back bottom pressure data from recording real time
         """
-
 
         _pressure_front[_pressure_front > self.force_limit] = self.force_limit
         _pressure_back_top[_pressure_back_top > self.force_limit] = self.force_limit
