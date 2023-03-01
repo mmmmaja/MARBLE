@@ -1,8 +1,0 @@
-numpy
-sklearn
-matplotlib
-tensorflow
-openpyxl
-xlsxwriter
-serial
-keyboard

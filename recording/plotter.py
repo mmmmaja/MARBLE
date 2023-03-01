@@ -7,9 +7,9 @@ from recording.data_manager import Data
 TIME_STEP = 500
 
 # Choose which patch will be visible
-patch_display = [False, False, True]
+patch_display = [True, False, False]
 
-FORCE_LIMIT = 1
+FORCE_LIMIT = 2
 
 colorTable = [
     [0, 0, 255], [0, 128, 255], [0, 255, 255], [0, 255, 128], [0, 255, 0],
@@ -21,7 +21,7 @@ pause = True
 
 class Plot:
 
-    def __init__(self, time_recording, force_limit=1):
+    def __init__(self, time_recording, force_limit=60):
 
         self.force_limit = force_limit
         # Window of visualization consisting of two subplots

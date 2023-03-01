@@ -3,19 +3,19 @@ from plotter import Plot
 
 
 # Set to True if data is about to be recorded, otherwise read the data from the path
-RECORDING = False
+RECORDING = True
 
 # Path to the folder of the xlsx files
-data_folder_path = 'C:/Users/majag/Desktop/marble/data/correct_orthosis_90'
+data_folder_path = 'C:/Users/majag/Desktop/marble/investigation'
 
 # Determine if we want to display linearized or raw data
-linearized_data = True
+linearized_data = False
 
 # Name of the file
 file_name = '1'
 
 # Set the time of the recording
-time_recording = 10
+time_recording = 15
 
 path = os.path.join(data_folder_path, (file_name + "_LIN" if linearized_data else file_name + "_RAW") + ".xlsx")
 
