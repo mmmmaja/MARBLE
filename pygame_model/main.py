@@ -1,21 +1,12 @@
 import math
 import pygame
-from pygame import gfxdraw
 import mesh
 import stimulis
+from stimulis import hex2RGB
+from mesh import UNIT
+
 
 FRAME_WIDTH, FRAME_HEIGHT = 1000, 500
-
-
-def hex2RGB(color):
-    """
-    :param color: in the hex format
-    :return: [R, G, B] values in range (0, 1)
-    """
-    color = color.lstrip('#')
-    R, G, B = int(color[:2], 16), int(color[2:4], 16), int(color[4:], 16)
-    rgb = (R, G, B)
-    return rgb
 
 
 class Display:
@@ -40,7 +31,7 @@ class Display:
     def run(self):
         while True:
             self.detect_events()
-            self.draw_circles()
+            self.display_presses()
 
     def update(self):
         self.update_central_section()
@@ -106,7 +97,9 @@ class Display:
             if self.mouse_pressed:
                 pos = pygame.mouse.get_pos()
                 # Add a new circle to the list when the mouse is clicked
-                self.presses.append(Circle(pos))
+                self.presses.append(
+                    self.stimuli.get_shape(pos)
+                )
 
                 # Change pressure outputs of the sensors
                 self.sensor_mesh.press(list(pos))
@@ -116,40 +109,20 @@ class Display:
                 if event.key == pygame.K_SPACE:
                     self.sensor_mesh.get_values()
 
-    def draw_circles(self):
+    def display_presses(self):
         self.update()
-        for circle in self.presses:
-
-            circle.draw(self.screen)
+        for shape in self.presses:
+            shape.draw(self.screen)
 
             # Remove the circle from the list if it has become invisible
-            if circle.alpha <= 0:
-                self.presses.remove(circle)
+            if shape.alpha <= 0:
+                self.presses.remove(shape)
         pygame.display.update()
-
-
-class Circle:
-
-    def __init__(self, pos):
-        self.pos = pos
-        self.radius = 30
-        self.alpha = 20  # Starting alpha value
-        self.color = hex2RGB("#4ee96e")
-
-    def draw(self, surface):
-        # Draw the circle with the current alpha value
-        gfxdraw.filled_circle(
-            surface,
-            self.pos[0], self.pos[1], self.radius,
-            (self.color[0], self.color[1], self.color[2], self.alpha)
-        )
-
-        # Decrease the alpha value for the next frame
-        self.alpha -= 0.2
 
 
 display = Display(
     mesh.Mesh(width=10, height=10, center=(FRAME_WIDTH / 4, FRAME_HEIGHT / 2)),
-    stimuli = stimulis.Cuboid(2, 1)
+    # stimuli=stimulis.Cuboid(2 * UNIT, 1 * UNIT)
+    stimuli=stimulis.Sphere(2 * UNIT)
 )
 display.run()
