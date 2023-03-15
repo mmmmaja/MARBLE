@@ -1,6 +1,9 @@
-import math
+import sys
+
+import numpy as np
 
 # define unit = 1cm
+
 UNIT = 40
 
 
@@ -75,30 +78,46 @@ class Mesh:
         for s in self.SENSOR_ARRAY:
             print(str(s.pressure), end=', ')
 
-    def press(self, pos):
+    def press(self, stimuli):
         for sensor in self.SENSOR_ARRAY:
-            sensor.press(pos)
+            sensor.press(stimuli)
 
 
 class Sensor:
 
     def __init__(self, position):
-        self.pressure = 0
-        self.position = position
+        self.deformation = 0
+        self.position = np.array(position)
         self.activated = False
 
-    def get_distance(self, point):
-        # FIXME
-        return math.sqrt(
-            math.pow(self.position[0] - point[0], 2) + math.pow(self.position[1] - point[1], 2)
-        )
+    def press(self, stimuli):
 
-    def press(self, pos):
-        self.pressure = 1 / self.get_distance(pos)
-        if self.pressure > 0.02:
+        distance = stimuli.get_distance(self.position)
+
+        # stimuli directly presses on sensor
+        if distance == 0:
+            self.deformation = stimuli.deformation_at(self.position)
             self.activated = True
+
+        # stimuli only deforms silicon where the sensor is on
         else:
+            border_deformation = stimuli.border_deformation()
+
+            self.deformation = stimuli.def_func.get_z(distance, border_deformation)
             self.activated = False
+
+    def get_circle_properties(self):
+        base_color = np.array([0, 0, 0])
+
+        base_color[0] = min(255, int(base_color[0] - self.deformation * 10))
+        base_color[1] = min(255, int(base_color[1] - self.deformation * 5))
+
+        print(self.deformation)
+        if self.activated:
+            return [base_color, self.position, 6]
+        else:
+            return [base_color, self.position, 3]
+
 
 
 """

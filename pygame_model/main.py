@@ -4,7 +4,7 @@ import mesh
 import stimulis
 from stimulis import hex2RGB
 from mesh import UNIT
-
+from deformation_function import *
 
 FRAME_WIDTH, FRAME_HEIGHT = 1000, 500
 
@@ -29,6 +29,7 @@ class Display:
         pygame.display.update()
 
     def run(self):
+        # FIXME Add clock here, save the sensor values in the xls file
         while True:
             self.detect_events()
             self.display_presses()
@@ -78,10 +79,8 @@ class Display:
             pygame.draw.polygon(self.screen, hex2RGB("#2d2f3d"), t, 2)
 
         for s in self.sensor_mesh.SENSOR_ARRAY:
-            if s.activated:
-                pygame.draw.circle(self.screen, hex2RGB("#a956ff"), s.position, 6)
-            else:
-                pygame.draw.circle(self.screen, hex2RGB("#2ca5ff"), s.position, 4)
+            circle_prop = s.get_circle_properties()
+            pygame.draw.circle(self.screen, circle_prop[0], circle_prop[1], circle_prop[2])
 
     def detect_events(self):
         for event in pygame.event.get():
@@ -95,14 +94,17 @@ class Display:
                 self.mouse_pressed = False
 
             if self.mouse_pressed:
-                pos = pygame.mouse.get_pos()
+                pos = np.array(pygame.mouse.get_pos())
+                self.stimuli.set_position(pos)
+
                 # Add a new circle to the list when the mouse is clicked
                 self.presses.append(
-                    self.stimuli.get_shape(pos)
+                    self.stimuli.get_shape()
                 )
 
+                self.stimuli.set_deformation(-2 * UNIT)
                 # Change pressure outputs of the sensors
-                self.sensor_mesh.press(list(pos))
+                self.sensor_mesh.press(self.stimuli)
 
             # TODO
             if event.type == pygame.KEYDOWN:
@@ -122,7 +124,7 @@ class Display:
 
 display = Display(
     mesh.Mesh(width=10, height=10, center=(FRAME_WIDTH / 4, FRAME_HEIGHT / 2)),
-    # stimuli=stimulis.Cuboid(2 * UNIT, 1 * UNIT)
-    stimuli=stimulis.Sphere(2 * UNIT)
+    # stimuli=stimulis.Cuboid(DeformationFunction(),2 * UNIT, 2 * UNIT)
+    stimuli=stimulis.Sphere(DeformationFunction(), UNIT)
 )
 display.run()

@@ -6,8 +6,9 @@ class DeformationFunction:
 
         pass
 
-    def get_z(self, distance, object_deformation):
+    def get_z(self, distance, deformation_level):
+        deformation_level = abs(deformation_level)
         if distance < 0:
             raise Exception(f"distance {distance} must be positive")
 
-        return -np.exp((1/object_deformation)*distance - np.log(object_deformation))
+        return -np.exp(-( (1/deformation_level)*distance - np.log(deformation_level)) )

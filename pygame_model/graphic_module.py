@@ -17,7 +17,7 @@ class Circle:
     def __init__(self, pos, radius):
         self.pos = pos
         self.radius = radius
-        self.alpha = 20  # Starting alpha value
+        self.alpha = 15  # Starting alpha value
         self.color = hex2RGB("#4ee96e")
 
     def draw(self, surface):
@@ -38,7 +38,7 @@ class Rectangle:
         self.pos = pos
         self.a = a
         self.b = b
-        self.alpha = 20  # Starting alpha value
+        self.alpha = 15  # Starting alpha value
         self.color = hex2RGB("#4ee96e")
 
     def draw(self, surface):
