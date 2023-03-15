@@ -131,6 +131,7 @@ class Data:
                     values_only=True):
                 column_count = 0
                 for value in row:
+                    print(value)
                     value = float(value)
                     if value > self.max_pressure:
                         self.max_pressure = value

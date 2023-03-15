@@ -42,20 +42,20 @@ class ArmRecording:
         # time step
 
         self.init_coeffs(coeffs_file)
-
         if skip_serial_input:
             return
         self.ser = serial.Serial(port, 57600)
         self.ser.flushInput()
-
         self.init_ui()
 
     def init_ui(self):
 
         while True:
+            print("Type 'Start' to start recording\n")
             k = input()
+            # Waiting for the input here
             if k is not None and k[0] == "S":
-                # self.plot = Plot()
+                # self.plot = Plot(time_recording=self.time_recording)
                 self.record(linearize_realtime=False if k[1] != "R" else True)
                 break
 
@@ -159,6 +159,8 @@ class ArmRecording:
             # FIXME plotting here
             self.plot.update_pressure_plot(current_data[1:49], current_data[49:71], current_data[71:-2])
             self.plot.update_angle_plot(current_data[0], current_data[-2], current_data[-1])
+            print("\npressure data: ")
+            print(sorted(current_data)[::-1])
             # print("angle: ", current_data[-2])
             plt.pause(0.001)
 
@@ -332,5 +334,7 @@ class ArmRecording:
 
 
 def run_recording(path, file_name, time_recording):
+    print("recording")
     recording = ArmRecording(0.5, time_recording, 80, 'COM3', '../coefficients_S10N_14nodes_final_80Sensors.csv')
+    print("save data")
     recording.save_data(path, file_name)

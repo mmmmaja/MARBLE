@@ -6,7 +6,7 @@ from plotter import Plot
 RECORDING = False
 
 # Path to the folder of the xlsx files
-data_folder_path = "C:/University/Marble/Data/correct_orthosis_90/"
+data_folder_path = 'C:/Users/majag/Desktop/marble/data/correct_orthosis_90'
 
 # Determine if we want to display linearized or raw data
 linearized_data = True
