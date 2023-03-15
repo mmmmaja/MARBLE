@@ -199,6 +199,9 @@ class SampleDataAnalysis:
 
         return sum(p_values) / len(p_values), sum(rot_values) / len(rot_values)
 
+    def get_p_len(self):
+        return self.num_p_sensors
+
     def get_p_value(self, column, row):
         """
         :return: the pressure sensor value at a given column and row
@@ -228,6 +231,9 @@ class SampleDataAnalysis:
         :return: time stamp from given column
         """
         return self.sample_time_stamps[column]
+
+    def get_p_array(self):
+        return np.transpose(self.p_sensors)
 
     def get_sensor_values(self, sensor):
         return self.p_sensors[:, sensor]
@@ -325,13 +331,24 @@ def plot_pressure_degree_relation(path, label, max_deg, range_=(0, 80)):
 
     plt.errorbar(deg_range, pressures, yerr=stds, fmt="o", color="black", ecolor="palevioletred", elinewidth=2)
     plt.xlabel("degrees of rotation")
-    plt.xlabel("average pressure")
+    plt.ylabel("average pressure")
     plt.title(label)
     plt.show()
 
 
+
+def plot_histogram(sda : SampleDataAnalysis, sensor):
+
+    plt.hist(sda.get_sensor_values(sensor))
+    plt.xlabel("Digital Pressure")
+    plt.ylabel("Occurence")
+    plt.show()
+
+
+
 if __name__ == "__main__":
-    DATA_PATH = "C:/Users/majag/Desktop/marble/NewData"
+
+    DATA_PATH = "C:/University/Marble/Data/"
 
     for folder in os.listdir(DATA_PATH):
         print(int(folder.split("_")[-1]))
@@ -339,5 +356,4 @@ if __name__ == "__main__":
             DATA_PATH,
             label=folder,
             max_deg=int(folder.split("_")[-1]),
-            range_=SampleDataAnalysis.front_range
         )

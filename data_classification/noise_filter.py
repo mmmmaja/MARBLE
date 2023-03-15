@@ -4,6 +4,8 @@ from scipy.stats import *
 import time
 
 
+##TODO: Will be deleted, new version in sensor_filter.py
+
 def normal_filter_sample_sensors_global(sample, alpha=0.02):
     """
     Assumes normal distribution for time step
