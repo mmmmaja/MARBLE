@@ -1,40 +1,37 @@
 import math
-import pygame
 
-DISTANCE_BETWEEN_SENSORS = 40
 # define unit = 1cm
+UNIT = 40
 
 
 class Mesh:
 
-    def __init__(self, width, height, center=None):
+    def __init__(self, width, height, center=None, sensor_distance=1):
         """
         :param width: number of taxels horizontally
         :param height: number of taxels vertically
         """
         self.width = width
         self.height = height
+        self.sensor_distance = sensor_distance
 
         if center:
-            real_width, real_height = (width - 1) * DISTANCE_BETWEEN_SENSORS, (height - 1) * DISTANCE_BETWEEN_SENSORS
+            real_width, real_height = (width - 1) * (sensor_distance * UNIT), (height - 1) * (sensor_distance * UNIT)
             self.delta = [center[0] - real_width / 2, center[0] - real_width / 2]
         else:
             self.delta = [0, 0]
 
         self.SENSOR_ARRAY = []
-
-        self.vertices, self.triangles = self.create()
+        self.triangles = self.create()
 
     def create(self):
         """
         :return: Triangular mesh and point cloud corresponding to sensor positions
         """
 
-        # FIXME unit for the visualization
-
         # Triangulation method
         vertices, triangles = [], []
-        step = DISTANCE_BETWEEN_SENSORS
+        step = UNIT * self.sensor_distance
 
         for i in range(self.height - 1):
             for j in range(self.width - 1):
@@ -56,6 +53,12 @@ class Mesh:
                 ]
 
                 self.SENSOR_ARRAY.append(Sensor(a))
+                if i == self.height - 2:
+                    self.SENSOR_ARRAY.append(Sensor(b))
+                if j == self.width - 2:
+                    self.SENSOR_ARRAY.append(Sensor(d))
+                if i == self.height - 2 and j == self.width - 2:
+                    self.SENSOR_ARRAY.append(Sensor(c))
 
                 vertices.append(a)
                 vertices.append(b)
@@ -66,7 +69,7 @@ class Mesh:
                 triangles.append((vertices[index - 3], vertices[index - 2], vertices[index - 1]))
                 triangles.append((vertices[index - 3], vertices[index - 1], vertices[index]))
 
-        return vertices, triangles
+        return triangles
 
     def get_values(self):
         for s in self.SENSOR_ARRAY:
@@ -99,7 +102,7 @@ class Sensor:
 
 
 """
-Stimula, specify radius/sides, start with cube
+Stimula, specify radius/sides, start with c
 function
 distance to stimula
 color code pressure

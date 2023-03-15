@@ -1,8 +1,8 @@
 import math
-import sys
 import pygame
 from pygame import gfxdraw
 import mesh
+import stimulis
 
 FRAME_WIDTH, FRAME_HEIGHT = 1000, 500
 
@@ -20,9 +20,12 @@ def hex2RGB(color):
 
 class Display:
 
-    def __init__(self, sensor_mesh):
+    def __init__(self, sensor_mesh, stimuli):
 
         self.sensor_mesh = sensor_mesh
+        self.stimuli = stimuli
+
+        # Indicates if currently the mouse is pressed
         self.mouse_pressed = False
 
         # Stores press locations to display disappearing circles
@@ -60,6 +63,8 @@ class Display:
             (FRAME_WIDTH // 2, 0),
             (FRAME_WIDTH // 2, FRAME_HEIGHT), 2)
 
+        # TODO Draw unit ticks
+
         self.draw_function()
 
     def draw_function(self):
@@ -80,12 +85,12 @@ class Display:
 
         for t in self.sensor_mesh.triangles:
             pygame.draw.polygon(self.screen, hex2RGB("#2d2f3d"), t, 2)
-        for v in self.sensor_mesh.vertices:
-            pygame.draw.circle(self.screen, hex2RGB("#2ca5ff"), v, 4)
 
         for s in self.sensor_mesh.SENSOR_ARRAY:
             if s.activated:
                 pygame.draw.circle(self.screen, hex2RGB("#a956ff"), s.position, 6)
+            else:
+                pygame.draw.circle(self.screen, hex2RGB("#2ca5ff"), s.position, 4)
 
     def detect_events(self):
         for event in pygame.event.get():
@@ -144,6 +149,7 @@ class Circle:
 
 
 display = Display(
-    mesh.Mesh(width=10, height=10, center=(FRAME_WIDTH / 4, FRAME_HEIGHT / 2))
+    mesh.Mesh(width=10, height=10, center=(FRAME_WIDTH / 4, FRAME_HEIGHT / 2)),
+    stimuli = stimulis.Cuboid(2, 1)
 )
 display.run()
