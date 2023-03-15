@@ -56,12 +56,29 @@ class Sphere(Stimuli):
 
         super().__init__()
         self.r = radius
+        self.deform_r = 0
+
+
+    def set_deformation(self,deform):
+        super().set_deformation(deform)
+
+        if abs(deform) < self.r:
+            self.deform_r = np.sqrt(2*deform*self.r - np.power(deform,2))
+        else:
+            self.deform_r = self.r
 
     def get_distance(self,position):
 
         d_ = self.position - position
 
-        return
+        return np.linalg.norm(d_) - self.deform_r
+
+    def deformation_at(self,position):
+        p_n = np.linalg.norm(self.position - position)
+        if p_n > self.deform_r:
+            return 0
+        else:
+            return np.sqrt(np.power(position,2) + np.power(self.deform_r,2))
 
 
 
