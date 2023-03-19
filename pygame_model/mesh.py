@@ -4,7 +4,14 @@ import csv
 # define unit 40px = 1cm
 UNIT = 40
 
+# Here the pressure data will be saved
 DATA = []
+
+
+def save_data():
+    with open('data.csv', 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerows(DATA)
 
 
 class Mesh:
@@ -71,14 +78,15 @@ class Mesh:
         return triangles
 
     def get_values(self):
+        # print pressure data on key press
         for i in range(self.height):
             for j in range(self.width):
                 index = i * self.width + j
                 print(round(self.SENSOR_ARRAY[index].deformation, 5), end=' | ')
-                # print(self.SENSOR_ARRAY[index].position, end=' | ')
             print()
 
     def press(self, stimuli):
+        # Record the pressure
         for sensor in self.SENSOR_ARRAY:
             sensor.press(stimuli)
 
@@ -94,11 +102,6 @@ class Mesh:
         for i in self.SENSOR_ARRAY:
             data.append(i.deformation)
         DATA.append(data)
-
-    def save_data(self):
-        with open('data.csv', 'w', newline='') as file:
-            writer = csv.writer(file)
-            writer.writerows(DATA)
 
 
 class Sensor:

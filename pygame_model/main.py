@@ -2,7 +2,7 @@ import pygame
 import mesh
 import stimulis
 from stimulis import hex2RGB, Button
-from mesh import UNIT
+from mesh import UNIT, save_data
 from deformation_function import *
 
 FRAME_WIDTH, FRAME_HEIGHT = 1000, 500
@@ -43,7 +43,7 @@ class Display:
 
     def run(self):
 
-        UPDATE_INTERVAL = 100  # milliseconds
+        UPDATE_INTERVAL = 100  # Update every n milliseconds
         clock = pygame.time.Clock()
 
         while True:
@@ -129,7 +129,7 @@ class Display:
     def detect_events(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                self.sensor_mesh.save_data()
+                save_data()
                 quit()
 
             if event.type == pygame.MOUSEBUTTONDOWN:
