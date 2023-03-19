@@ -57,3 +57,5 @@ class Rectangle:
 
         # Decrease the alpha value for the next frame
         self.alpha -= 0.2
+
+

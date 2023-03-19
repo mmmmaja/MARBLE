@@ -1,9 +1,6 @@
-import sys
-
 import numpy as np
 
-# define unit = 1cm
-
+# define unit 40px = 1cm
 UNIT = 40
 
 
@@ -19,6 +16,7 @@ class Mesh:
         self.sensor_distance = sensor_distance
 
         if center:
+            # Used to shift mesh to the center of the frame
             real_width, real_height = (width - 1) * (sensor_distance * UNIT), (height - 1) * (sensor_distance * UNIT)
             self.delta = [center[0] - real_width / 2, center[0] - real_width / 2]
         else:
@@ -29,15 +27,16 @@ class Mesh:
 
     def create(self):
         """
-        :return: Triangular mesh and point cloud corresponding to sensor positions
+        Fills self.SENSOR_ARRAY
+        :return: Triangular mesh for sensor map
         """
 
         # Triangulation method
         vertices, triangles = [], []
         step = UNIT * self.sensor_distance
 
-        for i in range(self.height - 1):
-            for j in range(self.width - 1):
+        for i in range(self.height):
+            for j in range(self.width):
                 a = [
                     i * step + self.delta[0],
                     j * step + self.delta[1]
@@ -56,12 +55,6 @@ class Mesh:
                 ]
 
                 self.SENSOR_ARRAY.append(Sensor(a))
-                if i == self.height - 2:
-                    self.SENSOR_ARRAY.append(Sensor(b))
-                if j == self.width - 2:
-                    self.SENSOR_ARRAY.append(Sensor(d))
-                if i == self.height - 2 and j == self.width - 2:
-                    self.SENSOR_ARRAY.append(Sensor(c))
 
                 vertices.append(a)
                 vertices.append(b)
@@ -75,12 +68,23 @@ class Mesh:
         return triangles
 
     def get_values(self):
-        for s in self.SENSOR_ARRAY:
-            print(str(s.pressure), end=', ')
+        for i in range(self.height):
+            for j in range(self.width):
+                index = i * self.width + j
+                print(round(self.SENSOR_ARRAY[index].deformation, 5), end=' | ')
+                # print(self.SENSOR_ARRAY[index].position, end=' | ')
+            print()
 
     def press(self, stimuli):
         for sensor in self.SENSOR_ARRAY:
             sensor.press(stimuli)
+
+    def get_points_along_X(self, X):
+        sensor_line = []
+        for i in range(self.height):
+            index = i * self.width + 2
+            sensor_line.append(self.SENSOR_ARRAY[index])
+        return sensor_line
 
 
 class Sensor:
@@ -109,10 +113,9 @@ class Sensor:
     def get_circle_properties(self):
         base_color = np.array([0, 0, 0])
 
-        base_color[0] = min(255, int(base_color[0] - self.deformation * 10))
+        base_color[2] = min(255, int(base_color[2] - self.deformation * 10))
         base_color[1] = min(255, int(base_color[1] - self.deformation * 5))
 
-        print(self.deformation)
         if self.activated:
             return [base_color, self.position, 6]
         else:
@@ -120,10 +123,9 @@ class Sensor:
 
 
 
+
+
 """
-Stimula, specify radius/sides, start with c
-function
-distance to stimula
-color code pressure
+The longer sensor is pressed the more pressure is observed
 show deformation of chosen line
 """

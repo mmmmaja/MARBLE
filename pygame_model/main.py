@@ -1,4 +1,3 @@
-import math
 import pygame
 import mesh
 import stimulis
@@ -13,26 +12,71 @@ class Display:
 
     def __init__(self, sensor_mesh, stimuli):
 
+        self.button_rect = None
         self.sensor_mesh = sensor_mesh
         self.stimuli = stimuli
 
         # Indicates if currently the mouse is pressed
         self.mouse_pressed = False
 
+        # Indicates if currently the pressure data is recorded
+        self.recording = False
+
         # Stores press locations to display disappearing circles
         self.presses = []
+
+        # Index of the X line to be displayed on the right side od the visualization
+        self.LINE_INDEX = 2
+
+        # Number of centimeters to shift right visualization up
+        self.D_Y = 3
 
         self.screen = pygame.display.set_mode(
             size=(FRAME_WIDTH, FRAME_HEIGHT)
         )
+        pygame.init()
         self.update()
+        self.draw_settings()
         pygame.display.update()
 
     def run(self):
-        # FIXME Add clock here, save the sensor values in the xls file
+
+        # How many times per second do we want to output pressure data
+        UPDATE_INTERVAL = 0.5 * 1000  # milliseconds
+        clock = pygame.time.Clock()
+
         while True:
             self.detect_events()
             self.display_presses()
+
+            if pygame.time.get_ticks() % UPDATE_INTERVAL == 0:
+                if self.recording:
+                    self.sensor_mesh.get_values()
+
+            clock.tick(60)
+
+    def draw_settings(self):
+        self.add_record_button(position=(FRAME_WIDTH // 2 + 30, self.D_Y * UNIT - 100))
+
+    def add_record_button(self, position):
+        # Set up the font
+        font = pygame.font.SysFont(None, 20)
+
+        # Set up the button
+        button_width = 80
+        button_height = 40
+        self.button_rect = pygame.Rect(
+            position[0], position[1],
+            button_width, button_height)
+        button_surface = pygame.Surface((button_width, button_height))
+        button_surface.fill(hex2RGB('00a2ff'))
+        button_text = font.render("record", True, hex2RGB('262834'))
+        button_text_rect = button_text.get_rect(center=(button_width // 2, button_height // 2))
+        button_surface.blit(button_text, button_text_rect)
+
+        # Draw the button
+        self.screen.blit(button_surface, self.button_rect)
+        pygame.display.update()
 
     def update(self):
         self.update_central_section()
@@ -40,35 +84,43 @@ class Display:
 
     def update_cross_section(self):
 
-        rect = pygame.Rect(FRAME_WIDTH / 2, 0, FRAME_WIDTH / 2, FRAME_HEIGHT)
+        # Draw section background
+        rect = pygame.Rect(
+            FRAME_WIDTH / 2, FRAME_HEIGHT // 2 - (self.D_Y + 1) * UNIT,
+            FRAME_WIDTH / 2, FRAME_HEIGHT)
         pygame.draw.rect(self.screen, hex2RGB("#3f4152"), rect)
 
-        # Draw the X and Y axis
-        pygame.draw.line(
-            self.screen,
-            hex2RGB("#0d0e12"),
-            (FRAME_WIDTH // 2, FRAME_HEIGHT // 2),
-            (FRAME_WIDTH, FRAME_HEIGHT // 2), 2)
-        pygame.draw.line(
-            self.screen,
-            hex2RGB("#0d0e12"),
-            (FRAME_WIDTH // 2, 0),
-            (FRAME_WIDTH // 2, FRAME_HEIGHT), 2)
+        # Draw Y axis
+        x = FRAME_WIDTH // 2
+        color, line_width = hex2RGB("#0d0e12"), 2
+        while x <= FRAME_WIDTH:
+            pygame.draw.line(
+                self.screen, color,
+                (x, FRAME_HEIGHT // 2 - self.D_Y * UNIT), (x, FRAME_HEIGHT), line_width)
+            x += UNIT
+            color, line_width = hex2RGB("#31343d"), 1
+        # Draw X axis
+        y = FRAME_HEIGHT // 2
+        color, line_width = hex2RGB("#0d0e12"), 2
+        while y - UNIT * self.D_Y <= FRAME_HEIGHT:
+            pygame.draw.line(
+                self.screen, color,
+                (FRAME_WIDTH // 2, y - self.D_Y * UNIT), (FRAME_WIDTH, y - self.D_Y * UNIT), line_width)
+            y += UNIT
+            color, line_width = hex2RGB("#31343d"), 1
 
-        # TODO Draw unit ticks
-
-        self.draw_function()
-
-    def draw_function(self):
-        # Generate a series of points along a sine curve
-        num_points = 100
+        # Draw function of the deformation
         curve_points = []
-        for i in range(num_points):
-            x = i * (FRAME_WIDTH // 2) / num_points + (FRAME_WIDTH // 2)
-            y = FRAME_WIDTH / 2 - 50 * math.sin(i * math.pi / num_points)
-            curve_points.append((x, y))
+
+        # Append the pressure points from the mesh object
+        sensor_line = self.sensor_mesh.get_points_along_X(self.LINE_INDEX)
+        for i in range(len(sensor_line)):
+            x = sensor_line[i].position[0]
+            y = - sensor_line[i].deformation
+            curve_points.append((x + FRAME_WIDTH // 2, y + FRAME_HEIGHT // 2 - self.D_Y * UNIT))
 
         # Draw the curve
+        # TODO interpolation to smooth it out
         pygame.draw.lines(self.screen, hex2RGB("#4ee96e"), False, curve_points, 2)
 
     def update_central_section(self):
@@ -77,6 +129,15 @@ class Display:
 
         for t in self.sensor_mesh.triangles:
             pygame.draw.polygon(self.screen, hex2RGB("#2d2f3d"), t, 2)
+
+        # Mark the line that is displayed on the cross_section
+        sensor_line = self.sensor_mesh.get_points_along_X(self.LINE_INDEX)
+        pygame.draw.line(
+            self.screen,
+            hex2RGB("#9c82dd"),
+            sensor_line[0].position,
+            sensor_line[len(sensor_line) - 1].position,
+            2)
 
         for s in self.sensor_mesh.SENSOR_ARRAY:
             circle_prop = s.get_circle_properties()
@@ -89,6 +150,8 @@ class Display:
 
             if event.type == pygame.MOUSEBUTTONDOWN:
                 self.mouse_pressed = True
+                if self.button_rect.collidepoint(event.pos):
+                    self.recording = True
 
             if event.type == pygame.MOUSEBUTTONUP:
                 self.mouse_pressed = False
