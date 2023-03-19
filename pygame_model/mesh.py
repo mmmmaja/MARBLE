@@ -1,7 +1,10 @@
 import numpy as np
+import csv
 
 # define unit 40px = 1cm
 UNIT = 40
+
+DATA = []
 
 
 class Mesh:
@@ -85,6 +88,17 @@ class Mesh:
             index = i * self.width + 2
             sensor_line.append(self.SENSOR_ARRAY[index])
         return sensor_line
+
+    def append_data(self):
+        data = []
+        for i in self.SENSOR_ARRAY:
+            data.append(i.deformation)
+        DATA.append(data)
+
+    def save_data(self):
+        with open('data.csv', 'w', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerows(DATA)
 
 
 class Sensor:

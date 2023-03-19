@@ -1,5 +1,5 @@
 import numpy as np
-from graphic_module import hex2RGB, Circle, Rectangle
+from graphic_module import hex2RGB, Circle, Rectangle, Button
 
 
 class Stimuli:

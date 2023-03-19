@@ -1,3 +1,4 @@
+import pygame
 from pygame import gfxdraw
 
 
@@ -43,10 +44,10 @@ class Rectangle:
 
     def draw(self, surface):
         points = [
-            [self.pos[0] - self.a/2, self.pos[1] - self.b / 2],
-            [self.pos[0] + self.a/2, self.pos[1] - self.b / 2],
-            [self.pos[0] + self.a/2, self.pos[1] + self.b / 2],
-            [self.pos[0] - self.a/2, self.pos[1] + self.b / 2],
+            [self.pos[0] - self.a / 2, self.pos[1] - self.b / 2],
+            [self.pos[0] + self.a / 2, self.pos[1] - self.b / 2],
+            [self.pos[0] + self.a / 2, self.pos[1] + self.b / 2],
+            [self.pos[0] - self.a / 2, self.pos[1] + self.b / 2],
         ]
         # Draw the circle with the current alpha value
         gfxdraw.filled_polygon(
@@ -59,3 +60,47 @@ class Rectangle:
         self.alpha -= 0.2
 
 
+class Button:
+
+    def __init__(self, screen, position):
+        self.button_surface = None
+        self.button_rect = None
+
+        self.screen = screen
+        self.position = position
+        self.font = pygame.font.SysFont(None, 20)
+        self.width, self.height = 100, 40
+
+        self.STATE = 0
+
+        self.create()
+
+    def create(self):
+
+        self.button_rect = pygame.Rect(
+            self.position[0], self.position[1],
+            self.width, self.height
+        )
+        self.button_surface = pygame.Surface((self.width, self.height))
+
+    def add(self):
+
+        if self.STATE == 0:
+
+            self.button_surface.fill(hex2RGB('00a2ff'))
+            button_text = self.font.render("record", True, hex2RGB('262834'))
+            button_text_rect = button_text.get_rect(center=(self.width // 2, self.height // 2))
+            self.button_surface.blit(button_text, button_text_rect)
+
+            # Draw the button
+            self.screen.blit(self.button_surface, self.button_rect)
+        else:
+
+            self.button_surface.fill(hex2RGB('48b764'))
+            button_text = self.font.render("stop recording", True, hex2RGB('262834'))
+            button_text_rect = button_text.get_rect(center=(self.width // 2, self.height // 2))
+            self.button_surface.blit(button_text, button_text_rect)
+            # Draw the button
+            self.screen.blit(self.button_surface, self.button_rect)
+
+        self.STATE = (self.STATE + 1) % 2

@@ -1,7 +1,7 @@
 import pygame
 import mesh
 import stimulis
-from stimulis import hex2RGB
+from stimulis import hex2RGB, Button
 from mesh import UNIT
 from deformation_function import *
 
@@ -12,7 +12,6 @@ class Display:
 
     def __init__(self, sensor_mesh, stimuli):
 
-        self.button_rect = None
         self.sensor_mesh = sensor_mesh
         self.stimuli = stimuli
 
@@ -31,6 +30,9 @@ class Display:
         # Number of centimeters to shift right visualization up
         self.D_Y = 3
 
+        # Press to start or stop recording
+        self.record_button = None
+
         self.screen = pygame.display.set_mode(
             size=(FRAME_WIDTH, FRAME_HEIGHT)
         )
@@ -41,8 +43,7 @@ class Display:
 
     def run(self):
 
-        # How many times per second do we want to output pressure data
-        UPDATE_INTERVAL = 0.5 * 1000  # milliseconds
+        UPDATE_INTERVAL = 100  # milliseconds
         clock = pygame.time.Clock()
 
         while True:
@@ -51,32 +52,14 @@ class Display:
 
             if pygame.time.get_ticks() % UPDATE_INTERVAL == 0:
                 if self.recording:
-                    self.sensor_mesh.get_values()
-
+                    self.sensor_mesh.append_data()
             clock.tick(60)
 
     def draw_settings(self):
-        self.add_record_button(position=(FRAME_WIDTH // 2 + 30, self.D_Y * UNIT - 100))
-
-    def add_record_button(self, position):
-        # Set up the font
-        font = pygame.font.SysFont(None, 20)
-
-        # Set up the button
-        button_width = 80
-        button_height = 40
-        self.button_rect = pygame.Rect(
-            position[0], position[1],
-            button_width, button_height)
-        button_surface = pygame.Surface((button_width, button_height))
-        button_surface.fill(hex2RGB('00a2ff'))
-        button_text = font.render("record", True, hex2RGB('262834'))
-        button_text_rect = button_text.get_rect(center=(button_width // 2, button_height // 2))
-        button_surface.blit(button_text, button_text_rect)
-
-        # Draw the button
-        self.screen.blit(button_surface, self.button_rect)
-        pygame.display.update()
+        self.record_button = Button(
+            self.screen,
+            position=(FRAME_WIDTH // 2 + 30, self.D_Y * UNIT - 100))
+        self.record_button.add()
 
     def update(self):
         self.update_central_section()
@@ -146,11 +129,13 @@ class Display:
     def detect_events(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
+                self.sensor_mesh.save_data()
                 quit()
 
             if event.type == pygame.MOUSEBUTTONDOWN:
                 self.mouse_pressed = True
-                if self.button_rect.collidepoint(event.pos):
+                if self.record_button.button_rect.collidepoint(event.pos):
+                    self.record_button.add()
                     self.recording = True
 
             if event.type == pygame.MOUSEBUTTONUP:
@@ -158,18 +143,18 @@ class Display:
 
             if self.mouse_pressed:
                 pos = np.array(pygame.mouse.get_pos())
-                self.stimuli.set_position(pos)
+                if pos[0] < FRAME_WIDTH // 2 - UNIT:
+                    self.stimuli.set_position(pos)
 
-                # Add a new circle to the list when the mouse is clicked
-                self.presses.append(
-                    self.stimuli.get_shape()
-                )
+                    # Add a new circle to the list when the mouse is clicked
+                    self.presses.append(
+                        self.stimuli.get_shape()
+                    )
 
-                self.stimuli.set_deformation(-2 * UNIT)
-                # Change pressure outputs of the sensors
-                self.sensor_mesh.press(self.stimuli)
+                    self.stimuli.set_deformation(-2 * UNIT)
+                    # Change pressure outputs of the sensors
+                    self.sensor_mesh.press(self.stimuli)
 
-            # TODO
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
                     self.sensor_mesh.get_values()
