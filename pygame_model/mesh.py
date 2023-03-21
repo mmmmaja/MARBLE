@@ -93,7 +93,7 @@ class Mesh:
     def get_points_along_X(self, X):
         sensor_line = []
         for i in range(self.height):
-            index = i * self.width + 2
+            index = i * self.width + X
             sensor_line.append(self.SENSOR_ARRAY[index])
         return sensor_line
 

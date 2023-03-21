@@ -25,7 +25,7 @@ class Display:
         self.presses = []
 
         # Index of the X line to be displayed on the right side od the visualization
-        self.LINE_INDEX = 2
+        self.LINE_INDEX = 4
 
         # Number of centimeters to shift right visualization up
         self.D_Y = 3
