@@ -8,15 +8,6 @@ UNIT = 40
 DATA = []
 
 
-def save_data():
-    with open('data.csv', 'w', newline='') as file:
-        writer = csv.writer(file)
-
-
-        writer.writerow()
-        writer.writerows(DATA)
-
-
 class Mesh:
 
     def __init__(self, width, height, center=None, sensor_distance=1):
@@ -85,14 +76,6 @@ class Mesh:
         print(self.SENSOR_ARRAY[1].real_position)
         return triangles
 
-    def get_values(self):
-        # print pressure data on key press
-        for i in range(self.height):
-            for j in range(self.width):
-                index = i * self.width + j
-                print(round(self.SENSOR_ARRAY[index].deformation, 5), end=' | ')
-            print()
-
     def press(self, stimuli):
         # Record the pressure
         for sensor in self.SENSOR_ARRAY:
@@ -110,6 +93,16 @@ class Mesh:
         for i in self.SENSOR_ARRAY:
             data.append(i.deformation/UNIT)
         DATA.append(data)
+
+    def save_data(self):
+        sensor_positions = []
+        for i in self.SENSOR_ARRAY:
+            pos = str(i.real_position[0]) + ',' + str(i.real_position[1])
+            sensor_positions.append(pos)
+        DATA.insert(0, sensor_positions)
+        with open('data.csv', 'w', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerows(DATA)
 
 
 class Sensor:
@@ -152,6 +145,28 @@ class Sensor:
 
 
 """
+
+1) step
 The longer sensor is pressed the more pressure is observed
-show deformation of chosen line
+
+2)
+transfer function: pressure to deformation
+pressure vs softness
+
+3) step
+Relate transfer function to the program
+
+for both:
+think of bones, what shape? Softness of the tissue
+
+check distribution for real data vs artificial one
+
+Write script to obtain experiments
+'forge a recording'
+simulate running around with a stimuli
+sliding
+
+
+
+save first line true position of the sensor
 """

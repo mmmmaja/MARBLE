@@ -62,26 +62,31 @@ class Rectangle:
 
 class Button:
 
-    def __init__(self, screen, position):
+    def __init__(self, screen, position, width=100, height=40):
         self.button_surface = None
         self.button_rect = None
 
         self.screen = screen
         self.position = position
         self.font = pygame.font.SysFont(None, 20)
-        self.width, self.height = 100, 40
+        self.width, self.height = width, height
 
         self.STATE = 0
 
         self.create()
 
     def create(self):
-
         self.button_rect = pygame.Rect(
             self.position[0], self.position[1],
             self.width, self.height
         )
         self.button_surface = pygame.Surface((self.width, self.height))
+
+
+class Record(Button):
+
+    def __init__(self, screen, position):
+        super().__init__(screen, position)
 
     def add(self):
 
@@ -94,13 +99,35 @@ class Button:
 
             # Draw the button
             self.screen.blit(self.button_surface, self.button_rect)
-        else:
 
+        else:
             self.button_surface.fill(hex2RGB('48b764'))
             button_text = self.font.render("stop recording", True, hex2RGB('262834'))
             button_text_rect = button_text.get_rect(center=(self.width // 2, self.height // 2))
             self.button_surface.blit(button_text, button_text_rect)
             # Draw the button
+            self.screen.blit(self.button_surface, self.button_rect)
+
+        self.STATE = (self.STATE + 1) % 2
+
+
+class ForgeRecording(Button):
+
+    def __init__(self, screen, position):
+        super().__init__(screen, position, width=200)
+
+    def add(self):
+        if self.STATE == 0:
+            self.button_surface.fill(hex2RGB('00a2ff'))
+            button_text = self.font.render("forge a recording", True, hex2RGB('262834'))
+            button_text_rect = button_text.get_rect(center=(self.width // 2, self.height // 2))
+            self.button_surface.blit(button_text, button_text_rect)
+
+            # Draw the button
+            self.screen.blit(self.button_surface, self.button_rect)
+
+        if self.STATE == 1:
+            self.button_surface.fill(hex2RGB('005e88'))
             self.screen.blit(self.button_surface, self.button_rect)
 
         self.STATE = (self.STATE + 1) % 2

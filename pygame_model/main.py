@@ -1,8 +1,8 @@
 import pygame
 import mesh
 import stimulis
-from stimulis import hex2RGB, Button
-from mesh import UNIT, save_data
+from stimulis import hex2RGB, ForgeRecording, Record
+from mesh import UNIT
 from deformation_function import *
 
 FRAME_WIDTH, FRAME_HEIGHT = 1000, 500
@@ -28,48 +28,46 @@ class Display:
         self.LINE_INDEX = 2
 
         # Number of centimeters to shift right visualization up
-        self.D_Y = 3
+        self.D_Y = 2
 
         # Press to start or stop recording
-        self.record_button = None
+        self.record_button, self.forge_recording = None, None
 
         self.screen = pygame.display.set_mode(
             size=(FRAME_WIDTH, FRAME_HEIGHT)
         )
         pygame.init()
-        self.update()
+
+        self.update_central_section()
+        self.update_cross_section()
         self.draw_settings()
         pygame.display.update()
-
-        self.ticks = 0
 
     def run(self):
 
         UPDATE_INTERVAL = 1000  # Update every n milliseconds
         clock = pygame.time.Clock()
+        ticks = 0
 
         while True:
             self.detect_events()
             self.display_presses()
 
-            if (pygame.time.get_ticks() - self.ticks) > UPDATE_INTERVAL:
-                self.ticks = pygame.time.get_ticks()
+            if (pygame.time.get_ticks() - ticks) > UPDATE_INTERVAL:
+                ticks = pygame.time.get_ticks()
                 if self.recording:
-                    print("recording")
-                    print(pygame.time.get_ticks())
                     self.sensor_mesh.append_data()
 
             clock.tick(60)
 
     def draw_settings(self):
-        self.record_button = Button(
-            self.screen,
-            position=(FRAME_WIDTH // 2 + 30, self.D_Y * UNIT - 100))
+        # Add record button
+        self.record_button = Record(self.screen, position=(FRAME_WIDTH // 2 + 30, 50))
         self.record_button.add()
 
-    def update(self):
-        self.update_central_section()
-        self.update_cross_section()
+        # TODO add 'forge recording' button
+        self.forge_recording = ForgeRecording(self.screen, position=(FRAME_WIDTH // 2 + 150, 50))
+        self.forge_recording.add()
 
     def update_cross_section(self):
 
@@ -108,8 +106,6 @@ class Display:
             y = - sensor_line[i].deformation
             curve_points.append((x + FRAME_WIDTH // 2, y + FRAME_HEIGHT // 2 - self.D_Y * UNIT))
 
-        # Draw the curve
-        # TODO interpolation to smooth it out
         pygame.draw.lines(self.screen, hex2RGB("#4ee96e"), False, curve_points, 2)
 
     def update_central_section(self):
@@ -128,6 +124,7 @@ class Display:
             sensor_line[len(sensor_line) - 1].frame_position,
             2)
 
+        # Display the sensors
         for s in self.sensor_mesh.SENSOR_ARRAY:
             circle_prop = s.get_circle_properties()
             pygame.draw.circle(self.screen, circle_prop[0], circle_prop[1], circle_prop[2])
@@ -135,14 +132,17 @@ class Display:
     def detect_events(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                save_data()
+                self.sensor_mesh.save_data()
                 quit()
 
+            # Record the pressure from the mouse input
             if event.type == pygame.MOUSEBUTTONDOWN:
                 self.mouse_pressed = True
                 if self.record_button.button_rect.collidepoint(event.pos):
                     self.record_button.add()
                     self.recording = not self.recording
+                if self.forge_recording.button_rect.collidepoint(event.pos):
+                    self.forge_recording.add()
 
             if event.type == pygame.MOUSEBUTTONUP:
                 self.mouse_pressed = False
@@ -161,18 +161,16 @@ class Display:
                     # Change pressure outputs of the sensors
                     self.sensor_mesh.press(self.stimuli)
 
+            # Change the index of the line shown on the cross-section with the arrows
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE:
-                    self.sensor_mesh.get_values()
-
-                # Change the index of the line shown on the cross-section with the arrows
                 if event.key == pygame.K_UP:
                     self.LINE_INDEX = max(self.LINE_INDEX - 1, 0)
                 if event.key == pygame.K_DOWN:
                     self.LINE_INDEX = min(self.LINE_INDEX + 1, self.sensor_mesh.height - 1)
 
     def display_presses(self):
-        self.update()
+        self.update_central_section()
+        self.update_cross_section()
         for shape in self.presses:
             shape.draw(self.screen)
 
@@ -182,15 +180,11 @@ class Display:
         pygame.display.update()
 
 
+rectangle_stimuli = stimulis.Cuboid(DeformationFunction(), 2 * UNIT, 2 * UNIT)
+sphere_stimuli = stimulis.Sphere(DeformationFunction(), UNIT)
+
 display = Display(
     mesh.Mesh(width=10, height=10, center=(FRAME_WIDTH / 4, FRAME_HEIGHT / 2)),
-    # stimuli=stimulis.Cuboid(DeformationFunction(),2 * UNIT, 2 * UNIT)
-    stimuli=stimulis.Sphere(DeformationFunction(), UNIT)
+    sphere_stimuli
 )
 display.run()
-
-
-"""
-add slider
-smooth out the function
-"""
