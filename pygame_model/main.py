@@ -165,6 +165,12 @@ class Display:
                 if event.key == pygame.K_SPACE:
                     self.sensor_mesh.get_values()
 
+                # Change the index of the line shown on the cross-section with the arrows
+                if event.key == pygame.K_UP:
+                    self.LINE_INDEX = max(self.LINE_INDEX - 1, 0)
+                if event.key == pygame.K_DOWN:
+                    self.LINE_INDEX = min(self.LINE_INDEX + 1, self.sensor_mesh.height - 1)
+
     def display_presses(self):
         self.update()
         for shape in self.presses:
@@ -182,3 +188,9 @@ display = Display(
     stimuli=stimulis.Sphere(DeformationFunction(), UNIT)
 )
 display.run()
+
+
+"""
+add slider
+smooth out the function
+"""
