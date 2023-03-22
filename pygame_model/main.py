@@ -104,7 +104,7 @@ class Display:
         # Append the pressure points from the mesh object
         sensor_line = self.sensor_mesh.get_points_along_X(self.LINE_INDEX)
         for i in range(len(sensor_line)):
-            x = sensor_line[i].position[0]
+            x = sensor_line[i].frame_position[0]
             y = - sensor_line[i].deformation
             curve_points.append((x + FRAME_WIDTH // 2, y + FRAME_HEIGHT // 2 - self.D_Y * UNIT))
 
@@ -124,8 +124,8 @@ class Display:
         pygame.draw.line(
             self.screen,
             hex2RGB("#9c82dd"),
-            sensor_line[0].position,
-            sensor_line[len(sensor_line) - 1].position,
+            sensor_line[0].frame_position,
+            sensor_line[len(sensor_line) - 1].frame_position,
             2)
 
         for s in self.sensor_mesh.SENSOR_ARRAY:

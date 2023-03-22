@@ -64,7 +64,10 @@ class Mesh:
                     (j + 1) * step + self.delta[1]
                 ]
 
-                self.SENSOR_ARRAY.append(Sensor(a))
+                self.SENSOR_ARRAY.append(Sensor(
+                    frame_position=a,
+                    real_position=np.array([a[0] - self.delta[0], a[1] - self.delta[1]]) / step
+                ))
 
                 vertices.append(a)
                 vertices.append(b)
@@ -75,6 +78,8 @@ class Mesh:
                 triangles.append((vertices[index - 3], vertices[index - 2], vertices[index - 1]))
                 triangles.append((vertices[index - 3], vertices[index - 1], vertices[index]))
 
+        print(self.SENSOR_ARRAY[0].real_position)
+        print(self.SENSOR_ARRAY[1].real_position)
         return triangles
 
     def get_values(self):
@@ -106,18 +111,19 @@ class Mesh:
 
 class Sensor:
 
-    def __init__(self, position):
-        self.deformation = 0
-        self.position = np.array(position)
+    def __init__(self, frame_position, real_position=None):
+        self.frame_position = np.array(frame_position)
+        self.real_position = real_position
         self.activated = False
+        self.deformation = 0
 
     def press(self, stimuli):
 
-        distance = stimuli.get_distance(self.position)
+        distance = stimuli.get_distance(self.frame_position)
 
         # stimuli directly presses on sensor
         if distance == 0:
-            self.deformation = stimuli.deformation_at(self.position)
+            self.deformation = stimuli.deformation_at(self.frame_position)
             self.activated = True
 
         # stimuli only deforms silicon where the sensor is on
@@ -134,9 +140,9 @@ class Sensor:
         base_color[1] = min(255, int(base_color[1] - self.deformation * 5))
 
         if self.activated:
-            return [base_color, self.position, 6]
+            return [base_color, self.frame_position, 6]
         else:
-            return [base_color, self.position, 3]
+            return [base_color, self.frame_position, 3]
 
 
 
