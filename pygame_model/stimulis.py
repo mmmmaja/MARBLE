@@ -83,7 +83,7 @@ class Sphere(Stimuli):
         if p_n > self.deform_r:
             return 0
         else:
-            return -np.sqrt(np.sum(np.power(position, 2)) + np.power(self.r, 2))
+            return -np.sqrt(-np.sum(np.power(self.position - position, 2)) + np.power(self.r, 2)) + (self.deformation + self.r)
 
     def border_deformation(self):
         return self.border_deform

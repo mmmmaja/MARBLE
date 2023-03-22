@@ -93,14 +93,14 @@ class Mesh:
     def get_points_along_X(self, X):
         sensor_line = []
         for i in range(self.height):
-            index = i * self.width + X
+            index = i * self.width + 2
             sensor_line.append(self.SENSOR_ARRAY[index])
         return sensor_line
 
     def append_data(self):
         data = []
         for i in self.SENSOR_ARRAY:
-            data.append(i.deformation)
+            data.append(i.deformation/UNIT)
         DATA.append(data)
 
 

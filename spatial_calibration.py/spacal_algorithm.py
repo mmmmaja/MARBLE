@@ -1,6 +1,7 @@
 import numpy as np
 import random
 from separation_functions import *
+import scipy
 
 class SpacalAlgo:
 
@@ -214,6 +215,85 @@ if __name__ == "__main__":
 
     ## after we register common pairwise activations, the positions of sensors will get updated, 0.1 is the learning rate, and 'n' is the amount of update iterations
     alg.update_sensor_locations(0.1,n = 1000)
+
+
+
+
+class BayesFilterAlgo:
+
+
+    def __init(self,locations,sensor_ids, stimuli_size):
+
+        self.stimuli_size = stimuli_size
+        self.locations = locations
+        self.sensor_ids = sensor_ids
+
+
+        self.sensor_location_belief = dict()
+
+        for id_ in self.sensor_ids:
+            probability = 1/len(locations)
+            location_belief = {tuple(location):probability for location in self.locations }
+            self.sensor_location_belief[id_] = location_belief
+
+
+    def set_root_sensor(self,id_, location):
+
+        locations = self.sensor_location_belief[id_]
+        for loc in locations.keys():
+            locations[loc] = 0
+        locations[tuple(location)] = 1
+
+
+    def update_belief(self,activated_sensors):
+
+        for i, id_1 in enumerate(activated_sensors):
+
+            locations_1 = self.sensor_location_belief[id_1]
+
+            for j in range(i+1,len(activated_sensors)):
+                id_2 = activated_sensors[j]
+
+                locations_2 = self.sensor_location_belief[id_2]
+
+                # given that sensors i and j were activated together, update the beliefs of their positions
+                new_beliefs_2 = {l: 0 for l in locations_2}
+
+
+                total_belief_1 = 0
+                total_belief_2 = 0
+                for loc_1 in locations_1.keys():
+                    new_belief_1 = 0
+                    prob_1 = locations_1[loc_1]
+
+                    for loc_2 in locations_2.keys():
+
+                        distance = np.linalg.norm(np.array(loc_1) - np.array(loc_2))
+
+
+                        # the bigger the distance the less probability of  these two locations, die to the fact they were activated together
+                        # for now draw consider exponential distribution, and determine probability that distance is bigger than [distance] variable
+                        belief = 1 - scipy.stats.expon.cdf(distance,loc = 0, scale = 0.9*self.stimuli_size)
+                        prob_2 = locations_2[loc_2]
+
+                        new_belief_1 += prob_1*belief*prob_2
+                        new_beliefs_2[loc_2] += prob_1*belief*prob_2
+
+                        total_belief_2 += prob_1*belief*prob_2
+
+                    locations_1[loc_1] = new_belief_1
+                    total_belief_1 += new_belief_1
+
+                # now we need to normalize the probabilities to sum up to 1
+                for loc_2, blf in new_beliefs_2.items():
+                    locations_2[loc_2] = blf/total_belief_2
+
+                for loc_1, blf in locations_1.items():
+                    locations_1[loc_1] = blf/total_belief_1
+
+                    
+
+
 
 
 

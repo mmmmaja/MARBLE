@@ -25,7 +25,7 @@ class Display:
         self.presses = []
 
         # Index of the X line to be displayed on the right side od the visualization
-        self.LINE_INDEX = 4
+        self.LINE_INDEX = 2
 
         # Number of centimeters to shift right visualization up
         self.D_Y = 3
@@ -41,6 +41,8 @@ class Display:
         self.draw_settings()
         pygame.display.update()
 
+        self.ticks = 0
+
     def run(self):
 
         UPDATE_INTERVAL = 100  # Update every n milliseconds
@@ -50,9 +52,13 @@ class Display:
             self.detect_events()
             self.display_presses()
 
-            if pygame.time.get_ticks() % UPDATE_INTERVAL == 0:
+            if (pygame.time.get_ticks() - self.ticks) > UPDATE_INTERVAL:
+                self.ticks = pygame.time.get_ticks()
                 if self.recording:
+                    print("recording")
+                    print(pygame.time.get_ticks())
                     self.sensor_mesh.append_data()
+
             clock.tick(60)
 
     def draw_settings(self):
@@ -136,7 +142,7 @@ class Display:
                 self.mouse_pressed = True
                 if self.record_button.button_rect.collidepoint(event.pos):
                     self.record_button.add()
-                    self.recording = True
+                    self.recording = not self.recording
 
             if event.type == pygame.MOUSEBUTTONUP:
                 self.mouse_pressed = False
