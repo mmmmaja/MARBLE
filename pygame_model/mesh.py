@@ -11,6 +11,9 @@ DATA = []
 def save_data():
     with open('data.csv', 'w', newline='') as file:
         writer = csv.writer(file)
+
+
+        writer.writerow()
         writer.writerows(DATA)
 
 
