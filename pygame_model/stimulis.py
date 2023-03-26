@@ -1,10 +1,10 @@
 import numpy as np
-from graphic_module import hex2RGB, Circle, Rectangle, Button, ForgeRecording, Record
+from graphic_module import hex2RGB, Circle, Rectangle, Button, ForgeRecordingButton, RecordButton, DisplayRecordingButton
 
 
 class Stimuli:
 
-    def __init__(self,def_func):
+    def __init__(self, def_func):
         self.deformation = 0
         self.position = np.array([0, 0])
         self.def_func = def_func

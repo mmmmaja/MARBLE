@@ -223,7 +223,7 @@ void readInput(){
           i=0;
 
           //set the mode:
-          //'R' = Record raw tactile data and send raw data to PC
+          //'R' = RecordButton raw tactile data and send raw data to PC
           
           if (record[0]=='R'){
             //Serial.print("Record123");

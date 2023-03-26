@@ -83,17 +83,14 @@ class Button:
         self.button_surface = pygame.Surface((self.width, self.height))
 
 
-class Record(Button):
-
-    def __init__(self, screen, position):
-        super().__init__(screen, position)
+class RecordButton(Button):
 
     def add(self):
 
         if self.STATE == 0:
 
             self.button_surface.fill(hex2RGB('00a2ff'))
-            button_text = self.font.render("record", True, hex2RGB('262834'))
+            button_text = self.font.render("Record", True, hex2RGB('262834'))
             button_text_rect = button_text.get_rect(center=(self.width // 2, self.height // 2))
             self.button_surface.blit(button_text, button_text_rect)
 
@@ -102,7 +99,7 @@ class Record(Button):
 
         else:
             self.button_surface.fill(hex2RGB('48b764'))
-            button_text = self.font.render("stop recording", True, hex2RGB('262834'))
+            button_text = self.font.render("Stop recording", True, hex2RGB('262834'))
             button_text_rect = button_text.get_rect(center=(self.width // 2, self.height // 2))
             self.button_surface.blit(button_text, button_text_rect)
             # Draw the button
@@ -111,15 +108,31 @@ class Record(Button):
         self.STATE = (self.STATE + 1) % 2
 
 
-class ForgeRecording(Button):
-
-    def __init__(self, screen, position):
-        super().__init__(screen, position, width=200)
+class ForgeRecordingButton(Button):
 
     def add(self):
         if self.STATE == 0:
-            self.button_surface.fill(hex2RGB('00a2ff'))
-            button_text = self.font.render("forge a recording", True, hex2RGB('262834'))
+            self.button_surface.fill(hex2RGB('b45f9e'))
+            button_text = self.font.render("Forge a recording", True, hex2RGB('262834'))
+            button_text_rect = button_text.get_rect(center=(self.width // 2, self.height // 2))
+            self.button_surface.blit(button_text, button_text_rect)
+
+            # Draw the button
+            self.screen.blit(self.button_surface, self.button_rect)
+
+        # if self.STATE == 1:
+        #     self.button_surface.fill(hex2RGB('005e88'))
+        #     self.screen.blit(self.button_surface, self.button_rect)
+        #
+        # self.STATE = (self.STATE + 1) % 2
+
+
+class DisplayRecordingButton(Button):
+
+    def add(self):
+        if self.STATE == 0:
+            self.button_surface.fill(hex2RGB('15906d'))
+            button_text = self.font.render("Read recording", True, hex2RGB('262834'))
             button_text_rect = button_text.get_rect(center=(self.width // 2, self.height // 2))
             self.button_surface.blit(button_text, button_text_rect)
 
@@ -127,7 +140,7 @@ class ForgeRecording(Button):
             self.screen.blit(self.button_surface, self.button_rect)
 
         if self.STATE == 1:
-            self.button_surface.fill(hex2RGB('005e88'))
+            self.button_surface.fill(hex2RGB('48b764'))
             self.screen.blit(self.button_surface, self.button_rect)
 
         self.STATE = (self.STATE + 1) % 2

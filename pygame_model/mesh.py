@@ -94,13 +94,14 @@ class Mesh:
             data.append(i.deformation/UNIT)
         DATA.append(data)
 
-    def save_data(self):
+    def save_data(self, path='data.csv'):
         sensor_positions = []
         for i in self.SENSOR_ARRAY:
             pos = str(i.real_position[0]) + ',' + str(i.real_position[1])
             sensor_positions.append(pos)
         DATA.insert(0, sensor_positions)
-        with open('data.csv', 'w', newline='') as file:
+        with open(path, 'w', newline='') as file:
+            print(path)
             writer = csv.writer(file)
             writer.writerows(DATA)
 
@@ -131,7 +132,6 @@ class Sensor:
 
     def get_circle_properties(self):
         base_color = np.array([0, 0, 0])
-
         base_color[2] = min(255, int(base_color[2] - self.deformation * 10))
         base_color[1] = min(255, int(base_color[1] - self.deformation * 5))
 
