@@ -7,17 +7,24 @@ import math
 
 class Sep:
 
+    def __init__(self, min_sep, max_sep):
+        self.min_sep = min_sep
+        self.max_sep = max_sep
+
     def f(self,x):
         pass
+
+    def get_min_sep(self):
+        return self.min_sep
+
+    def get_max_sep(self):
+        return self.max_sep
 
 class ExpSep(Sep):
 
 
     def __init__(self, min_sep, max_sep):
-
-        self.min_sep = min_sep
-        self.max_sep = max_sep
-
+        super().__init__(min_sep,max_sep)
 
     def f(self, x):
 
@@ -25,16 +32,15 @@ class ExpSep(Sep):
             print("[ERROR] function undefined")
             return None
 
-        theta = math.exp(-x - 1)
+        theta = math.exp((-x + 1)/10 )
         return self.max_sep*theta + (1-theta)*self.min_sep
 
 
 class PieceLinSep(Sep):
 
     def __init__(self,min_sep,max_sep, bound):
+        super().__init__(min_sep, max_sep)
 
-        self.min_sep = min_sep
-        self.max_sep = max_sep
         self.bound = bound
         self.slope = (self.min_sep - self.max_sep)/self.bound
 
