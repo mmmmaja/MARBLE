@@ -1,12 +1,11 @@
-import pygame
 import mesh
 import stimulis
-from stimulis import hex2RGB, ForgeRecordingButton, RecordButton, DisplayRecordingButton
-from mesh import UNIT
+from stimulis import *
 from deformation_function import *
 import simulation
 
 FRAME_WIDTH, FRAME_HEIGHT = 1000, 500
+UPDATE_INTERVAL = 100  # Update every n milliseconds
 
 
 class Display:
@@ -44,7 +43,6 @@ class Display:
 
     def run(self):
 
-        UPDATE_INTERVAL = 100  # Update every n milliseconds
         clock = pygame.time.Clock()
         ticks = 0
 
@@ -173,7 +171,8 @@ class Display:
                     if self.forge_recording_button.button_rect.collidepoint(event.pos):
                         simulation.ForgeRecording(
                             frame_dim=[FRAME_WIDTH // 2, FRAME_HEIGHT],
-                            stimuli=self.stimuli, sensor_mesh=self.sensor_mesh
+                            stimuli=self.stimuli, sensor_mesh=self.sensor_mesh,
+                            update_interval=UPDATE_INTERVAL
                         )
                         self.forge_recording_button.add()
 

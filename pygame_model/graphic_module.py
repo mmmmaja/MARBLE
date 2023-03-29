@@ -1,6 +1,9 @@
 import pygame
 from pygame import gfxdraw
 
+# 1 cm in the simulation corresponds to UNIT pixels
+UNIT = 40
+
 
 def hex2RGB(color):
     """
@@ -14,6 +17,7 @@ def hex2RGB(color):
 
 
 class Circle:
+    # Class to draw custom circles to display stimuli's with defined alpha value
 
     def __init__(self, pos, radius):
         self.pos = pos
@@ -34,11 +38,11 @@ class Circle:
 
 
 class Rectangle:
-
+    # Class to draw custom rectangles to display stimuli's with defined alpha value
     def __init__(self, pos, a, b):
         self.pos = pos
-        self.a = a
-        self.b = b
+        # Length of the both sides
+        self.a, self.b = a, b
         self.alpha = 15  # Starting alpha value
         self.color = hex2RGB("#4ee96e")
 
@@ -61,21 +65,22 @@ class Rectangle:
 
 
 class Button:
+    # Parent class for all the buttons in the simulation
 
     def __init__(self, screen, position, width=100, height=40):
-        self.button_surface = None
-        self.button_rect = None
-
-        self.screen = screen
+        self.button_surface, self.button_rect = None, None
+        self.screen = screen  # Screen to which the button will be added
         self.position = position
         self.font = pygame.font.SysFont(None, 20)
         self.width, self.height = width, height
 
+        # STATE determines appearance of the button, it changes on click
         self.STATE = 0
 
         self.create()
 
     def create(self):
+        # Add button to the screen and make it visible
         self.button_rect = pygame.Rect(
             self.position[0], self.position[1],
             self.width, self.height
@@ -93,7 +98,6 @@ class RecordButton(Button):
             button_text = self.font.render("Record", True, hex2RGB('262834'))
             button_text_rect = button_text.get_rect(center=(self.width // 2, self.height // 2))
             self.button_surface.blit(button_text, button_text_rect)
-
             # Draw the button
             self.screen.blit(self.button_surface, self.button_rect)
 
@@ -119,12 +123,6 @@ class ForgeRecordingButton(Button):
 
             # Draw the button
             self.screen.blit(self.button_surface, self.button_rect)
-
-        # if self.STATE == 1:
-        #     self.button_surface.fill(hex2RGB('005e88'))
-        #     self.screen.blit(self.button_surface, self.button_rect)
-        #
-        # self.STATE = (self.STATE + 1) % 2
 
 
 class DisplayRecordingButton(Button):

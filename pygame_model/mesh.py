@@ -1,8 +1,6 @@
 import numpy as np
 import csv
-
-# define unit 40px = 1cm
-UNIT = 40
+from graphic_module import UNIT
 
 # Here the pressure data will be saved
 DATA = []

@@ -1,13 +1,14 @@
 import numpy as np
-from graphic_module import hex2RGB, Circle, Rectangle, Button, ForgeRecordingButton, RecordButton, DisplayRecordingButton
+from graphic_module import *
 
 
 class Stimuli:
 
     def __init__(self, def_func):
+        self.def_func = def_func
+
         self.deformation = 0
         self.position = np.array([0, 0])
-        self.def_func = def_func
 
     def set_deformation(self, deform):
         self.deformation = deform
@@ -18,7 +19,7 @@ class Stimuli:
 
 class Cuboid(Stimuli):
 
-    def __init__(self,def_func, a, b):
+    def __init__(self, def_func, a, b):
 
         super().__init__(def_func)
         self.a = a
@@ -53,7 +54,7 @@ class Cuboid(Stimuli):
 
 class Sphere(Stimuli):
 
-    def __init__(self,def_func, radius):
+    def __init__(self, def_func, radius):
 
         super().__init__(def_func)
         self.r = radius
@@ -63,7 +64,7 @@ class Sphere(Stimuli):
     def set_deformation(self, deform):
         super().set_deformation(deform)
 
-        deform_ = deform*0.5
+        deform_ = deform * 0.5
         if abs(deform_) < self.r:
             self.deform_r = np.sqrt(2 * abs(deform_) * self.r - np.power(deform_, 2))
         else:
@@ -75,15 +76,18 @@ class Sphere(Stimuli):
 
         d_ = np.linalg.norm(self.position - position)
 
-        if d_ <= self.deform_r: return 0
-        else: return d_ - self.deform_r
+        if d_ <= self.deform_r:
+            return 0
+        else:
+            return d_ - self.deform_r
 
     def deformation_at(self, position):
         p_n = np.linalg.norm(self.position - position)
         if p_n > self.deform_r:
             return 0
         else:
-            return -np.sqrt(-np.sum(np.power(self.position - position, 2)) + np.power(self.r, 2)) + (self.deformation + self.r)
+            return -np.sqrt(-np.sum(np.power(self.position - position, 2)) + np.power(self.r, 2)) + (
+                        self.deformation + self.r)
 
     def border_deformation(self):
         return self.border_deform
