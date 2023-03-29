@@ -1,12 +1,13 @@
 import numpy as np
 from graphic_module import hex2RGB, Circle, Rectangle, Button, ForgeRecording, Record
 
-
+UNIT = 40
+OFFSET = np.array([70,70,0])
 class Stimuli:
 
     def __init__(self,def_func):
         self.deformation = 0
-        self.position = np.array([0, 0])
+        self.position = np.array([0, 0, 0])
         self.def_func = def_func
 
     def set_deformation(self, deform):
@@ -48,7 +49,7 @@ class Cuboid(Stimuli):
         return self.deformation
 
     def get_shape(self):
-        return Rectangle(self.position, self.a, self.b)
+        return Rectangle( (self.position*UNIT + OFFSET).astype(int), int(self.a*UNIT), int(self.b*UNIT))
 
 
 class Sphere(Stimuli):
@@ -89,4 +90,4 @@ class Sphere(Stimuli):
         return self.border_deform
 
     def get_shape(self):
-        return Circle(self.position, int(self.deform_r))
+        return Circle((self.position*UNIT + OFFSET).astype(int), int(self.deform_r*UNIT))

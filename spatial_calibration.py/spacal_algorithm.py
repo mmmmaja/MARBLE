@@ -6,23 +6,43 @@ import scipy
 class SpacalAlgo:
 
 
-    def __init__(self, separation_function, sensor_cnt, loc_dim = 3):
+    # separation function estimates how close two sensors are based on their common activations
+    # area_range describes what is the range of interest (the initial random sensors will be generated in this space)
+    def __init__(self, separation_function, sensor_cnt, area_range = ((0,100),(0,100),(0,100))):
 
-        self.loc_dim = loc_dim
+        self.area_range = area_range
+        self.loc_dim = len(area_range)
         self.separation_function = separation_function
         self.sensor_cnt = sensor_cnt
         self.separation_min = separation_function.min_sep
         self.separation_max = separation_function.max_sep
-        self.sensor_locations = self.init_sensor_positions(self.sensor_cnt, self.sensor_cnt*self.separation_min, loc_dim)
+        self.sensor_locations = self.init_sensor_positions(self.sensor_cnt, area_range=self.area_range)
         self.proximity_pairs = self.init_proximity_pairs(self.sensor_cnt)
 
-    def init_sensor_positions(self, sensor_cnt, separation_range, loc_dim):
+        self.known_sensors = set()
 
+
+    def get_pairs(self):
+        return self.proximity_pairs
+
+    def get_locations(self):
+        return np.copy(self.sensor_locations)
+
+    def set_known_sensors(self, ids, locations):
+
+        for i, id_ in enumerate(ids):
+            self.known_sensors.add(id_)
+            self.sensor_locations[id_] = np.copy(locations[i])
+
+    def init_sensor_positions(self, sensor_cnt, area_range):
+        print(area_range)
         sensors_loc = []
 
         for i in range(sensor_cnt):
-            i_loc = np.array([random.random()*separation_range for j in range(loc_dim)])
-            sensors_loc.append(i_loc)
+            loc = []
+            for dim_range in area_range:
+                loc.append((dim_range[1] - dim_range[0])*random.random())
+            sensors_loc.append(np.array(loc))
 
         return sensors_loc
 
@@ -54,33 +74,32 @@ class SpacalAlgo:
         ## Generally to arrive at indexes regarding 'a', we compute it using linear series sum formula. Finally, to arrive to 'b', we compute (b - a - 1), to know how many indexes till we get to pair [a,b]
 
         ## Reason why we do it this complicated is that array has O(1) complexity, and we ideally want to access as fast as possible since the complexity with regards to N sensors is O(N^2)
-        id = (self.sensor_cnt + (self.sensor_cnt - a + 1)) * (a/2) + (b - a - 1)
+        id_ = ((self.sensor_cnt - 1) + (self.sensor_cnt - a)) * (a/2) + (b - a - 1)
 
-        return id
+        return int(id_)
 
-    ## Updates the locations of pairs based on recorded pressure values
-    def update_locations(self, sensors):
+    ## Updates the activations of pairs based on recorded pressure values
+    def update_activations(self, sensors):
 
-        activated_sensors = self.treshold_split(sensors)
+        activated_sensors = self.threshold_split(sensors)
         self.increment_proximity(activated_sensors)
 
 
 
     ## splits into activated and non-activated sensors based on pressure threshold
     ## NOTE: threshold is for now the mean of the sensor array, however there might be better options
-    def treshold_split(self, sensors):
+    def threshold_split(self, sensors):
 
-        mean_treshold = np.mean(sensors)
-
+        mean_threshold = np.mean(sensors)*4
         activated_sensors = []
 
         for i, pressure in enumerate(sensors):
-            if pressure > mean_treshold:
+
+            # TODO: Now we work with defomations whic are all negative, thus the '<' comparison and not '>'
+            if pressure < mean_threshold:
                 activated_sensors.append(i)
 
         return activated_sensors
-
-
 
 
     ## Alternative way on for 'determining' which sensors were actually activated
@@ -161,32 +180,63 @@ class SpacalAlgo:
 
                 pair_id = self.get_pair_id(i, j)
 
-                maximum_d = self.separation_function.f(self.proximity_pairs[pair_id])
-
                 i_ = self.sensor_locations[i]
                 j_ = self.sensor_locations[j]
 
+
                 d = np.linalg.norm(i_ - j_)
 
+                # cost function of 2 sensors being close is relevant only for pairs that were jointly activated, and for pairs
+                proximity_pair_cnt = self.proximity_pairs[pair_id]
+                if proximity_pair_cnt == 0:
+                    if d < self.separation_function.get_max_sep():
+                        c = d - self.separation_function.get_max_sep()
+                        i_diff += c*(1/d)*(i_ - j_)
+                        i_diff += c*(1/d)*(i_ - j_)*(-1)
+                    continue
 
+                maximum_d = self.separation_function.f(self.proximity_pairs[pair_id])
                 ## if distance of points i and j is larger than it should be, compute the derivative w.r.t. each coordinate of i
+                ## EXAMPLE:
+                ## 1. Let i be 3d vector of sensor 1, and j of sensor 3
+                ## 2. their distance is D = sqrt( (i-j)^2 ) = sqrt( (i1-j1)^2 + (i2-j2)^2 + (i3-j3)^2 )
+                ## 3. if D is bigger than it should be, it is considered a cost, and to minimize cost, we take the derivative wrt to each variable in play
+                ## 3. dD/di1 = 1/D * 2*i1 ; dD/dj1 = 1/D * 2*(-j1)
+                ## We can ignore the constant terms (2 in this case), and thus arrive at the equations used in the code below
 
-                ## COMMENT THIS!!!
                 if d > maximum_d:
-                    i_diff += (1/d)*(i_ - j_)
-                    j_diff += (1/d)*(i_ - j_)*(-1)
+                    c = d - maximum_d
+                    i_diff += c*(1/d)*(i_ - j_)
+                    j_diff += c*(1/d)*(i_ - j_)*(-1)
+
+                ## If distance d is smaller than is should be (the minimum distance of 2 points, then it adds to the cost)
+                ## The cost term will in this case be C = (d - min_separation)^2
+                ## the derivative dC/dd = 2*(d - min_separation)* derivative of d
+
+                elif d < self.separation_function.get_min_sep():
+                    c = d - self.separation_function.get_min_sep()
+                    i_diff += c * (1 / d) * (i_ - j_)
+                    j_diff += c * (1 / d) * (i_ - j_) * (-1)
+                    continue
+
+
+
 
         return diffs
 
     ## update the locations of all sensors based on common actions in between pairs of sensors
-    def update_sensor_locations(self, learning_rate, n = 1):
+    def update_sensor_locations(self, learning_rate, n = 1, decay = 1):
 
         for r in range(n):
 
             diffs = self.get_coord_param_derivatives()
             for i, diff in enumerate(diffs):
 
-                self.sensor_locations[i] -= diff*learning_rate
+                # skip sensors that have known location
+                if i in self.known_sensors: continue
+
+
+                self.sensor_locations[i] -= diff*learning_rate + (np.array([random.random() - 0.5,random.random() - 0.5,0]))*np.exp(-decay*r)
 
 
 
@@ -207,11 +257,11 @@ if __name__ == "__main__":
     sensors = [0 for i in range(sensor_cnt)] ## placeholder values (irl they would be recorded from the arm or from a simulation model)
     for i in range(4): sensors[i] = 3
 
-    alg = SpacalAlgo(separation_function,sensor_cnt,loc_dim=dim)
+    alg = SpacalAlgo(separation_function,sensor_cnt,area_range=((0,40),(0,40)))
 
     ## Placeholder loop that simulates the fact that we have ultiple frames of recording
     for i in range(10):
-        alg.update_locations(sensors)
+        alg.update_activations(sensors)
 
     ## after we register common pairwise activations, the positions of sensors will get updated, 0.1 is the learning rate, and 'n' is the amount of update iterations
     alg.update_sensor_locations(0.1,n = 1000)

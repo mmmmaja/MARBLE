@@ -9,12 +9,19 @@ def read_recording(recording_file):
 
     time_frames = []
 
+    sensor_positions = []
+
+    line = file.readline().strip("\n").split('","')
+    for p in line:
+        sensor_positions.append(np.array(list(map(float, p.strip('"').split(",")))))
+
+
 
     for line in file.readlines():
         time_frames.append(np.array( list(map(float,line.strip("\n").split(",")))) )
 
 
-    return time_frames
+    return np.array(sensor_positions), time_frames
 
 
 def mean_deformation(time_frames, per_n = 1):
@@ -68,11 +75,23 @@ def max_deformation(time_frames,per_n = 1):
     return absolute_max, maxs
 
 
+
+def total_pressures(time_frames, mul = 1):
+    if len(time_frames) == 0: return None
+
+    pressures = np.zeros(len(time_frames[0]))
+
+    for t in time_frames:
+        for i,s in enumerate(t):
+            pressures[i] += s
+
+    pressures *= mul
+
+    return pressures
+
+
 if __name__ == "__main__":
 
-    time_frames = read_recording("../pygame_model/data.csv")
+    sensor_pos, time_frames = read_recording("../pygame_model/data.csv")
 
-    mean_deformation(time_frames)
-    min_deformation(time_frames)
-    max_deformation(time_frames)
-
+    print(total_pressures(time_frames))

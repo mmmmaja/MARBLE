@@ -2,7 +2,7 @@ import pygame
 import mesh
 import stimulis
 from stimulis import hex2RGB, ForgeRecording, Record
-from mesh import UNIT
+from mesh import UNIT, OFFSET
 from deformation_function import *
 
 FRAME_WIDTH, FRAME_HEIGHT = 1000, 500
@@ -11,6 +11,9 @@ FRAME_WIDTH, FRAME_HEIGHT = 1000, 500
 class Display:
 
     def __init__(self, sensor_mesh, stimuli):
+
+
+        self.ticks = 0
 
         self.sensor_mesh = sensor_mesh
         self.stimuli = stimuli
@@ -47,18 +50,18 @@ class Display:
 
         UPDATE_INTERVAL = 1000  # Update every n milliseconds
         clock = pygame.time.Clock()
-        ticks = 0
 
         while True:
             self.detect_events()
             self.display_presses()
 
-            if (pygame.time.get_ticks() - ticks) > UPDATE_INTERVAL:
-                ticks = pygame.time.get_ticks()
+            if (pygame.time.get_ticks() - self.ticks) > UPDATE_INTERVAL:
+                self.ticks = pygame.time.get_ticks()
                 if self.recording:
+                    print("dddd")
                     self.sensor_mesh.append_data()
 
-            clock.tick(60)
+           # clock.tick(60)
 
     def draw_settings(self):
         # Add record button
@@ -103,7 +106,7 @@ class Display:
         sensor_line = self.sensor_mesh.get_points_along_X(self.LINE_INDEX)
         for i in range(len(sensor_line)):
             x = sensor_line[i].frame_position[0]
-            y = - sensor_line[i].deformation
+            y = - sensor_line[i].deformation*UNIT
             curve_points.append((x + FRAME_WIDTH // 2, y + FRAME_HEIGHT // 2 - self.D_Y * UNIT))
 
         pygame.draw.lines(self.screen, hex2RGB("#4ee96e"), False, curve_points, 2)
@@ -150,14 +153,16 @@ class Display:
             if self.mouse_pressed:
                 pos = np.array(pygame.mouse.get_pos())
                 if pos[0] < FRAME_WIDTH // 2 - UNIT:
-                    self.stimuli.set_position(pos)
+
+                    stimuli_position = (np.concatenate([pos, np.array([0]) ] ) - OFFSET) /UNIT
+                    self.stimuli.set_position(stimuli_position)
 
                     # Add a new circle to the list when the mouse is clicked
                     self.presses.append(
                         self.stimuli.get_shape()
                     )
 
-                    self.stimuli.set_deformation(-2 * UNIT)
+                    self.stimuli.set_deformation(-2)
                     # Change pressure outputs of the sensors
                     self.sensor_mesh.press(self.stimuli)
 
@@ -180,8 +185,8 @@ class Display:
         pygame.display.update()
 
 
-rectangle_stimuli = stimulis.Cuboid(DeformationFunction(), 2 * UNIT, 2 * UNIT)
-sphere_stimuli = stimulis.Sphere(DeformationFunction(), UNIT)
+rectangle_stimuli = stimulis.Cuboid(DeformationFunction(), 2, 2)
+sphere_stimuli = stimulis.Sphere(DeformationFunction(), 1)
 
 display = Display(
     mesh.Mesh(width=10, height=10, center=(FRAME_WIDTH / 4, FRAME_HEIGHT / 2)),
