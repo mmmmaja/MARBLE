@@ -58,7 +58,7 @@ class Mesh:
 
                 self.SENSOR_ARRAY.append(Sensor(
                     frame_position=a,
-                    real_position=np.array([a[0] - self.delta[0], a[1] - self.delta[1]]) / step
+                    real_position=np.array([a[0] - self.delta[0], a[1] - self.delta[1], 0]) / step,
                 ))
 
                 vertices.append(a)
@@ -89,18 +89,18 @@ class Mesh:
     def append_data(self):
         data = []
         for i in self.SENSOR_ARRAY:
-            data.append(i.deformation/UNIT)
+            data.append(i.deformation)
         DATA.append(data)
 
     def save_data(self, path='data.csv'):
         sensor_positions = []
         for i in self.SENSOR_ARRAY:
-            pos = str(i.real_position[0]) + ',' + str(i.real_position[1])
+            pos = str(i.real_position[0]) + ',' + str(i.real_position[1]) + ',' + str(i.real_position[2])
             sensor_positions.append(pos)
-        DATA.insert(0, sensor_positions)
+
         with open(path, 'w', newline='') as file:
-            print(path)
             writer = csv.writer(file)
+            writer.writerow(sensor_positions)
             writer.writerows(DATA)
 
 
@@ -114,11 +114,11 @@ class Sensor:
 
     def press(self, stimuli):
 
-        distance = stimuli.get_distance(self.frame_position)
+        distance = stimuli.get_distance(self.real_position)
 
         # stimuli directly presses on sensor
         if distance == 0:
-            self.deformation = stimuli.deformation_at(self.frame_position)
+            self.deformation = stimuli.deformation_at(self.real_position)
             self.activated = True
 
         # stimuli only deforms silicon where the sensor is on
@@ -130,8 +130,8 @@ class Sensor:
 
     def get_circle_properties(self):
         base_color = np.array([0, 0, 0])
-        base_color[2] = min(255, int(base_color[2] - self.deformation * 10))
-        base_color[1] = min(255, int(base_color[1] - self.deformation * 5))
+        base_color[2] = min(255, int(base_color[2] - self.deformation * UNIT * 10))
+        base_color[1] = min(255, int(base_color[1] - self.deformation * UNIT * 5))
 
         if self.activated:
             return [base_color, self.frame_position, 6]

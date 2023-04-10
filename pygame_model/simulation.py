@@ -26,13 +26,14 @@ class ForgeRecording:
 
     def simulation_loop(self):
         # Start with the random stimuli position
-        self.stimuli.set_position(
-            [random.randint(0, self.frame_dim[0]), random.randint(0, self.frame_dim[1])]
-        )
+        self.stimuli.set_frame_position([
+            random.randint(0, self.frame_dim[0]),
+            random.randint(0, self.frame_dim[1]),
+            0])
         # Keeps track on which millisecond of the recording are we on
         timer = 0
         while timer < self.duration * 1000:
-            self.stimuli.set_deformation(-2 * UNIT)
+            self.stimuli.set_deformation(-2)
             # Change pressure outputs of the sensors
             self.sensor_mesh.press(self.stimuli)
 
@@ -51,17 +52,17 @@ class ForgeRecording:
 
         # Displacement in this iteration is dependent on the update interval
         local_displacement = (self.update_interval * SPEED) / 1000
-        print(local_displacement)
-        dx, dy = local_displacement, local_displacement
-        # self.stimuli.set_position(
-        #     [random.randint(0, self.frame_dim[0]), random.randint(0, self.frame_dim[1])]
-        # )
+        # print(local_displacement)
 
-        self.stimuli.set_position([
-            self.stimuli.position[0] + (dx * UNIT),
-            self.stimuli.position[1] + (dy * UNIT)
-        ])
-        print(self.stimuli.position)
+        position = [random.randint(0, self.frame_dim[0]), random.randint(0, self.frame_dim[1]), 0]
+        position = [
+            self.stimuli.position[0] + local_displacement,
+            self.stimuli.position[1] + local_displacement,
+            0]
+        # self.stimuli.set_frame_position(position)
+
+        self.stimuli.set_position(position)
+        print(position)
 
 
 class ReadRecording:
@@ -86,9 +87,8 @@ class ReadRecording:
 
     def read(self, sensor_mesh):
         for i in range(len(sensor_mesh.SENSOR_ARRAY)):
-            sensor_mesh.SENSOR_ARRAY[i].deformation = float(self.data[self.time_index][i]) * 40
+            sensor_mesh.SENSOR_ARRAY[i].deformation = float(self.data[self.time_index][i])
         self.time_index += 1
-        print(self.time_index)
         if self.time_index >= len(self.data):
             return False
         return True
