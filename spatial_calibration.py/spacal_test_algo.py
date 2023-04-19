@@ -7,6 +7,9 @@ import scipy
 
 
 class SpacalAlgoTest:
+    THRESHOLD_B = 4
+    OLD_BELIEF = 0.9
+    NEW_BELIEF = 0.1
 
     # separation function estimates how close two sensors are based on their common activations
     # area_range describes what is the range of interest (the initial random sensors will be generated in this space)
@@ -23,6 +26,7 @@ class SpacalAlgoTest:
         self.sensor_beliefs = np.array([1 / sensor_cnt] * sensor_cnt)
 
         self.known_sensors = set()
+
 
     def get_locations(self):
         return np.copy(self.sensor_locations)
@@ -56,7 +60,7 @@ class SpacalAlgoTest:
     ## NOTE: threshold is for now the mean of the sensor array, however there might be better options
     def threshold_split(self, sensors):
 
-        mean_threshold = np.mean(sensors) * 4
+        mean_threshold = np.mean(sensors) * SpacalAlgoTest.THRESHOLD_B
         activated_sensors = []
 
         for i, pressure in enumerate(sensors):
@@ -177,7 +181,7 @@ class SpacalAlgoTest:
 
             cross_belief /= len(activated_sensors)
 
-            new_beliefs[a_id] = 0.1*cross_belief + 0.9*a_belief
+            new_beliefs[a_id] = SpacalAlgoTest.NEW_BELIEF*cross_belief + SpacalAlgoTest.OLD_BELIEF*a_belief
 
         print(new_beliefs)
         self.sensor_beliefs = new_beliefs
@@ -201,12 +205,6 @@ class SpacalAlgoTest:
 
         for id_, vect in enumerate(vectors):
             self.sensor_locations[id_] += vect
-
-
-
-
-
-
 
 
 

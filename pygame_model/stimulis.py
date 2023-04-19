@@ -38,7 +38,7 @@ class Cuboid(Stimuli):
         elif abs(d_[1]) <= self.b / 2:
             return abs(d_[0]) - self.a / 2
         else:
-            return np.linalg.norm(np.absolute(d_) - np.array([self.a / 2, self.b / 2]))
+            return np.linalg.norm(np.absolute(d_) - np.array([self.a / 2, self.b / 2,0]))
 
     def deformation_at(self, position):
 

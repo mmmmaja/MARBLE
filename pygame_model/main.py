@@ -190,6 +190,6 @@ sphere_stimuli = stimulis.Sphere(DeformationFunction(), 1)
 
 display = Display(
     mesh.Mesh(width=10, height=10, center=(FRAME_WIDTH / 4, FRAME_HEIGHT / 2)),
-    sphere_stimuli
+    rectangle_stimuli
 )
 display.run()

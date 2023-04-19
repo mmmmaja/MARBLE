@@ -193,7 +193,7 @@ if __name__ == "__main__":
     MIN_SEP = 1
     MAX_SEP = 2
 
-   # sep_function = ExpSep(MIN_SEP,MAX_SEP)
+    sep_function = ExpSep(MIN_SEP,MAX_SEP)
 
     sensor_positions, time_frames = read_recording("../pygame_model/data.csv")
     known_pts, known_positions = filter_sensors(set(range(42,62,3)),sensor_positions)
@@ -203,7 +203,8 @@ if __name__ == "__main__":
 
     model = SpatialModel(time_frames=time_frames,positions=sensor_positions,static_points=known_pts)
 
-    algo = SpacalAlgoTest(MIN_SEP,MAX_SEP,len(sensor_positions),area_range=((0,9),(0,9),(0,0)),seed=1)
+    algo = SpacalAlgo(sep_function,len(sensor_positions),((0,9),(0,9),(0,0)))
+    #algo = SpacalAlgoTest(MIN_SEP,MAX_SEP,len(sensor_positions),area_range=((0,9),(0,9),(0,0)),seed=1)
     #algo = DSpacalAlgo(MIN_SEP,MAX_SEP,len(sensor_positions),sensor_positions)
     algo.set_known_sensors(known_pts,known_positions)
 
@@ -211,22 +212,22 @@ if __name__ == "__main__":
 
 
     point_ev = [sensor_positions]
-    belief_ev = [algo.get_beliefs()]
+    #belief_ev = [algo.get_beliefs()]
 
-    for epoch in range(15):
+    for epoch in range(5):
         point_ev.append(algo.get_locations())
-        belief_ev.append(algo.get_beliefs())
+        #belief_ev.append(algo.get_beliefs())
         for frame in time_frames:
 
             algo.update_sensor_locations(frame)
 
 
-    algo.correct_sensor_locations()
+   # algo.correct_sensor_locations()
 
     point_ev.append(algo.get_locations())
-    belief_ev.append(algo.get_beliefs())
+    #belief_ev.append(algo.get_beliefs())
 
-    model.plot_evolution(point_ev,belief_ev)
+    model.plot_evolution(point_ev,None)
     compare_location_estimates(sensor_positions, algo.get_locations())
 
 

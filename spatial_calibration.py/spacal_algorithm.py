@@ -143,7 +143,6 @@ class SpacalAlgo:
     ## increment the counters of how many times were pairs of sensors activated (increment only on pairs of activated sensors!)
     def increment_proximity(self, activated_sensors):
 
-        new_beliefs
 
         for i in range(len(activated_sensors)):
             for j in range(i+1, len(activated_sensors)):
