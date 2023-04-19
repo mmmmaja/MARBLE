@@ -17,6 +17,7 @@ class SpacalAlgo:
         self.separation_min = separation_function.min_sep
         self.separation_max = separation_function.max_sep
         self.sensor_locations = self.init_sensor_positions(self.sensor_cnt, area_range=self.area_range)
+        self.sensor_beliefs = np.array([1/sensor_cnt]*sensor_cnt)
         self.proximity_pairs = self.init_proximity_pairs(self.sensor_cnt)
 
         self.known_sensors = set()
@@ -33,9 +34,9 @@ class SpacalAlgo:
         for i, id_ in enumerate(ids):
             self.known_sensors.add(id_)
             self.sensor_locations[id_] = np.copy(locations[i])
+            self.sensor_beliefs[id_] = 1
 
     def init_sensor_positions(self, sensor_cnt, area_range):
-        print(area_range)
         sensors_loc = []
 
         for i in range(sensor_cnt):
@@ -142,6 +143,8 @@ class SpacalAlgo:
     ## increment the counters of how many times were pairs of sensors activated (increment only on pairs of activated sensors!)
     def increment_proximity(self, activated_sensors):
 
+        new_beliefs
+
         for i in range(len(activated_sensors)):
             for j in range(i+1, len(activated_sensors)):
 
@@ -151,6 +154,9 @@ class SpacalAlgo:
                 pair_id = self.get_pair_id(small,big)
 
                 self.proximity_pairs[pair_id] += 1
+
+
+
 
     ## Compute the derivatives with respect to each coordinate parameter
     def get_coord_param_derivatives(self):
@@ -340,14 +346,6 @@ class BayesFilterAlgo:
 
                 for loc_1, blf in locations_1.items():
                     locations_1[loc_1] = blf/total_belief_1
-
-                    
-
-
-
-
-
-
 
 
 
