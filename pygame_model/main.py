@@ -48,7 +48,7 @@ class Display:
 
     def run(self):
 
-        UPDATE_INTERVAL = 1000  # Update every n milliseconds
+        UPDATE_INTERVAL = 250  # Update every n milliseconds
         clock = pygame.time.Clock()
 
         while True:

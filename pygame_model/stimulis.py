@@ -1,3 +1,5 @@
+import sys
+
 import numpy as np
 from graphic_module import hex2RGB, Circle, Rectangle, Button, ForgeRecording, Record
 
@@ -82,7 +84,9 @@ class Sphere(Stimuli):
     def deformation_at(self, position):
         p_n = np.linalg.norm(self.position - position)
         if p_n > self.deform_r:
-            return 0
+            raise Exception("[ERROR] deformation on sphere cannot be determined since the sensor in question is outside the sphere radius")
+        elif p_n == self.deform_r:
+            return self.border_deform
         else:
             return -np.sqrt(-np.sum(np.power(self.position - position, 2)) + np.power(self.r, 2)) + (self.deformation + self.r)
 

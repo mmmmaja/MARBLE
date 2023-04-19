@@ -1,3 +1,5 @@
+import sys
+
 import numpy as np
 import csv
 
@@ -141,6 +143,8 @@ class Sensor:
 
     def get_circle_properties(self):
         base_color = np.array([0, 0, 0])
+
+
 
         base_color[2] = min(255, int(base_color[2] - self.deformation*UNIT * 10))
         base_color[1] = min(255, int(base_color[1] - self.deformation*UNIT * 5))
