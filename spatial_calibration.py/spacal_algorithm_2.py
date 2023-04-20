@@ -4,9 +4,10 @@ import numpy as np
 import random
 from separation_functions import *
 import scipy
+from pressure_recording_manager import *
 
 
-class SpacalAlgoTest:
+class SpacalAlgo2:
     THRESHOLD_B = 4
     OLD_BELIEF = 0.9
     NEW_BELIEF = 0.1
@@ -60,7 +61,7 @@ class SpacalAlgoTest:
     ## NOTE: threshold is for now the mean of the sensor array, however there might be better options
     def threshold_split(self, sensors):
 
-        mean_threshold = np.mean(sensors) * SpacalAlgoTest.THRESHOLD_B
+        mean_threshold = np.mean(sensors) * SpacalAlgo2.THRESHOLD_B
         activated_sensors = []
 
         for i, pressure in enumerate(sensors):
@@ -181,9 +182,8 @@ class SpacalAlgoTest:
 
             cross_belief /= len(activated_sensors)
 
-            new_beliefs[a_id] = SpacalAlgoTest.NEW_BELIEF*cross_belief + SpacalAlgoTest.OLD_BELIEF*a_belief
+            new_beliefs[a_id] = SpacalAlgo2.NEW_BELIEF*cross_belief + SpacalAlgo2.OLD_BELIEF*a_belief
 
-        print(new_beliefs)
         self.sensor_beliefs = new_beliefs
 
 
@@ -211,23 +211,42 @@ class SpacalAlgoTest:
 ## DEMO
 if __name__ == "__main__":
 
-    sensor_cnt = 80  ## amount of physical sensors
-    dim = 2  ## dimension of location vectors
+    MIN_SEP = 1
+    MAX_SEP = 2
 
-    min_sep = 1.5  ## smallest distance of 2 sensors
-    max_sep = 3  ## most distant 2 commonly activated sensors can be (size of the outside stimuli + slack since silicon deformation will activate neighboring sensors probably)
-    separation_function = ExpSep(min_sep, max_sep)
+    sep_function = ExpSep(MIN_SEP, MAX_SEP)
 
-    sensors = [0 for i in range(
-        sensor_cnt)]  ## placeholder values (irl they would be recorded from the arm or from a simulation model)
-    for i in range(4): sensors[i] = 3
+    sensor_positions, time_frames = read_recording("../pygame_model/data.csv")
+    known_pts, known_positions = filter_sensors(set(range(42, 62, 3)), sensor_positions)
 
-    alg = SpacalAlgoTest(separation_function, sensor_cnt, area_range=((0, 40), (0, 40)))
+    known_pts = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 19, 20, 29, 30, 39, 40, 49, 50, 59, 60, 69, 70, 79, 80, 89, 90, 91,
+                 92, 93, 94, 95, 96, 97, 98, 99]
+    known_positions = get_positions_of_sensors(sensor_positions, known_pts)
+
+    model = SpatialModel(time_frames=time_frames, positions=sensor_positions, static_points=known_pts)
 
 
+    algo = SpacalAlgo2(MIN_SEP,MAX_SEP,len(sensor_positions),area_range=((0,9),(0,9),(0,0)),seed=1)
+    # algo = DSpacalAlgo(MIN_SEP,MAX_SEP,len(sensor_positions),sensor_positions)
+    algo.set_known_sensors(known_pts, known_positions)
 
-    ## after we register common pairwise activations, the positions of sensors will get updated, 0.1 is the learning rate, and 'n' is the amount of update iterations
-    alg.update_sensor_locations(sensors,0.1, n=1000)
+    compare_location_estimates(sensor_positions, algo.get_locations())
 
+    point_ev = [sensor_positions]
+    belief_ev = [algo.get_beliefs()]
+
+    for epoch in range(10):
+        point_ev.append(algo.get_locations())
+        belief_ev.append(algo.get_beliefs())
+        for frame in time_frames:
+            algo.update_sensor_locations(frame)
+
+    algo.correct_sensor_locations()
+
+    point_ev.append(algo.get_locations())
+    belief_ev.append(algo.get_beliefs())
+
+    model.plot_evolution(point_ev, belief_ev)
+    compare_location_estimates(sensor_positions, algo.get_locations())
 
 

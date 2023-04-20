@@ -2,6 +2,17 @@ import numpy as np
 import random
 from separation_functions import *
 import scipy
+from pressure_recording_manager import *
+import random
+from matplotlib.backend_bases import MouseButton
+import matplotlib.pyplot as plt
+from matplotlib.widgets import Button
+from pressure_recording_manager import *
+from spacal_algorithm_2 import *
+from discrete_spacal_algo import *
+
+
+
 
 class SpacalAlgo:
 
@@ -12,6 +23,7 @@ class SpacalAlgo:
 
         self.area_range = area_range
         self.loc_dim = len(area_range)
+        print(self.area_range)
         self.separation_function = separation_function
         self.sensor_cnt = sensor_cnt
         self.separation_min = separation_function.min_sep
@@ -204,7 +216,7 @@ class SpacalAlgo:
                 ## if distance of points i and j is larger than it should be, compute the derivative w.r.t. each coordinate of i
                 ## EXAMPLE:
                 ## 1. Let i be 3d vector of sensor 1, and j of sensor 3
-                ## 2. their distance is D = sqrt( (i-j)^2 ) = sqrt( (i1-j1)^2 + (i2-j2)^2 + (i3-j3)^2 )
+                    ## 2. their distance is D = sqrt( (i-j)^2 ) = sqrt( (i1-j1)^2 + (i2-j2)^2 + (i3-j3)^2 )
                 ## 3. if D is bigger than it should be, it is considered a cost, and to minimize cost, we take the derivative wrt to each variable in play
                 ## 3. dD/di1 = 1/D * 2*i1 ; dD/dj1 = 1/D * 2*(-j1)
                 ## We can ignore the constant terms (2 in this case), and thus arrive at the equations used in the code below
@@ -240,113 +252,51 @@ class SpacalAlgo:
                 # skip sensors that have known location
                 if i in self.known_sensors: continue
 
+                print(diff.shape)
 
                 self.sensor_locations[i] -= diff*learning_rate + (np.array([random.random() - 0.5,random.random() - 0.5,0]))*np.exp(-decay*r)
 
 
 
-
-## DEMO
 if __name__ == "__main__":
 
+    MIN_SEP = 1
+    MAX_SEP = 2
 
-    sensor_cnt = 80 ## amount of physical sensors
-    dim = 2 ## dimension of location vectors
+    sep_function = ExpSep(MIN_SEP, MAX_SEP)
 
-    min_sep = 1.5 ## smallest distance of 2 sensors
-    max_sep = 3 ## most distant 2 commonly activated sensors can be (size of the outside stimuli + slack since silicon deformation will activate neighboring sensors probably)
-    separation_function = ExpSep(min_sep,max_sep)
+    sensor_positions, time_frames = read_recording("../pygame_model/data.csv")
+    known_pts, known_positions = filter_sensors(set(range(42, 62, 3)), sensor_positions)
 
+    known_pts = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 19, 20, 29, 30, 39, 40, 49, 50, 59, 60, 69, 70, 79, 80, 89, 90, 91,
+                 92, 93, 94, 95, 96, 97, 98, 99]
 
+    known_positions = get_positions_of_sensors(sensor_positions, known_pts)
 
-    sensors = [0 for i in range(sensor_cnt)] ## placeholder values (irl they would be recorded from the arm or from a simulation model)
-    for i in range(4): sensors[i] = 3
+    print(sensor_positions)
+    model = SpatialModel(time_frames=time_frames, positions=sensor_positions, static_points=known_pts)
 
-    alg = SpacalAlgo(separation_function,sensor_cnt,area_range=((0,40),(0,40)))
+    algo = SpacalAlgo(sep_function, len(sensor_positions), ((0, 9), (0, 9), (0, 0)))
+    # algo = SpacalAlgoTest(MIN_SEP,MAX_SEP,len(sensor_positions),area_range=((0,9),(0,9),(0,0)),seed=1)
+    # algo = DSpacalAlgo(MIN_SEP,MAX_SEP,len(sensor_positions),sensor_positions)
+    algo.set_known_sensors(known_pts, known_positions)
 
-    ## Placeholder loop that simulates the fact that we have ultiple frames of recording
-    for i in range(10):
-        alg.update_activations(sensors)
+    compare_location_estimates(sensor_positions, algo.get_locations())
 
-    ## after we register common pairwise activations, the positions of sensors will get updated, 0.1 is the learning rate, and 'n' is the amount of update iterations
-    alg.update_sensor_locations(0.1,n = 1000)
+    point_ev = [sensor_positions]
 
+    for epoch in range(5):
+        point_ev.append(algo.get_locations())
+        # belief_ev.append(algo.get_beliefs())
+        for frame in time_frames:
+            algo.update_sensor_locations(0.01)
 
+    # algo.correct_sensor_locations()
 
+    point_ev.append(algo.get_locations())
+    # belief_ev.append(algo.get_beliefs())
 
-class BayesFilterAlgo:
-
-
-    def __init(self,locations,sensor_ids, stimuli_size):
-
-        self.stimuli_size = stimuli_size
-        self.locations = locations
-        self.sensor_ids = sensor_ids
-
-
-        self.sensor_location_belief = dict()
-
-        for id_ in self.sensor_ids:
-            probability = 1/len(locations)
-            location_belief = {tuple(location):probability for location in self.locations }
-            self.sensor_location_belief[id_] = location_belief
-
-
-    def set_root_sensor(self,id_, location):
-
-        locations = self.sensor_location_belief[id_]
-        for loc in locations.keys():
-            locations[loc] = 0
-        locations[tuple(location)] = 1
-
-
-    def update_belief(self,activated_sensors):
-
-        for i, id_1 in enumerate(activated_sensors):
-
-            locations_1 = self.sensor_location_belief[id_1]
-
-            for j in range(i+1,len(activated_sensors)):
-                id_2 = activated_sensors[j]
-
-                locations_2 = self.sensor_location_belief[id_2]
-
-                # given that sensors i and j were activated together, update the beliefs of their positions
-                new_beliefs_2 = {l: 0 for l in locations_2}
-
-
-                total_belief_1 = 0
-                total_belief_2 = 0
-                for loc_1 in locations_1.keys():
-                    new_belief_1 = 0
-                    prob_1 = locations_1[loc_1]
-
-                    for loc_2 in locations_2.keys():
-
-                        distance = np.linalg.norm(np.array(loc_1) - np.array(loc_2))
-
-
-                        # the bigger the distance the less probability of  these two locations, die to the fact they were activated together
-                        # for now draw consider exponential distribution, and determine probability that distance is bigger than [distance] variable
-                        belief = 1 - scipy.stats.expon.cdf(distance,loc = 0, scale = 0.9*self.stimuli_size)
-                        prob_2 = locations_2[loc_2]
-
-                        new_belief_1 += prob_1*belief*prob_2
-                        new_beliefs_2[loc_2] += prob_1*belief*prob_2
-
-                        total_belief_2 += prob_1*belief*prob_2
-
-                    locations_1[loc_1] = new_belief_1
-                    total_belief_1 += new_belief_1
-
-                # now we need to normalize the probabilities to sum up to 1
-                for loc_2, blf in new_beliefs_2.items():
-                    locations_2[loc_2] = blf/total_belief_2
-
-                for loc_1, blf in locations_1.items():
-                    locations_1[loc_1] = blf/total_belief_1
-
-
-
+    model.plot_evolution(point_ev, None)
+    compare_location_estimates(sensor_positions, algo.get_locations())
 
 
