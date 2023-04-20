@@ -2,8 +2,6 @@ import random
 import numpy as np
 
 
-
-
 class Grid:
 
     def __init__(self, sensor_cnt, area_grid):
@@ -11,8 +9,7 @@ class Grid:
         self.grid_list = list(area_grid)
 
         self.location_to_id = {tuple(p): -1 for p in self.grid_list}
-        self.id_to_location ={i: None for i in range(sensor_cnt)}
-
+        self.id_to_location = {i: None for i in range(sensor_cnt)}
 
         random.shuffle(list(area_grid))
 
@@ -20,11 +17,14 @@ class Grid:
             p = tuple(area_grid.pop(-1))
             self.location_to_id[p] = i
             self.id_to_location[i] = p
-    def get_sensor_loc(self,id_):
+
+    def get_sensor_loc(self, id_):
         return self.id_to_location[id_]
-    def get_loc_sensor(self,location):
+
+    def get_loc_sensor(self, location):
         return self.location_to_id[tuple(location)]
-    def lock_sensor(self,id_,location):
+
+    def lock_sensor(self, id_, location):
 
         switch_id = self.location_to_id[location]
         switch_location = self.id_to_location[id_]
@@ -36,7 +36,7 @@ class Grid:
         if switch_id is not None:
             self.id_to_location[switch_id] = switch_location
 
-    def get_neighborhood(self,location, radius):
+    def get_neighborhood(self, location, radius):
         neighborhood = set()
 
         location = np.array(location)
@@ -46,17 +46,16 @@ class Grid:
         return neighborhood
 
 
-
 class DSpacalAlgo:
 
-    def __init__(self, min_sep, max_sep, sensor_cnt, area_grid,dim = 3, seed=0):
+    def __init__(self, min_sep, max_sep, sensor_cnt, area_grid, dim=3, seed=0):
         random.seed(seed)
 
         self.min_sep = min_sep
         self.max_sep = max_sep
         self.grid_list = list(area_grid)
 
-        self.GRID = Grid(sensor_cnt,list(area_grid))
+        self.GRID = Grid(sensor_cnt, list(area_grid))
 
         self.loc_dim = dim
         self.sensor_cnt = sensor_cnt
@@ -65,7 +64,7 @@ class DSpacalAlgo:
 
         self.known_sensors = set()
 
-    def init_sensor_positions(self,sensor_cnt,grid_list):
+    def init_sensor_positions(self, sensor_cnt, grid_list):
         area_grid = {tuple(p): -1 for p in grid_list}
         sensor_locations = []
 
@@ -81,7 +80,7 @@ class DSpacalAlgo:
 
     def get_locations(self):
         return np.copy(self.sensor_locations)
-    
+
     def get_beliefs(self):
         return np.copy(self.sensor_beliefs)
 
@@ -91,7 +90,7 @@ class DSpacalAlgo:
             self.known_sensors.add(id_)
             self.sensor_beliefs[id_] = 1
 
-            self.GRID.lock_sensor(id_,locations[i])
+            self.GRID.lock_sensor(id_, locations[i])
 
         self.reweight_beliefs()
 
@@ -105,6 +104,7 @@ class DSpacalAlgo:
         for i in range(len(self.sensor_beliefs)):
             if i in self.known_sensors: continue
             self.sensor_beliefs[i] = self.sensor_beliefs[i] / total
+
     def threshold_split(self, sensors):
 
         mean_threshold = np.mean(sensors) * 4
@@ -118,10 +118,9 @@ class DSpacalAlgo:
 
         return activated_sensors
 
-
-    def get_sensors_locations_in_area(self,position,radius, occupied = None):
+    def get_sensors_locations_in_area(self, position, radius, occupied=None):
         if occupied is None: occupied = set()
-        loc_set =  set()
+        loc_set = set()
 
         position = np.array(position)
 
@@ -133,7 +132,7 @@ class DSpacalAlgo:
 
         return loc_set
 
-    def get_new_locations(self,activated_sensors):
+    def get_new_locations(self, activated_sensors):
 
         sensor_requests = []
 
@@ -153,22 +152,22 @@ class DSpacalAlgo:
 
                 dist = np.linalg.norm(a_loc - b_loc)
 
-                radius = a_belief*(1.1-b_belief)*(self.max_sep)*2
+                radius = a_belief * (1.1 - b_belief) * (self.max_sep) * 2
 
-                locations = self.GRID.get_neighborhood(b_loc,radius)
+                locations = self.GRID.get_neighborhood(b_loc, radius)
 
                 possible_locations = possible_locations.intersection(locations)
 
-            sensor_requests.append([a_id,possible_locations])
+            sensor_requests.append([a_id, possible_locations])
 
         return sensor_requests
+
     def update_sensor_locations(self, sensors):
 
         activated_sensors = self.threshold_split(sensors)
         requested_locations = self.get_new_locations(activated_sensors)
 
-        requested_locations = sorted(requested_locations,key= lambda x: len(x[1]))
-
+        requested_locations = sorted(requested_locations, key=lambda x: len(x[1]))
 
         locked_locations = set()
         for id_, locations in requested_locations:
@@ -179,8 +178,8 @@ class DSpacalAlgo:
                 locked_locations.add(self.GRID.get_sensor_loc(id_))
                 continue
 
-            new_location = random.sample(locations,1)
-            self.GRID.lock_sensor(id_,new_location)
+            new_location = random.sample(locations, 1)
+            self.GRID.lock_sensor(id_, new_location)
 
             locked_locations.add(new_location)
 
