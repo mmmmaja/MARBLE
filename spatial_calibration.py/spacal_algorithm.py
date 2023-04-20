@@ -254,8 +254,13 @@ class SpacalAlgo:
 
                 print(diff.shape)
 
-                self.sensor_locations[i] -= diff*learning_rate + (np.array([random.random() - 0.5,random.random() - 0.5,0]))*np.exp(-decay*r)
-
+                # self.sensor_locations[i] -= diff*learning_rate + (np.array([random.random() - 0.5,random.random() - 0.5,0]))*np.exp(-decay*r)
+                print(self.sensor_locations[i].shape)
+                # print('1:', diff*learning_rate)
+                print('learning_rate')
+                print(learning_rate.shape)
+                print((np.array([random.random() - 0.5,random.random() - 0.5,0])).shape)
+                print(np.exp(-decay*r).shape)
 
 
 if __name__ == "__main__":
