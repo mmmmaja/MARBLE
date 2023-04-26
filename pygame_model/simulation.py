@@ -1,6 +1,9 @@
 import random
 from _csv import reader
 from mesh import UNIT
+import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 mouse_presses = []
 
@@ -46,6 +49,8 @@ class ForgeRecording:
         file_name = '1'
         self.sensor_mesh.save_data(path=self.OUTPUT_PATH + '/' + file_name)
 
+        evaluate_recording(path=self.OUTPUT_PATH + '/' + file_name)
+
     def simulate_press(self):
         # Number of centimeters per second
         SPEED = 0.8
@@ -59,31 +64,31 @@ class ForgeRecording:
             self.stimuli.position[0] + local_displacement,
             self.stimuli.position[1] + local_displacement,
             0]
-        # self.stimuli.set_frame_position(position)
 
         self.stimuli.set_position(position)
-        print(position)
+
+
+def read_data(file_path):
+    pressure_data, position = [], None
+    with open(file_path, 'r', newline='') as file:
+        csv_reader = reader(file, delimiter=',')
+        line_count = 0
+        for row in csv_reader:
+            if line_count == 0:
+                position = row
+                line_count += 1
+            else:
+                line_count += 1
+                pressure_data.append(row)
+    return pressure_data, position
 
 
 class ReadRecording:
 
     def __init__(self):
         self.file_path = 'fake_data/1'
-        self.data = self.read_data()
+        self.data, _ = read_data(self.file_path)
         self.time_index = 0
-
-    def read_data(self):
-        data = []
-        with open(self.file_path, 'r', newline='') as file:
-            csv_reader = reader(file, delimiter=',')
-            line_count = 0
-            for row in csv_reader:
-                if line_count == 0:
-                    line_count += 1
-                else:
-                    line_count += 1
-                    data.append(row)
-        return data
 
     def read(self, sensor_mesh):
         for i in range(len(sensor_mesh.SENSOR_ARRAY)):
@@ -92,4 +97,46 @@ class ReadRecording:
         if self.time_index >= len(self.data):
             return False
         return True
+
+
+def avg_pressure(data):
+    sensor_num = data.shape[1]
+    time_frame_num = data.shape[0]
+
+    avg_pressures = np.zeros(time_frame_num)
+    for time_frame in data:
+        for i in range(sensor_num):
+            avg_pressures[i] += float(time_frame[i])
+    return avg_pressures / time_frame_num
+
+
+def plot(pressure_distribution, position):
+    x, y = [], []
+    for p in position:
+        p = p.split(',')
+        x.append(float(p[0]))
+        y.append(float(p[1]))
+
+    z = pressure_distribution
+
+    # Create 3D plot
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ax.scatter(x, y, z)
+
+    # Show plot
+    plt.show()
+
+
+def evaluate_recording(path):
+    """
+    :param path: path to the recording in .csv file to be evaluated
+    :return: Evaluation of the recording <0,1>
+    """
+    print("Your data is about to be evaluated")
+    pressure_data, position = read_data(path)
+    # Returns average pressure for each sensor
+    pressure_distribution = avg_pressure(np.array(pressure_data))
+    # Plot this distribution
+    plot(pressure_distribution * (-1), position)
 

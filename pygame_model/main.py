@@ -28,7 +28,10 @@ class Display:
         self.LINE_INDEX = 2
 
         # Button objects
+        self.buttons = []
         self.record_button, self.forge_recording_button, self.display_recording_button = None, None, None
+        self.evaluate_recording = None
+
         self.displayed_recording = None
 
         self.screen = pygame.display.set_mode(
@@ -72,20 +75,26 @@ class Display:
         pygame.draw.rect(self.screen, hex2RGB("#181a21"), rect)
 
         # Add 'Record' button
-        self.record_button = RecordButton(self.screen, position=(FRAME_WIDTH // 2 + 30, 50))
+        self.record_button = RecordButton(self.screen, position=(FRAME_WIDTH // 2 + 30, 20))
         self.record_button.add()
 
         # Add 'forge recording' button
         self.forge_recording_button = ForgeRecordingButton(
-            self.screen, position=(FRAME_WIDTH // 2 + 150, 50), width=130
+            self.screen, position=(FRAME_WIDTH // 2 + 150, 20), width=130
         )
         self.forge_recording_button.add()
 
         # Add 'Read recording' button
         self.display_recording_button = DisplayRecordingButton(
-            self.screen, position=(FRAME_WIDTH // 2 + 300, 50), width=130
+            self.screen, position=(FRAME_WIDTH // 2 + 300, 20), width=130
         )
         self.display_recording_button.add()
+
+        # Add 'Evaluate recording' button
+        self.evaluate_recording = EvaluateRecordingButton(
+            self.screen, position=(FRAME_WIDTH // 2 + 30, 80), width=130
+        )
+        self.evaluate_recording.add()
 
     def update_cross_section(self):
 
@@ -155,7 +164,6 @@ class Display:
     def detect_events(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                self.sensor_mesh.save_data()
                 quit()
 
             # Display current user actions
@@ -169,6 +177,9 @@ class Display:
                     if self.record_button.button_rect.collidepoint(event.pos):
                         self.record_button.add()
                         self.recording = not self.recording
+                        if self.record_button.STATE == 1:
+                            print("Your data was saved")
+                            self.sensor_mesh.save_data()
 
                     # 'Forge recording' button was clicked
                     if self.forge_recording_button.button_rect.collidepoint(event.pos):
