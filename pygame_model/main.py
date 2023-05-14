@@ -1,4 +1,5 @@
-import mesh
+import sys
+import advanced_mesh
 import stimulis
 from stimulis import *
 from deformation_function import *
@@ -130,7 +131,7 @@ class Display:
         # Draw function of the deformation
         curve_points = []
         # Append the pressure points from the mesh object
-        sensor_line = self.sensor_mesh.get_points_along_X(self.LINE_INDEX)
+        sensor_line = self.sensor_mesh.displayed_points
         for i in range(len(sensor_line)):
             x = sensor_line[i].frame_position[0]
             y = - sensor_line[i].deformation * UNIT
@@ -147,7 +148,7 @@ class Display:
             pygame.draw.polygon(self.screen, hex2RGB("#2d2f3d"), t, 2)
 
         # Mark the line that is displayed on the cross_section
-        sensor_line = self.sensor_mesh.get_points_along_X(self.LINE_INDEX)
+        sensor_line = self.sensor_mesh.displayed_points
         pygame.draw.line(
             self.screen,
             hex2RGB("#9c82dd"),
@@ -235,11 +236,15 @@ class Display:
         pygame.display.update()
 
 
+# mesh.read_mesh()
+# sys.exit(1)
+
 rectangle_stimuli = stimulis.Cuboid(DeformationFunction(), 2, 2)
 sphere_stimuli = stimulis.Sphere(DeformationFunction(), 1)
 
-display = Display(
-    mesh.Mesh(width=10, height=10, center=(FRAME_WIDTH / 4, FRAME_HEIGHT / 2)),
-    sphere_stimuli
-)
+rect_mesh = advanced_mesh.RectangleMesh(10, 10)
+csv_mesh = advanced_mesh.csvMesh('mesh_pos.csv')
+
+display = Display(csv_mesh, sphere_stimuli)
 display.run()
+

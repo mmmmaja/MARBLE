@@ -1,90 +1,54 @@
+from _csv import reader
 import numpy as np
 import csv
+from scipy.spatial import Delaunay
 from graphic_module import UNIT
 
 # Here the pressure data will be saved
 DATA = []
 
 
+def set_frame_position(sensor_array):
+    delta = [50, 50]
+    for sensor in sensor_array:
+        sensor.frame_position = sensor.real_position[:2] * UNIT + delta
+
+
+def triangulate(sensor_array):
+    positions = []
+    for s in sensor_array:
+        positions.append(s.frame_position)
+
+    delaunay = Delaunay(np.array(positions))  # triangulate projections
+    triangles = []
+    for triangle in delaunay.simplices:
+        t = []
+        for i in triangle:
+            t.append(positions[i])
+        triangles.append(t)
+    return triangles
+
+
 class Mesh:
 
-    def __init__(self, width, height, center=None, sensor_distance=1):
-        """
-        :param width: number of taxels horizontally
-        :param height: number of taxels vertically
-        """
-        self.width = width
-        self.height = height
-        self.sensor_distance = sensor_distance
-
-        if center:
-            # Used to shift mesh to the center of the frame
-            real_width, real_height = (width - 1) * (sensor_distance * UNIT), (height - 1) * (sensor_distance * UNIT)
-            self.delta = [center[0] - real_width / 2, center[0] - real_width / 2]
-        else:
-            self.delta = [0, 0]
-
-        self.SENSOR_ARRAY = []
-        self.triangles = self.create()
+    def __init__(self):
+        self.SENSOR_ARRAY = self.create()
+        set_frame_position(self.SENSOR_ARRAY)
+        self.triangles = triangulate(self.SENSOR_ARRAY)
+        self.displayed_points = self.set_displayed_points()
 
     def create(self):
-        """
-        Fills self.SENSOR_ARRAY
-        :return: Triangular mesh for sensor map
-        """
+        # To be overridden by a child class
+        return None
 
-        # Triangulation method
-        vertices, triangles = [], []
-        step = UNIT * self.sensor_distance
-
-        for i in range(self.height):
-            for j in range(self.width):
-                a = [
-                    i * step + self.delta[0],
-                    j * step + self.delta[1]
-                ]
-                b = [
-                    (i + 1) * step + self.delta[0],
-                    j * step + self.delta[1]
-                ]
-                c = [
-                    (i + 1) * step + self.delta[0],
-                    (j + 1) * step + self.delta[1]
-                ]
-                d = [
-                    i * step + self.delta[0],
-                    (j + 1) * step + self.delta[1]
-                ]
-
-                self.SENSOR_ARRAY.append(Sensor(
-                    frame_position=a,
-                    real_position=np.array([a[0] - self.delta[0], a[1] - self.delta[1], 0]) / step,
-                ))
-
-                vertices.append(a)
-                vertices.append(b)
-                vertices.append(c)
-                vertices.append(d)
-
-                index = len(vertices) - 1
-                triangles.append((vertices[index - 3], vertices[index - 2], vertices[index - 1]))
-                triangles.append((vertices[index - 3], vertices[index - 1], vertices[index]))
-
-        print(self.SENSOR_ARRAY[0].real_position)
-        print(self.SENSOR_ARRAY[1].real_position)
-        return triangles
+    def set_displayed_points(self):
+        # To be overridden by a child class
+        return None
 
     def press(self, stimuli):
         # Record the pressure
         for sensor in self.SENSOR_ARRAY:
             sensor.press(stimuli)
-
-    def get_points_along_X(self, X):
-        sensor_line = []
-        for i in range(self.height):
-            index = i * self.width + X
-            sensor_line.append(self.SENSOR_ARRAY[index])
-        return sensor_line
 
     def append_data(self):
         data = []
@@ -106,14 +70,15 @@ class Mesh:
 
 class Sensor:
 
-    def __init__(self, frame_position, real_position=None):
-        self.frame_position = np.array(frame_position)
-        self.real_position = real_position
+    def __init__(self, real_position=None):
+
+        self.real_position = np.array(real_position)
+        self.frame_position = None
+
         self.activated = False
         self.deformation = 0
 
     def press(self, stimuli):
-
         distance = stimuli.get_distance(self.real_position)
 
         # stimuli directly presses on sensor
@@ -137,34 +102,3 @@ class Sensor:
             return [base_color, self.frame_position, 6]
         else:
             return [base_color, self.frame_position, 3]
-
-
-
-
-
-"""
-
-1) step
-The longer sensor is pressed the more pressure is observed
-
-2)
-transfer function: pressure to deformation
-pressure vs softness
-
-3) step
-Relate transfer function to the program
-
-for both:
-think of bones, what shape? Softness of the tissue
-
-check distribution for real data vs artificial one
-
-Write script to obtain experiments
-'forge a recording'
-simulate running around with a stimuli
-sliding
-
-
-
-save first line true position of the sensor
-"""
