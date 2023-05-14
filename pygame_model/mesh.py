@@ -92,12 +92,12 @@ class Mesh:
             data.append(i.deformation)
         DATA.append(data)
 
-    def save_data(self, path='data.csv'):
+    def save_data(self, path='fake_data/data.csv'):
+
         sensor_positions = []
         for i in self.SENSOR_ARRAY:
             pos = str(i.real_position[0]) + ',' + str(i.real_position[1]) + ',' + str(i.real_position[2])
             sensor_positions.append(pos)
-
         with open(path, 'w', newline='') as file:
             writer = csv.writer(file)
             writer.writerow(sensor_positions)

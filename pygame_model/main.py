@@ -28,7 +28,6 @@ class Display:
         self.LINE_INDEX = 2
 
         # Button objects
-        self.buttons = []
         self.record_button, self.forge_recording_button, self.display_recording_button = None, None, None
         self.evaluate_recording = None
 
@@ -37,6 +36,7 @@ class Display:
         self.screen = pygame.display.set_mode(
             size=(FRAME_WIDTH, FRAME_HEIGHT)
         )
+        # Make the window resizable false
         pygame.init()
 
         self.update_central_section()
@@ -194,6 +194,11 @@ class Display:
                     if self.display_recording_button.button_rect.collidepoint(event.pos):
                         self.display_recording_button.add()
                         self.displayed_recording = simulation.ReadRecording()
+
+                    # 'Read recording' button was clicked
+                    if self.evaluate_recording.button_rect.collidepoint(event.pos):
+                        self.evaluate_recording.add()
+                        simulation.evaluate_recording()
 
                 if event.type == pygame.MOUSEBUTTONUP:
                     self.mouse_pressed = False

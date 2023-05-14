@@ -1,9 +1,16 @@
 import random
+import statistics
 from _csv import reader
+
+import matplotlib
+
 from mesh import UNIT
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.cm as cmx
+
+DATA_PATH = 'fake_data'
 
 mouse_presses = []
 
@@ -20,9 +27,6 @@ class ForgeRecording:
         self.update_interval = update_interval
         # Duration of the recording in seconds
         self.duration = duration
-
-        # Path to the folder where the data is to be saved
-        self.OUTPUT_PATH = 'fake_data'
 
         # Start outputting fake data
         self.simulation_loop()
@@ -46,10 +50,8 @@ class ForgeRecording:
             timer += self.update_interval
             print(timer)
 
-        file_name = '1'
-        self.sensor_mesh.save_data(path=self.OUTPUT_PATH + '/' + file_name)
-
-        evaluate_recording(path=self.OUTPUT_PATH + '/' + file_name)
+        file_name = '1.csv'
+        self.sensor_mesh.save_data(path=DATA_PATH + '/' + file_name)
 
     def simulate_press(self):
         # Number of centimeters per second
@@ -86,7 +88,7 @@ def read_data(file_path):
 class ReadRecording:
 
     def __init__(self):
-        self.file_path = 'fake_data/1'
+        self.file_path = 'fake_data/1.csv'
         self.data, _ = read_data(self.file_path)
         self.time_index = 0
 
@@ -103,10 +105,11 @@ def avg_pressure(data):
     sensor_num = data.shape[1]
     time_frame_num = data.shape[0]
 
-    avg_pressures = np.zeros(time_frame_num)
-    for time_frame in data:
-        for i in range(sensor_num):
-            avg_pressures[i] += float(time_frame[i])
+    avg_pressures = np.zeros(sensor_num)
+    for s in range(sensor_num):
+        for t in range(time_frame_num):
+            avg_pressures[s] += float(data[t, s])
+
     return avg_pressures / time_frame_num
 
 
@@ -122,21 +125,59 @@ def plot(pressure_distribution, position):
     # Create 3D plot
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(x, y, z)
+    ax.set_title('Average pressure for each sensor throughout entire recording')
+
+    fitness = recording_fitness(pressure_distribution)
+    # adding text inside the plot
+    s = 'Fitness: ' + str(round(fitness, 2))
+    ax.text2D(0.02, 0.9, s, bbox=dict(facecolor='cyan', alpha=0.5), transform=ax.transAxes)
+
+    # Let the rgb colours indicate the pressure of the sensor
+    cm = plt.get_cmap('jet')
+    cNorm = matplotlib.colors.Normalize(vmin=min(z), vmax=max(z))
+    scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=cm)
+
+    # Plot the sensor points
+    ax.scatter(x, y, z, c=scalarMap.to_rgba(z))
+    scalarMap.set_array(z)
 
     # Show plot
     plt.show()
 
 
-def evaluate_recording(path):
+def recording_fitness(data):
+
+    # Threshold to consider sensor not enough activated
+    threshold = max(statistics.mean(data) / 4, 0.2)
+
+    penalties = []
+    for sensor_avg_pressure in data:
+
+        if sensor_avg_pressure < threshold:
+            penalty = (threshold - sensor_avg_pressure) / threshold
+        else:
+            penalty = 0
+        penalties.append(penalty)
+
+    # The lower value of fitness the better recording
+    return sum(penalties) / len(data)
+
+
+def evaluate_recording(path=DATA_PATH + '/data.csv'):
     """
     :param path: path to the recording in .csv file to be evaluated
     :return: Evaluation of the recording <0,1>
     """
     print("Your data is about to be evaluated")
+
     pressure_data, position = read_data(path)
+
     # Returns average pressure for each sensor
     pressure_distribution = avg_pressure(np.array(pressure_data))
+
     # Plot this distribution
     plot(pressure_distribution * (-1), position)
+
+
+
 
