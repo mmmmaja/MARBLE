@@ -235,16 +235,13 @@ class Display:
                 self.presses.remove(shape)
         pygame.display.update()
 
-
-# mesh.read_mesh()
-# sys.exit(1)
-
 rectangle_stimuli = stimulis.Cuboid(DeformationFunction(), 2, 2)
 sphere_stimuli = stimulis.Sphere(DeformationFunction(), 1)
 
-rect_mesh = advanced_mesh.RectangleMesh(10, 10)
-csv_mesh = advanced_mesh.csvMesh('mesh_pos.csv')
+# rect_mesh = advanced_mesh.RectangleMesh(10, 10)
+csv_mesh = advanced_mesh.csvMesh('meshes_csv/web.csv')
 
 display = Display(csv_mesh, sphere_stimuli)
 display.run()
+
 

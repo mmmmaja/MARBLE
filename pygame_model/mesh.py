@@ -9,24 +9,37 @@ DATA = []
 
 
 def set_frame_position(sensor_array):
+
+    # Check if coordinates are negative and if yes, then shift the whole frame
+    min_x, min_y = 0, 0
+    for sensor in sensor_array:
+        if sensor.real_position[0] < min_x:
+            min_x = sensor.real_position[0]
+        if sensor.real_position[1] < min_y:
+            min_y = sensor.real_position[1]
+
+    # Shift mesh from the corners to the center
     delta = [50, 50]
     for sensor in sensor_array:
+        sensor.real_position = sensor.real_position - [min_x, min_y, 0]
         sensor.frame_position = sensor.real_position[:2] * UNIT + delta
 
 
 def triangulate(sensor_array):
+    # Creates a triangulation of the sensor array in order to display mesh for the points
     positions = []
     for s in sensor_array:
         positions.append(s.frame_position)
 
     delaunay = Delaunay(np.array(positions))  # triangulate projections
+
     triangles = []
     for triangle in delaunay.simplices:
         t = []
         for i in triangle:
             t.append(positions[i])
         triangles.append(t)
-    return triangles
+    return delaunay.simplices, triangles
 
 
 class Mesh:
@@ -34,7 +47,7 @@ class Mesh:
     def __init__(self):
         self.SENSOR_ARRAY = self.create()
         set_frame_position(self.SENSOR_ARRAY)
-        self.triangles = triangulate(self.SENSOR_ARRAY)
+        self.delaunay_points, self.triangles = triangulate(self.SENSOR_ARRAY)
         self.displayed_points = self.set_displayed_points()
 
     def create(self):

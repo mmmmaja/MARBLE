@@ -42,7 +42,7 @@ class csvMesh(Mesh):
         """
 
         with open(self.path, 'r', newline='') as file:
-            csv_reader = reader(file, delimiter=',')
+            csv_reader = reader(file, delimiter=';')
             sensor_positions = None
             for row in csv_reader:
                 sensor_positions = row
@@ -51,6 +51,8 @@ class csvMesh(Mesh):
         sensor_array = []
         for i in sensor_positions:
             coordinates = i.split(',')
+            if len(coordinates) != 3:
+                break
             sensor_array.append(Sensor(real_position=[
                 float(coordinates[0]),
                 float(coordinates[1]),
@@ -60,3 +62,9 @@ class csvMesh(Mesh):
 
     def set_displayed_points(self):
         return [self.SENSOR_ARRAY[0], self.SENSOR_ARRAY[1]]
+
+
+class ARM_mesh(Mesh):
+
+    def __init__(self):
+        super().__init__()
