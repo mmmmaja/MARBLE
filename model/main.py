@@ -1,4 +1,3 @@
-import sys
 import advanced_mesh
 import stimulis
 from stimulis import *
@@ -234,6 +233,7 @@ class Display:
             if shape.alpha <= 0:
                 self.presses.remove(shape)
         pygame.display.update()
+
 
 rectangle_stimuli = stimulis.Cuboid(DeformationFunction(), 2, 2)
 sphere_stimuli = stimulis.Sphere(DeformationFunction(), 1)
