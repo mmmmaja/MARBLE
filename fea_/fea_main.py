@@ -58,6 +58,7 @@ class FEA:
             k_element = element.define_stiffness_matrix(self.material)
 
             # get the global indices for the nodes of this element
+            # 3x3 matrix so the overall length is 9
             node_indices = np.array(element.get_global_DOF_indices()).flatten()
 
             # loop through the entries of the stiffness matrix
@@ -69,17 +70,17 @@ class FEA:
                     cols.append(node_indices[j])
 
         # Number of sensors in the mesh
-        # Since we have 2 DOF per node, we multiply by 2
-        num_nodes = len(self.mesh.SENSOR_ARRAY)
+        # Since we have 3 DOF per node, we multiply by 3
+        num_nodes = len(self.mesh.SENSOR_ARRAY) * 3
 
         # create the CSR matrix
-        K = coo_matrix((data, (rows, cols)), shape=(num_nodes * 2, num_nodes * 2)).tocsr()
+        K = coo_matrix((data, (rows, cols)), shape=(num_nodes, num_nodes)).tocsr()
         return K
 
 
 class Material:
 
-    def __init__(self, density, young_modulus, poisson_ratio):
+    def __init__(self, density, young_modulus, poisson_ratio, thickness):
         """
         :param density: [g/cm^3]
             Measure of material's mass per unit volume
@@ -99,11 +100,14 @@ class Material:
             It is a property of the material that describes how a material tends to shrink
             in one direction when being stretched in another.
             For most materials, it's a value between 0 and 0.5.
+
+        :param thickness: [mm]
         """
 
         self.density = density
         self.young_modulus = young_modulus
         self.poisson_ratio = poisson_ratio
+        self.thickness = thickness
 
 
 # MAIN
