@@ -165,3 +165,4 @@ class Node:
             self.sensor.ID * 2 + 1]  # y DOF
 
         self.location = self.sensor.real_position[:2]
+        self.location_3D = self.sensor.real_position

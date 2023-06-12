@@ -1,8 +1,8 @@
 import sys
-from model import advanced_mesh
 import numpy as np
 from scipy.sparse import csr_matrix, coo_matrix
 from fea_.components import Triangle
+from scipy.sparse.linalg import spsolve
 
 
 class FEA:
@@ -16,6 +16,15 @@ class FEA:
 
         # Define global stiffness matrix
         self.K = self.create_global_stiffness_matrix()
+
+    def solve(self, F):
+        """
+        Solve the system of equations Ku = F
+        :return: The displacement vector u contains the displacements in x and y direction for each node in the mesh
+        """
+
+        # Solve for displacements
+        u = spsolve(self.K, F)
 
     def create_elements(self):
         elements = []
@@ -47,7 +56,6 @@ class FEA:
 
             # calculate the stiffness matrix for this element
             k_element = element.define_stiffness_matrix(self.material)
-            print(k_element.shape)
 
             # get the global indices for the nodes of this element
             node_indices = np.array(element.get_global_DOF_indices()).flatten()
@@ -100,12 +108,3 @@ class Material:
 
 # MAIN
 
-silicon = Material(density=2.329, young_modulus=140.0, poisson_ratio=0.265)
-
-# Apply Boundary Conditions
-# Ku = F where u is the unknown displacement vector of all nodes
-
-# rect_mesh = advanced_mesh.RectangleMesh(10, 10)
-csv_mesh = advanced_mesh.csvMesh('C:/Users/majag/Desktop/marble/MARBLE/model/meshes_csv/web.csv')
-
-fea = FEA(csv_mesh, silicon)

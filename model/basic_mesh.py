@@ -86,6 +86,14 @@ class Mesh:
             writer.writerow(sensor_positions)
             writer.writerows(DATA)
 
+    def get_central_point(self):
+        total_points = len(self.SENSOR_ARRAY)
+        sum_x = sum(point.real_position[0] for point in self.SENSOR_ARRAY)
+        sum_y = sum(point.real_position[1] for point in self.SENSOR_ARRAY)
+        centroid_x = sum_x / total_points
+        centroid_y = sum_y / total_points
+        return [centroid_x, centroid_y]
+
 
 class Sensor:
 
