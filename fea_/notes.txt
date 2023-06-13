@@ -1,0 +1,26 @@
+Discretization:
+In this step, you divide your robotic arm into a finite number of elements.
+You need to create nodes at the junction of these elements.
+Each node will have its own physical properties, such as position,
+velocity, acceleration, and forces acting on it.
+
+
+Formulate Element Stiffness Relations:
+For each element, you need to derive the relationship between displacements (deformation) and forces.
+This is typically done using Hooke's law for simple elastic materials,
+but can get much more complex for different material properties and conditions.
+
+Assemble Global Stiffness Matrix:
+The stiffness matrix is a matrix that represents the relationships
+between all the nodes and elements in the system. It is typically sparse (lots of zeros)
+due to each node only interacting directly with its neighboring nodes.
+
+Apply Boundary Conditions:
+These are the constraints of your system.
+For example, a node might be fixed in place (like the base of the arm),
+or have a certain force applied (like a motor torque at a joint).
+
+Solve the System of Equations:
+Once you have the stiffness matrix and boundary conditions,
+you can solve for the displacements of all nodes in the system using a variety of numerical techniques.
+
