@@ -6,12 +6,63 @@ from matplotlib.widgets import Button
 import random
 from matplotlib.backend_bases import MouseButton
 from matplotlib.widgets import Button
-from spacal_algorithm import *
-from spacal_algorithm_2 import *
-from discrete_spacal_algo import *
+from spacal_algorithm_DEPRICIATED import *
+from spacal_algorithm_belief import *
+from discrete_spacal_algo_DEPRICIATED import *
+from bayes_spacial_algorithm import *
+
+
+
+## Pressure recording manager servers for reading, filtering and plotting recordings and sensors on various plots
+
+class GraphModel:
+    """
+    GraphModel plots sensor locations along with edges to other sensors that were activated jointly with them
+    """
+
+    def plot_graph(self, nodes):
+
+        visited_pair = set()
+
+        for node in nodes:
+            node : SensorNode = node
+
+            if node.get_location() is None: continue
+
+            x = [node.get_location()[0],0]
+            y = [node.get_location()[1],0]
+
+            neighbors = node.get_neighbors().items()
+
+            for neighbor, edge in neighbors:
+
+                if neighbor.get_location() is None: continue
+
+                pair_a = (node.id_,neighbor.id_)
+                pair_b = (neighbor.id_,node.id_)
+
+                if pair_a in visited_pair or pair_b in visited_pair: continue
+
+                visited_pair.add(pair_a)
+                visited_pair.add(pair_b)
+
+                x[1] = neighbor.get_location()[0]
+                y[1] = neighbor.get_location()[1]
+
+                plt.plot(x,y,linestyle = "--", lw = 0.5)
+                plt.text(x[0] - 0.01, y[0] + 0.01, node.id_)
+                plt.text(x[1] - 0.01, y[1] - 0.01, neighbor.id_)
+
+        plt.show()
+
+
 
 class SpatialModel:
-
+    """
+    SpatialModel plots locations of sensors in 3D space.
+    Additionally, we can plot multiple iterations of an algorithm estimating sensor locations
+    The SpatialModel also plots beliefs of the locations of the sensors
+    """
 
     def  __init__(self,time_frames = (), positions = (), static_points = ()):
 
@@ -44,9 +95,15 @@ class SpatialModel:
             self.p_ax.set_ylabel("Y")
             self.p_ax.set_zlabel("Pressure")
             self.p_ax.title.set_text("Pressure distribution of the recording")
-            self.plot_pressures(self.p_ax,positions,pressures)
+            self.plot_pressures(positions,pressures)
 
-    def plot_pressures(self,p_ax,positions, pressures):
+    def plot_pressures(self,positions, pressures):
+        """
+        Plots the pressures for given positions
+        :param positions: positions of pressures
+        :param pressures: pressure values
+        :return:
+        """
 
         points_ = np.zeros((len(positions), 3))
         colors_ = [""] * (len(positions))
@@ -57,7 +114,7 @@ class SpatialModel:
             points_[i] = np.array(point)
             colors_[i] = color
 
-        p_ax.bar3d(points_[:, 0], points_[:, 1], points_[:, 2], [0.5]*len(positions), [0.5]*len(positions), pressures*-2, color=colors_)
+        self.p_ax.bar3d(points_[:, 0], points_[:, 1], points_[:, 2], [0.5]*len(positions), [0.5]*len(positions), pressures*-2, color=colors_)
 
 
     def point_to_color(self,id_):
@@ -72,6 +129,13 @@ class SpatialModel:
 
 
     def plot_points(self,points, beliefs = None, static_points = ()):
+        """
+        plots points in space
+        :param points: array of point locations
+        :param beliefs: 0-1 values signifying the belief a point is in a specified location
+        :param static_points: points that are static, so should have belief 1
+        :return:
+        """
         if beliefs is None:
             beliefs = [1]*len(points)
 
@@ -97,6 +161,12 @@ class SpatialModel:
 
 
     def plot_evolution(self,points_ev,beliefs_ev = None):
+        """
+        plots the evolution of point locations
+        :param points_ev: list of lists of locations of points
+        :param beliefs_ev: list of lists of beliefs of points
+        :return:
+        """
 
         self.points_evolution = points_ev
         self.belief_ev = beliefs_ev
@@ -155,6 +225,12 @@ class SpatialModel:
 
 
 def compare_location_estimates(l1,l2):
+    """
+    compares one list of locations of sensors with another list of sensor locations
+    :param l1: first list of sensor locations
+    :param l2: second list of sensor locations
+    :return: returns summed euclidian distance of all sensor locations (computing the distance of the location of the sensor in list 1 and list 2)
+    """
     if len(l1) != len(l2):
         raise "Both arrays of sensor locations must be the same size"
 
@@ -168,11 +244,17 @@ def compare_location_estimates(l1,l2):
     return absolute_difference
 
 
-def filter_sensors(to_filter, sensor_positions):
+def filter_sensors(to_filter, sensor_locations):
+    """
+    Filters sensors locations with specific ids
+    :param to_filter: ids of snesors to be filtered
+    :param sensor_locations: all sensor locations
+    :return: returns the sensors locations after filtering out the to_filer sensors
+    """
 
     sp = []
     ids = []
-    for i, p in enumerate(sensor_positions):
+    for i, p in enumerate(sensor_locations):
         if i in to_filter: continue
 
         sp.append(p)
@@ -180,33 +262,51 @@ def filter_sensors(to_filter, sensor_positions):
 
     return ids, np.array(sp)
 
-def get_positions_of_sensors(sensor_positions,ids):
+def get_positions_of_sensors(sensor_locations,ids):
+    """
+
+    :param sensor_locations: all sensor locations
+    :param ids: ids of certain sensors
+    :return: returns a list of sensor locations of the sensors with chosen ids
+    """
+
     p = []
-    for i, p_ in enumerate(sensor_positions):
+    for i, p_ in enumerate(sensor_locations):
         if i in ids: p.append(p_)
     return p
 
 def read_recording(recording_file):
+    """
+    parses a recording into recirding frame arrays and locations of sensors
+    :param recording_file: string of the location of the recording file
+    :return: true location of sensors, pressure recordings of sensors (can be multiple frames)
+    """
 
     file = open(recording_file)
 
     time_frames = []
 
-    sensor_positions = []
+    sensor_locations = []
 
     line = file.readline().strip("\n").split('","')
     for p in line:
-        sensor_positions.append(np.array(list(map(float, p.strip('"').split(",")))))
+        sensor_locations.append(np.array(list(map(float, p.strip('"').split(",")))))
 
 
     for line in file.readlines():
         time_frames.append(np.array( list(map(float,line.strip("\n").split(",")))) )
 
 
-    return np.array(sensor_positions), time_frames
+    return np.array(sensor_locations), time_frames
 
 
 def mean_deformation(time_frames, per_n = 1):
+    """
+    coputes mean deformation of all nth frames
+    :param time_frames: list of time frames
+    :param per_n: if for example 3, then every third frame is accounted in the mean
+    :return: returns absolute mean of all frames, and list of means for all frames
+    """
 
     absolute_mean = 0
 
@@ -224,6 +324,12 @@ def mean_deformation(time_frames, per_n = 1):
     return absolute_mean, means
 
 def min_deformation(time_frames, per_n = 1):
+    """
+    finds the minimum deformation through out frames
+    :param time_frames: list of lists, where each list has the pressure values of all sensors
+    :param per_n: if for example 3, then every third frame is accounted in the mean
+    :return: minimum neformation through out frames, and a list of minimum deformations for all frames separately
+    """
     absolute_min = 0
 
     mins = []
@@ -241,10 +347,13 @@ def min_deformation(time_frames, per_n = 1):
 
 
 def max_deformation(time_frames,per_n = 1):
+    """
+    finds the maximum deformation through out frames
+    :param time_frames: list of lists, where each list has the pressure values of all sensors
+    :param per_n: if for example 3, then every third frame is accounted in the mean
+    :return: maximum neformation through out frames, and a list of minimum deformations for all frames separately
+    """
     absolute_max = 0
-
-
-
 
     maxs = []
 
@@ -262,6 +371,12 @@ def max_deformation(time_frames,per_n = 1):
 
 
 def total_pressures(time_frames, mul = 1):
+    """
+    returns a list of the length of the recording (len(time_frames)), where each entry is the total pressure recorded that time frame
+    :param time_frames: list of lists where each list is a recording of pressures
+    :param mul: multiplier of the pressure values
+    :return:
+    """
     if len(time_frames) == 0: return None
 
     pressures = np.zeros(len(time_frames[0]))

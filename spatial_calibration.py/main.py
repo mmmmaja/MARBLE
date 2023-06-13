@@ -4,9 +4,9 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Button
 import numpy as np
 from pressure_recording_manager import *
-from spacal_algorithm import *
-from spacal_algorithm_2 import *
-from discrete_spacal_algo import *
+from spacal_algorithm_DEPRICIATED import *
+from spacal_algorithm_belief import *
+from discrete_spacal_algo_DEPRICIATED import *
 
 
 

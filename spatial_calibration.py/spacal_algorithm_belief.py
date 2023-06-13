@@ -6,16 +6,36 @@ from separation_functions import *
 import scipy
 from pressure_recording_manager import *
 
+from activation_decider import *
 
-class SpacalAlgo2:
+
+class BeliefSpacalAlgo:
+    """
+    BeliefSpacalAlgo is class that server for determining locations of a list of sensors
+    The core algorithm is based on beliefs. So At start the sensors could be anywhere, so we have very low belief in their location.
+    The more recordings we provide, the more proximity information to other sensors does the algorithm have. The Algo gradually shifts around
+    the sensors according to the proximity information, and strengthens their belief accordingly.
+    """
     THRESHOLD_B = 4
     OLD_BELIEF = 0.9
     NEW_BELIEF = 0.1
 
     # separation function estimates how close two sensors are based on their common activations
     # area_range describes what is the range of interest (the initial random sensors will be generated in this space)
-    def __init__(self,min_sep,max_sep, sensor_cnt, area_range=((0, 100), (0, 100), (0, 100)), seed = 0):
-        random.seed(seed)
+    def __init__(self,decider : ActivationDecider, min_sep,max_sep, sensor_cnt, area_range=((0, 100), (0, 100), (0, 100)), seed = 0):
+        """
+
+        :param decider: Activation Decider that decides which sensors are activated and which are not
+        :param min_sep: minimum distance two sensors can be at
+        :param max_sep: maximum distance two sensors can be at
+        :param sensor_cnt: amount of sensors
+        :param area_range: the range in which sensors can appear
+        :param seed: random seed, for reproducibility
+        """
+        self.random = random.Random()
+        self.random.seed(seed)
+
+        self.decider = decider
 
         self.min_sep = min_sep
         self.max_sep = max_sep
@@ -30,19 +50,24 @@ class SpacalAlgo2:
 
 
     def get_locations(self):
+
         return np.copy(self.sensor_locations)
 
     def get_beliefs(self):
         return np.copy(self.sensor_beliefs)
 
     def set_known_sensors(self, ids, locations):
-
+        """
+        sets pre-specified sensors to fixed locations
+        :param ids: ids of sensors that we want to fix the locations of
+        :param locations: locations of the sensors we want to fix in space
+        :return:
+        """
         for i, id_ in enumerate(ids):
             self.known_sensors.add(id_)
             self.sensor_locations[id_] = np.copy(locations[i])
             self.sensor_beliefs[id_] = 1
 
-        self.reweight_beliefs()
 
     def init_sensor_positions(self, sensor_cnt, area_range):
         sensors_loc = []
@@ -57,30 +82,23 @@ class SpacalAlgo2:
 
 
 
-    ## splits into activated and non-activated sensors based on pressure threshold
-    ## NOTE: threshold is for now the mean of the sensor array, however there might be better options
-    def threshold_split(self, sensors):
-
-        mean_threshold = np.mean(sensors) * SpacalAlgo2.THRESHOLD_B
-        activated_sensors = []
-
-        for i, pressure in enumerate(sensors):
-
-            # TODO: Now we work with defomations whic are all negative, thus the '<' comparison and not '>'
-            if pressure < mean_threshold:
-                activated_sensors.append(i)
-
-        return activated_sensors
-
-    # returns true if a distance (of two paints) is within the possible distance of the two sensors, assuming they are neighbors-
-    # - neighbors in a sense that they both can be activated by outside stimuli at the same time
     def is_valid_neighbor_distance(self,distance):
+        """
+
+        :param distance: distance scalar
+        :return: returns true if a distance (of two paints) is within the possible distance of the two sensors, assuming they are neighbors. Neighbors in a sense that they both can be activated by outside stimuli at the same time
+        """
 
         return self.min_sep <= distance <= self.max_sep
 
 
-    ## Compute the derivatives with respect to each coordinate parameter
+
     def get_coord_vectors(self,activated_sensors):
+        """
+        for each activated sensor, compute a vector where the sensor should shift
+        :param activated_sensors: list of activated sensor ids
+        :return: returns a list of shift vectors for ALL sensors [Not just the activated ones]
+        """
 
 
         vectors = [np.zeros(self.loc_dim) for i in range(self.sensor_cnt)]
@@ -100,8 +118,11 @@ class SpacalAlgo2:
                 b_belief = self.sensor_beliefs[b_id]
                 b_loc = self.sensor_locations[b_id]
 
+                ## For each pair of sensors that were activated, we shift one of the sensors to the other
                 shift_dir = b_loc - a_loc
                 dist = np.linalg.norm(shift_dir)
+
+                ## We need to compute what is the direction we want to shift sensor A to sensor B
                 shift_dir = shift_dir / dist
 
                 max_shift = dist - self.min_sep # the closest the sensor a can be shifted towards b
@@ -123,6 +144,13 @@ class SpacalAlgo2:
         return vectors
 
     def get_coord_correction_vectors(self, optimize = False):
+        """
+        coputes the correction shift vectors for all sensors. This is important, since when shifting sensors toghether according to
+        proximity information, we disregard the fact that sensors must be separated at least by minimum separation distance. To correct for this
+        error, we compute for each pair, if it is too close, how much should the sensors shift away
+        :param optimize: if True the vectors are computed faster, but less accurately
+        :return: list of shift vectors for each sensor
+        """
 
         vectors = [np.zeros(self.loc_dim) for i in range(self.sensor_cnt)]
 
@@ -144,6 +172,8 @@ class SpacalAlgo2:
                 dist = np.linalg.norm(shift_dir)
                 shift_dir = shift_dir / dist
 
+                ## If sensors are too close, we shift sensor A away from sensor B according to belief,
+                ## The more belief we have in sensor A, the less we shift A, and in other iteration we will shift sensor B more
                 if dist < self.min_sep:
                     vectors[i] += shift_dir*(dist - self.min_sep)*(1 + random.random()*0.5 - a_belief)
 
@@ -151,17 +181,16 @@ class SpacalAlgo2:
         return vectors
 
 
-    def reweight_beliefs(self):
-
-        total = 0
-        for i in range(len(self.sensor_beliefs)):
-            if i in self.known_sensors: continue
-            total += self.sensor_beliefs[i]
-
-        for i in range(len(self.sensor_beliefs)):
-            if i in self.known_sensors: continue
-            self.sensor_beliefs[i] = self.sensor_beliefs[i]/total
     def update_beliefs(self,activated_sensors):
+        """
+        updates the beliefs of all sensors. After sensor locations are updated according to the shift vectors, we also have to update,
+        how much we believe each sensor to be at a location where it is.
+        For each sensor, we go  through all the rest, and update the belief according to the beliefs of the rest of sensors.
+        If a sensor was activated and shifted towards sensors that we have high belief in, the sensor was probably shifted in the right direction,
+        so the belief should go up.
+        :param activated_sensors: list of activated sensors
+        :return:
+        """
         new_beliefs = self.get_beliefs()
 
 
@@ -182,15 +211,20 @@ class SpacalAlgo2:
 
             cross_belief /= len(activated_sensors)
 
-            new_beliefs[a_id] = SpacalAlgo2.NEW_BELIEF*cross_belief + SpacalAlgo2.OLD_BELIEF*a_belief
+            new_beliefs[a_id] = BeliefSpacalAlgo.NEW_BELIEF*cross_belief + BeliefSpacalAlgo.OLD_BELIEF*a_belief
 
         self.sensor_beliefs = new_beliefs
 
 
     ## update the locations of all sensors based on common actions in between pairs of sensors
     def update_sensor_locations(self,sensors):
+        """
+        update locations of all sensors
+        :param sensors: list of pressure values for each sensor, where the index of the array is the id of a sensor
+        :return:
+        """
 
-        activated_sensors = self.threshold_split(sensors)
+        activated_sensors, pressure_values = self.decider.decide_activated(sensors)
         vectors = self.get_coord_vectors(activated_sensors)
 
         for id_ ,vect in enumerate(vectors):
@@ -200,6 +234,11 @@ class SpacalAlgo2:
         self.update_beliefs(activated_sensors)
 
     def correct_sensor_locations(self,optimize = False):
+        """
+        corrects the locations of sensors, so they are not too close.
+        :param optimize: if True, it will be faster but less accurate
+        :return:
+        """
 
         vectors = self.get_coord_correction_vectors(optimize= optimize)
 
@@ -214,8 +253,6 @@ if __name__ == "__main__":
     MIN_SEP = 1
     MAX_SEP = 2
 
-    sep_function = ExpSep(MIN_SEP, MAX_SEP)
-
     sensor_positions, time_frames = read_recording("../pygame_model/data.csv")
     known_pts, known_positions = filter_sensors(set(range(42, 62, 3)), sensor_positions)
 
@@ -225,9 +262,9 @@ if __name__ == "__main__":
 
     model = SpatialModel(time_frames=time_frames, positions=sensor_positions, static_points=known_pts)
 
+    decider = MeanThresholdDecider(threshold=3)
+    algo = BeliefSpacalAlgo(decider,MIN_SEP,MAX_SEP,len(sensor_positions),area_range=((0,9),(0,9),(0,0)),seed=1)
 
-    algo = SpacalAlgo2(MIN_SEP,MAX_SEP,len(sensor_positions),area_range=((0,9),(0,9),(0,0)),seed=1)
-    # algo = DSpacalAlgo(MIN_SEP,MAX_SEP,len(sensor_positions),sensor_positions)
     algo.set_known_sensors(known_pts, known_positions)
 
     compare_location_estimates(sensor_positions, algo.get_locations())
