@@ -89,15 +89,3 @@ class Sensor:
         # FIXME
 
         distance = stimuli.get_distance(self.position)
-
-        # stimuli directly presses on sensor
-        if distance == 0:
-            self.deformation = stimuli.deformation_at(self.position)
-            self.activated = True
-
-        # stimuli only deforms silicon where the sensor is on
-        else:
-            border_deformation = stimuli.border_deformation()
-
-            self.deformation = stimuli.def_func.get_z(distance, border_deformation)
-            self.activated = False

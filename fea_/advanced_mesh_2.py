@@ -4,7 +4,7 @@ from _csv import reader
 
 class RectangleMesh(Mesh):
 
-    def __init__(self, width, height, sensor_distance=1):
+    def __init__(self, width, height, z_function, sensor_distance=1):
         """
         :param width: dimension of the grid
         :param height: dimension of the grid
@@ -12,7 +12,10 @@ class RectangleMesh(Mesh):
         """
         self.width = width
         self.height = height
+
+        self.z_function = z_function
         self.sensor_distance = sensor_distance
+
         super().__init__()
 
     def create(self):
@@ -26,9 +29,22 @@ class RectangleMesh(Mesh):
                 sensor_array.append(Sensor(position=[
                     i * self.sensor_distance,
                     j * self.sensor_distance,
-                    0.0
+                    self.z_function(i, j, self.width, self.height)
                 ]))
         return sensor_array
+
+
+def concave(i, j, width, height):
+    concavity_factor = 0.05
+    centre = [width / 2, height / 2]
+    x = i - centre[0]
+    y = j - centre[1]
+    z = -concavity_factor * (x ** 2 + y ** 2)
+    return z
+
+
+def flat(i, j, width, height):
+    return 0
 
 
 class csvMesh(Mesh):

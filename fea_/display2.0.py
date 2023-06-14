@@ -198,7 +198,12 @@ if __name__ == "__main__":
     # Apply Boundary Conditions
     # Ku = F where u is the unknown displacement vector of all nodes
 
-    # _mesh = advanced_mesh.RectangleMesh(10, 10)
-    _mesh = csvMesh('C:/Users/majag/Desktop/marble/MARBLE/model/meshes_csv/web.csv')
+    # This is grid-like flat mesh
+    # _mesh = RectangleMesh(10, 10, z_function=flat)
+
+    # This is grid-like concave mesh
+    _mesh = RectangleMesh(10, 10, z_function=concave)
+
+    # _mesh = csvMesh('C:/Users/majag/Desktop/marble/MARBLE/model/meshes_csv/web.csv')
 
     main(FEA(_mesh, silicon))
