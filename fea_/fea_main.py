@@ -7,12 +7,13 @@ from scipy.sparse.linalg import spsolve
 
 class FEA:
 
-    def __init__(self, mesh, material):
+    def __init__(self, mesh, material, stimuli):
         self.mesh = mesh
+        self.material = material
+        self.stimuli = stimuli
 
         # Triangle elements (Check later if elements are not too big)
         self.elements = self.create_elements()
-        self.material = material
 
         # Define global stiffness matrix
         self.K = self.create_global_stiffness_matrix()
