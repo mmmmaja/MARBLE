@@ -9,6 +9,7 @@ from fea_ import fea_main
 from fea_main import FEA, Material
 from advanced_mesh_2 import *
 from stimuli_2 import *
+from projection import *
 
 SCREEN_WIDTH, SCREEN_HEIGHT = 800, 600
 
@@ -100,22 +101,15 @@ class MeshHandler:
             glEnd()
 
 
-def draw_stimuli(stimuli, position, in_use=False):
+def translate(translation_vector):
+    glTranslatef(translation_vector[0], translation_vector[1], translation_vector[2])
 
-    # Set current matrix on the stack
-    glPushMatrix()
 
-    # Update position of the stimuli
-    stimuli.set_position(position)
-    # Draw the stimuli
-
-    dx = (position[0] - SCREEN_WIDTH / 2) / 100
-    dy = (SCREEN_HEIGHT / 2 - position[1]) / 100
-    glTranslatef(dx, dy, 0)
-
-    stimuli.draw_visualization(in_use)
-
-    glPopMatrix()
+def rotate(rotation_vector):
+    # The glRotatef function multiplies the current matrix by a rotation matrix
+    glRotatef(rotation_vector[0], 1, 0, 0)
+    glRotatef(rotation_vector[1], 0, 1, 0)
+    glRotatef(rotation_vector[2], 0, 0, 1)
 
 
 class DisplayHandler:
@@ -132,27 +126,23 @@ class DisplayHandler:
         self.activation = False
 
         # Set the camera further from the scene
-        glTranslatef(0.0, 0.0, -20)
+        translate([0.0, 0.0, -20.0])
 
         # Add some nice lightning to the scene
         load_light()
 
     def handle_display(self):
 
+        # Constants for interactive events
         ROTATION_SPEED = 0.1
         SCROLL_SPEED = 0.5
 
-        # CASE 1) Just the stimuli motion
-
         # Mouse motion, activation is enabled
         # Activate the sensor mesh with stimuli
-        if self.activation:
+        if self.activation and self.mouse_down:
             # Get mouse position
             pos = pygame.mouse.get_pos()
-            if self.mouse_down:
-                draw_stimuli(self.fea.stimuli, pos, in_use=True)
-            else:
-                draw_stimuli(self.fea.stimuli, pos, in_use=False)
+            self.activate_stimuli(pos)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -165,39 +155,48 @@ class DisplayHandler:
             elif event.type == pygame.MOUSEBUTTONUP:
                 self.mouse_down = False
 
-            # CASE 2) Rotation and zooming, entire scene and mesh
+            # Rotation and zooming, entire scene and mesh
             # Mouse motion on click for rotation, activation is not enabled
+            # Update camera direction
             elif event.type == pygame.MOUSEMOTION and self.mouse_down and not self.activation:
                 x, y = event.rel
-                glRotatef(y * ROTATION_SPEED, 1, 0, 0)
-                glRotatef(x * ROTATION_SPEED, 0, 1, 0)
+                # (angle, x, y, z) - angle in DEGREES, x, y, z - coordinates of the vector
+                rotation_angle = (y * ROTATION_SPEED, x * ROTATION_SPEED, 0.0)
+                rotate(rotation_angle)
 
             # Mouse wheel for zooming
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 4:
                     # Scroll up
-                    glTranslatef(0, 0, SCROLL_SPEED)
+                    translate([0, 0, SCROLL_SPEED])
                 elif event.button == 5:
                     # Scroll down
-                    glTranslatef(0, 0, - SCROLL_SPEED)
+                    translate([0, 0, -SCROLL_SPEED])
 
             # Moving scene with arrow keys up, down, left, right
+            # Update camera position
+            # Apply translation
+            translation_vector = [0.0, 0.0, 0.0]
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_LEFT:
-                    glTranslatef(-0.5, 0, 0)
+                    translation_vector[0] = -0.5
                 if event.key == pygame.K_RIGHT:
-                    glTranslatef(0.5, 0, 0)
-
+                    translation_vector[0] = 0.5
                 if event.key == pygame.K_UP:
-                    glTranslatef(0, 1, 0)
+                    translation_vector[1] = 1.0
                 if event.key == pygame.K_DOWN:
-                    glTranslatef(0, -1, 0)
+                    translation_vector[1] = -1.0
 
                 if event.key == pygame.K_SPACE:
                     self.activation = not self.activation
 
-        # Reset the view and set the camera position and orientation
-        # glLoadIdentity()
+                translate(translation_vector)
+
+    def activate_stimuli(self, pos):
+        scene_pos = get_3D_coordinates(pos)
+        print(pos, '->', scene_pos)
+        self.fea.stimuli.set_position(scene_pos)
+        self.fea.apply_pressure()
 
 
 def main(fea):
@@ -215,7 +214,6 @@ def main(fea):
     mesh = MeshHandler(fea)
 
     while True:
-
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
         handler.handle_display()
@@ -237,7 +235,7 @@ if __name__ == "__main__":
     # This is grid-like concave mesh
     _mesh = RectangleMesh(10, 10, z_function=concave)
 
-    _stimuli = Sphere(radius=0.5)
+    _stimuli = Sphere(radius=5.5)
 
     # _mesh = csvMesh('C:/Users/majag/Desktop/marble/MARBLE/model/meshes_csv/web.csv')
 

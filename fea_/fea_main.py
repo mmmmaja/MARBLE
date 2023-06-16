@@ -1,5 +1,6 @@
 import sys
 import numpy as np
+import scipy
 from scipy.sparse import csr_matrix, coo_matrix
 from fea_.components import Triangle
 from scipy.sparse.linalg import spsolve
@@ -21,11 +22,16 @@ class FEA:
     def solve(self, F):
         """
         Solve the system of equations Ku = F
-        :return: The displacement vector u contains the displacements in x and y direction for each node in the mesh
+        :return: The displacement vector u contains the displacements in xyz direction for each node in the mesh
         """
 
         # Solve for displacements
-        u = spsolve(self.K, F)
+        print('F: ', F)
+        # print('K: ', self.K)
+        print(np.linalg.cond(self.K.toarray()))
+        print()
+        sys.exit(1)
+        return u
 
     def create_elements(self):
         elements = []
@@ -78,6 +84,35 @@ class FEA:
         K = coo_matrix((data, (rows, cols)), shape=(num_nodes, num_nodes)).tocsr()
         return K
 
+    def apply_pressure(self):
+        F = self.get_force()
+        u = self.solve(F)
+        print('deformation: ', u)
+
+    def get_force(self):
+        """
+        The pressure is applied to the nodes of the elements that are activated.
+        The pressure is applied in the z-direction, so it will only affect the z-displacement of the nodes.
+        The pressure is applied as a force, so it will be converted to a force using the area of the element.
+        :return:
+        """
+
+        # Get number of nodes in the sensor array
+        num_nodes = len(self.mesh.SENSOR_ARRAY)
+
+        # create an empty list to hold the forces for each node
+        forces = np.zeros((num_nodes, 3))
+        for i in range(num_nodes):
+            # Get the force applied
+            sensor_position = self.mesh.SENSOR_ARRAY[i].position
+            force = self.stimuli.get_force(sensor_position)
+            forces[i] = force
+
+        # Create a force matrix of size num_nodes * 3 (# DOF)
+        # The force matrix F is a vector of length equal to the number of degrees of freedom.
+        F = forces.flatten()
+        return F
+
 
 class Material:
 
@@ -111,5 +146,7 @@ class Material:
         self.thickness = thickness
 
 
-# MAIN
 
+
+
+# MAIN
