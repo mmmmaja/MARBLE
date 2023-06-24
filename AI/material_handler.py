@@ -14,6 +14,20 @@ _colors = [
 ]
 
 
+def get_edge_color(surface_color):
+    """
+    Returns a lighter version of the color
+    :param surface_color: color of the surface
+    :return: lighter color
+    """
+    # convert to rgb
+    surface_color = surface_color.lstrip('#')
+    surface_color = tuple(int(surface_color[i:i + 2], 16) for i in (0, 2, 4))
+    # Get the lighter version of the color
+    surface_color = tuple([int((x + 255) / 2) for x in surface_color])
+    return surface_color
+
+
 class Rank_Material:
 
     def __init__(self, young_modulus, poisson_ratio, visual_properties=None):
@@ -71,23 +85,11 @@ class Rank_Material:
             'alpha': 0.00  # thermal expansion coefficient
         }
 
-def get_edge_color(surface_color):
-    """
-    Returns a lighter version of the color
-    :param surface_color: color of the surface
-    :return: lighter color
-    """
-    # convert to rgb
-    surface_color = surface_color.lstrip('#')
-    surface_color = tuple(int(surface_color[i:i + 2], 16) for i in (0, 2, 4))
-    # Get the lighter version of the color
-    surface_color = tuple([int((x + 255) / 2) for x in surface_color])
-    return surface_color
-
 
 silicon_color = random.choice(_colors)
 rubber_color = '08a9ff'
 steel_color = 'C0C0C0'
+foam_color = '#ffc291'
 
 # Create a database of materials
 
@@ -98,7 +100,7 @@ silicon = Rank_Material(
         'specular': 0.1,
         'metallic': 0.02,
         'roughness': 0.5,
-        'edge_color': get_edge_color(silicon_color)
+        'edge_color': get_edge_color(silicon_color),
     }
 )
 
@@ -109,7 +111,7 @@ rubber = Rank_Material(
         'specular': 0.00,
         'metallic': 0.0,
         'roughness': 0.95,
-        'edge_color': get_edge_color(rubber_color)
+        'edge_color': get_edge_color(rubber_color),
     }
 )
 
@@ -120,6 +122,19 @@ steel = Rank_Material(
         'specular': 0.9,
         'metallic': 1.0,
         'roughness': 0.01,
-        'edge_color': get_edge_color(steel_color)
+        'edge_color': get_edge_color(steel_color),
     }
 )
+
+polyurethane_foam = Rank_Material(
+    young_modulus=0.003, poisson_ratio=0.3,
+    visual_properties={
+        'color': foam_color,
+        'specular': 0.0,
+        'metallic': 0.0,
+        'roughness': 1.0,
+        'edge_color': get_edge_color(foam_color),
+    }
+)
+# F(t) = F0 * exp(-t/tau)
+# TODO add time step Tau

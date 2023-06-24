@@ -26,7 +26,7 @@ class FENICS:
         # 1) The domain of the mesh (allows defining regions or subdomains)
         self.DOMAIN = FEDomain(name='domain', mesh=self.mesh_boost.meshio_mesh)
 
-    def apply_volume_force(self, F=0.55):
+    def apply_volume_force(self, F=0.95):
         """
         Apply a volume force to the mesh (uniform across the top surface)
         :param F: force value in N
@@ -37,7 +37,7 @@ class FENICS:
         displacements = self.solve(top, force)
         return displacements
 
-    def apply_vertex_specific_force(self, vertex_ids, F=0.05):
+    def apply_vertex_specific_force(self, vertex_ids, F=0.55):
         """
         :param vertex_ids: ids of the vertices where the force is applied
         :param F: force value in N

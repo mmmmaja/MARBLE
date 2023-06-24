@@ -50,7 +50,7 @@ class MeshBoost:
 
         # Check for negative z values
         # If present assign zero
-        # self.vtk_mesh.points[:, 2] = np.where(self.vtk_mesh.points[:, 2] < 0, 0, self.vtk_mesh.points[:, 2])
+        self.vtk_mesh.points[:, 2] = np.where(self.vtk_mesh.points[:, 2] < 0, 0, self.vtk_mesh.points[:, 2])
 
     def update_meshio(self, u):
         """

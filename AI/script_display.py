@@ -32,7 +32,7 @@ def apply_volume_force(mesh, plotter, fenics):
     :param mesh: Mesh object including the Pyvista mesh
     """
 
-    u = fenics.apply_volume_force()
+    u = fenics.apply_volume_force(F=1)
     mesh.update(u)
 
     # Reloading the mesh to the scene
@@ -55,7 +55,7 @@ def apply_cell_force(cell, fenics, plotter, mesh):
     vertex_ids = mesh.get_vertex_ids_from_coords(cell.points)
     print("Activated vertices: ", vertex_ids)
 
-    u = fenics.apply_vertex_specific_force(vertex_ids)
+    u = fenics.apply_vertex_specific_force(vertex_ids, F=1.55)
     mesh.update(u)
     # Reloading the mesh to the scene
     plotter.clear()
@@ -67,8 +67,8 @@ def apply_cell_force(cell, fenics, plotter, mesh):
 
 app = QApplication(sys.argv)
 
-mesh_boost = GridMesh(20, 20, z_function=wave, cell_distance=1)
-_fenics = FENICS(mesh_boost, silicon)
+mesh_boost = GridMesh(20, 20, z_function=wave)
+_fenics = FENICS(mesh_boost, rubber)
 
 """
 Background plotter
@@ -93,7 +93,7 @@ _plotter.add_key_event("space", lambda: apply_volume_force(mesh_boost, _plotter,
 _plotter.enable_cell_picking(
     callback=lambda cell: apply_cell_force(cell, _fenics, _plotter, mesh_boost),
     font_size=10,
-    color='black',
+    color='white',
     point_size=30,
     style='wireframe',
     line_width=5,
