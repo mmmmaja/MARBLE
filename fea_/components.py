@@ -1,5 +1,3 @@
-import sys
-
 import numpy as np
 
 
@@ -8,19 +6,27 @@ import numpy as np
 def get_material_property_matrix(material):
     E = material.young_modulus
     v = material.poisson_ratio
-    multiplier = E / (1 - v ** 2)
-    matrix = [
-        [1, v, 0],
-        [v, 1, 0],
-        [0, 0, (1 - v) / 2]
-    ]
-    return multiplier * np.array(matrix)
+    G = E / (2 * (1 + v))  # Shear modulus
+    # Major Poisson's ratios
+    major_v = E / ((1 + v) * (1 - 2 * v))
+    # Minor Poisson's ratios
+    minor_v = (1 - v) / (2 * (1 - 2 * v))
+    D = np.array([
+        [major_v, minor_v, minor_v, 0, 0, 0],
+        [minor_v, major_v, minor_v, 0, 0, 0],
+        [minor_v, minor_v, major_v, 0, 0, 0],
+        [0, 0, 0, G, 0, 0],
+        [0, 0, 0, 0, G, 0],
+        [0, 0, 0, 0, 0, G]
+    ])
+    return D
 
 
 class Triangle:
 
     def __init__(self, p1, p2, p3):
-        # Triangle consists of 3 sensor nodes
+        # CONSTANT STRAIN TRIANGLE
+        #  consists of 3 sensor nodes
         self.nodes = [Node(p1), Node(p2), Node(p3)]
 
         # Larger elements are stiffer (harder to deform) than smaller ones.
@@ -31,9 +37,9 @@ class Triangle:
         :return: area of the triangle in 3D
         |AB x AC| * 1/2
         """
-        x1, y1, z1 = self.nodes[0].position
-        x2, y2, z2 = self.nodes[1].position
-        x3, y3, z3 = self.nodes[2].position
+        x1, y1, z1 = self.nodes[0].sensor.position
+        x2, y2, z2 = self.nodes[1].sensor.position
+        x3, y3, z3 = self.nodes[2].sensor.position
 
         # Find vector P1 -> P2
         P1P2_vector = [x2 - x1, y2 - y1, z2 - z1]
@@ -85,15 +91,25 @@ class Triangle:
         A = self.area
         multiplier = 1 / (2 * A)
 
-        x1, y1, z1 = self.nodes[0].position
-        x2, y2, z2 = self.nodes[1].position
-        x3, y3, z3 = self.nodes[2].position
-        matrix = [
-            [(y2 - y3), 0, (y3 - y1), 0, (y1 - y2), 0],
-            [0, (z3 - z2), 0, (z1 - z3), 0, (z2 - z1)],
-            [(z3 - z2), (y2 - y3), (z1 - z3), (y3 - y1), (z2 - z1), (y1 - y2)]
-        ]
-        return multiplier * np.array(matrix)
+        x1, y1, z1 = self.nodes[0].sensor.position
+        x2, y2, z2 = self.nodes[1].sensor.position
+        x3, y3, z3 = self.nodes[2].sensor.position
+        # Compute factors for B matrix
+        b1 = y2 - y3
+        b2 = y3 - y1
+        b3 = y1 - y2
+        c1 = z3 - z2
+        c2 = z1 - z3
+        c3 = z2 - z1
+        B = np.array([
+            [b1, 0, 0, b2, 0, 0, b3, 0, 0],
+            [0, c1, 0, 0, c2, 0, 0, c3, 0],
+            [0, 0, b1, 0, 0, b2, 0, 0, b3],
+            [0, 0, c1, 0, 0, c2, 0, 0, c3],
+            [c1, 0, 0, c2, 0, 0, c3, 0, 0],
+            [0, b1, 0, 0, b2, 0, 0, b3, 0]
+        ]) * multiplier
+        return B
 
     def get_global_DOF_indices(self):
         """
@@ -118,6 +134,3 @@ class Node:
             self.sensor.ID * 3 + 1,  # y DOF
             self.sensor.ID * 3 + 2  # z DOF
         ]
-
-        # Position of the sensor (?) in 3D
-        self.position = self.sensor.position

@@ -1,0 +1,151 @@
+read about pyvista visualization](https://docs.pyvista.org/plotting/plotting.html) for more information.
+maybe an interactive visualization can be made there
+
+read about different solvers and boundary conditions in
+[fenics](https://fenicsproject.org/olddocs/dolfin/1.3.0/python/demo/documented/)
+
+fix meshing, introduce 3D elements
+
+
+15.00 write abstract
+
+https://sfepy.org/doc-devel/_downloads/63e3f3e0a0635ddc67af3c6e4d0f6b5f/sfepy_manual.pdf
+
+    def get_neumann_bc(self, domain):
+        """
+        In mechanical problems like this one, the solution you're interested in is usually the displacement
+        of each node in your mesh. The derivative of the displacement with respect to the spatial coordinates
+        (i.e., gradient of displacement) is strain, and when this strain is multiplied by the material's stiffness,
+        you get stress, which is force per unit area - or pressure.
+
+        So when you're applying pressure, you're actually specifying the values of stress (force/area)
+        that you want in a particular part of your mesh, which translates to setting the values
+        of the derivative of your solution (displacement) in that region. This is a Neumann boundary condition.
+
+        :param domain:
+        :return:
+        """
+
+        pass
+
+    def get_dirichlet_bc(self, domain):
+        pass
+
+
+MESH CONVERTER
+
+
+class TriangularMesh(MeshBoost):
+
+    def __init__(self, mesh):
+        """
+        This is the most basic mesh. It consists of 2D triangles but in the 3D domain
+        The mesh has no thickness factor
+        :param mesh:
+        """
+        self.mesh = mesh
+        super().__init__()
+
+    def create_mesh(self):
+        """
+        Create a triangular mesh with no thickness factor
+        :return:
+        """
+        vertices = np.array([sensor.position for sensor in self.mesh.SENSOR_ARRAY])
+        mesh = meshio.Mesh(points=vertices, cells={"triangle": self.mesh.delaunay_points})
+        # Save the mesh to the file
+        meshio.write(PATH, mesh)
+        return Mesh.from_file(PATH)
+
+    def get_regions(self, domain):
+        # FIXME, it is 2D so top and bottom does not apply here
+        # For now define the bottom (where the mesh will be fixed) as leftmost edge of the mesh
+        # Rest of the mesh will be the top (where the displacements happen)
+        tol = 1e-8
+
+        min_x, max_x = domain.get_mesh_bounding_box()[:, 0]
+        eps_x = tol * (max_x - min_x)
+
+        bottom = domain.create_region(
+            'bot',
+            'vertices in x < %.10f' % (min_x + eps_x),
+            'facet')
+        top = domain.create_region(
+            'bot',
+            'vertices in x >= %.10f' % (min_x + eps_x),
+            'facet')
+        return top, bottom
+
+
+class ExtrudedTriangularMesh(MeshBoost):
+
+    def __init__(self, mesh):
+        """
+        The prettiest mesh of them all!
+        Doesn't work tho
+        Create a mesh from triangular mesh with extruded faces
+        """
+        self.mesh = mesh
+        super().__init__()
+
+    def create_mesh(self):
+        """
+        Converts the triangular mesh to quadrilateral mesh (extrusion of the triangle faces)
+        :return: sweet sweet meshio mesh
+        """
+
+        # Get the vertices and triangles of the mesh
+        vertices = np.array([sensor.position for sensor in self.mesh.SENSOR_ARRAY])
+        num_vertices = len(vertices)
+
+        # Create new vertices by copying the existing ones and adding the thickness
+        new_vertices = vertices.copy()
+        # Convert to list
+        new_vertices = new_vertices.tolist()
+        for vertex in vertices:
+            new_vertex = (vertex[0], vertex[1], vertex[2] + THICKNESS)
+            new_vertices.append(new_vertex)
+
+        # Create quadrilaterals
+        tri = []
+        for triangle in self.mesh.delaunay_points:
+            v1, v2, v3 = triangle
+            v1_new, v2_new, v3_new = v1 + num_vertices, v2 + num_vertices, v3 + num_vertices
+            tri.append((v1, v2, v3))
+            tri.append((v1_new, v2_new, v3_new))
+
+            tri.append((v1, v2, v1_new))
+            tri.append((v1_new, v2_new, v2))
+
+            tri.append((v2, v3, v2_new))
+            tri.append((v2_new, v3_new, v3))
+
+            tri.append((v3, v1, v3_new))
+            tri.append((v3_new, v1_new, v1))
+
+        mesh = meshio.Mesh(points=new_vertices, cells={"triangle": tri})
+        meshio.write(PATH, mesh)
+        # display_mesh(PATH)
+        return Mesh.from_file(PATH)
+
+    def get_regions(self, domain):
+        """
+        https://sfepy.org/doc-devel/users_guide.html
+        From documentation:
+        Regions serve to select a certain part of the computational domain using topological entities of the FE mesh.
+        They are used to define the boundary conditions, the domains of terms and materials etc.
+        :return: top and bottom regions
+        """
+
+        # Create a top region (Where the displacements happen)
+        top_range = range(len(self.mesh.SENSOR_ARRAY))
+        expr_base = 'vertex ' + ', '.join([str(i) for i in top_range])
+        top = domain.create_region(name='Top', select=expr_base, kind='facet')
+
+        # Create a bottom region (Where the boundary conditions apply so that the positions are fixed)
+        bottom_range = range(len(self.mesh.SENSOR_ARRAY), 2 * len(self.mesh.SENSOR_ARRAY))
+        # Define the cells by their Ids and use vertex <id>[, <id>, ...]
+        expr_extruded = 'vertex ' + ', '.join([str(i) for i in bottom_range])
+        bottom = domain.create_region(name='Bottom', select=expr_extruded, kind='facet')
+
+        return top, bottom

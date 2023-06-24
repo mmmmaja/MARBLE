@@ -81,7 +81,7 @@ class MeshHandler:
         for element in self.elements:
             glBegin(GL_TRIANGLES)
             for node in element.nodes:
-                glVertex3fv((node.position - self.translation))
+                glVertex3fv((node.sensor.position - self.translation))
             glEnd()
 
         # Draw points (vertices)
@@ -90,14 +90,14 @@ class MeshHandler:
         glBegin(GL_POINTS)
         for element in self.elements:
             for node in element.nodes:
-                glVertex3fv((node.position - self.translation))
+                glVertex3fv((node.sensor.position - self.translation))
         glEnd()
 
         # Draw the mesh lines
         for element in self.elements:
             glBegin(GL_LINES)
             for i in range(4):
-                glVertex3fv((element.nodes[i % 3].position - self.translation))
+                glVertex3fv((element.nodes[i % 3].sensor.position - self.translation))
             glEnd()
 
 
@@ -194,9 +194,10 @@ class DisplayHandler:
 
     def activate_stimuli(self, pos):
         scene_pos = get_3D_coordinates(pos)
-        print(pos, '->', scene_pos)
+        # print(pos, '->', scene_pos)
         self.fea.stimuli.set_position(scene_pos)
-        self.fea.apply_pressure()
+        # self.fea.apply_pressure()
+        self.fea.show_pressure()
 
 
 def main(fea):
@@ -226,15 +227,14 @@ def main(fea):
 if __name__ == "__main__":
     silicon = Material(density=2.329, young_modulus=140.0, poisson_ratio=0.265, thickness=1.25)
 
-    # Apply Boundary Conditions
-    # Ku = F where u is the unknown displacement vector of all nodes
-
     # This is grid-like flat mesh
-    # _mesh = RectangleMesh(10, 10, z_function=flat)
-
-    # This is grid-like concave mesh
+    _mesh = RectangleMesh(5, 5, z_function=concave)
     _mesh = RectangleMesh(10, 10, z_function=concave)
+    _mesh = RectangleMesh(12, 12, z_function=convex, sensor_distance=1.5)
+    _mesh = CircleMesh(10, 5, z_function=convex, distance_between_nets=2)
 
+    _mesh = RectangleMesh(10, 10, z_function=flat)
+    # _mesh = ARM_mesh('model.obj')
     _stimuli = Sphere(radius=5.5)
 
     # _mesh = csvMesh('C:/Users/majag/Desktop/marble/MARBLE/model/meshes_csv/web.csv')

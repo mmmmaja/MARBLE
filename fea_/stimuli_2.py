@@ -42,22 +42,31 @@ class Sphere(Stimuli):
         self.radius = radius
         super().__init__()
 
+    def get_distance(self, position, flatten=True):
+        """
+        TODO WHAT ABOUT CONVERTING POSITION OF THE MESH TO 2D?
+        Calculates the distance between the node and the center of the stimulus
+        :param flatten: do not consider the z coordinate
+        :param position: position of the node (sensor)
+        :return: distance
+        """
+        x, y, z = position[0], position[1], position[2]
+        if flatten:
+            return np.sqrt(
+                (x - self.position[0]) ** 2 + (y - self.position[1]) ** 2
+            )
+        else:
+            return np.sqrt(
+                (x - self.position[0]) ** 2 + (y - self.position[1]) ** 2 + (z - self.position[2]) ** 2
+            )
+
     def get_force(self, position):
         """
         Calculates the force on a node due to the stimulus
         :param position: position of the node (sensor)
         :return: force vector
         """
-        x, y, z = position[0], position[1], position[2]
-
-        # calculate the distance between the node and the center of the stimulus
-        distance = np.sqrt(
-            (x - self.position[0]) ** 2 + (y - self.position[1]) ** 2
-        )
-        # distance = np.sqrt(
-        #     (x - self.position[0]) ** 2 + (y - self.position[1]) ** 2 + (z - self.position[2]) ** 2
-        # )
-        print('distance: ', distance)
+        distance = self.get_distance(position)
 
         # check if the node is within the sphere of influence of the stimulus
         if distance < self.radius:

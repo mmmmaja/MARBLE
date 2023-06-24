@@ -73,6 +73,13 @@ class Mesh:
         centroid_y = sum_y / total_points
         return [centroid_x, centroid_y]
 
+    def update_geometry(self, u):
+        # Update the geometry of the mesh
+        # u is the displacement vector
+        for i in range(len(u)):
+            u_i = u[i]
+            self.SENSOR_ARRAY[i].update_geometry(u_i)
+
 
 class Sensor:
 
@@ -82,10 +89,13 @@ class Sensor:
 
         self.activated = False
         self.deformation = 0
+        self.pressure = 0
 
         self.ID = None
 
     def press(self, stimuli):
-        # FIXME
-
         distance = stimuli.get_distance(self.position)
+
+    def update_geometry(self, u):
+        # Update the geometry of the sensor
+        self.position += u
