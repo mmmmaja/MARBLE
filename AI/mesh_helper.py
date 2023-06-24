@@ -29,13 +29,14 @@ def display_mesh(mesh_path=PATH):
         show_scalar_bar=False,
     )
 
+
 def concave(i, j, width, height):
     concavity_factor = 0.05
     centre = [width / 2, height / 2]
     x = i - centre[0]
     y = j - centre[1]
     z = -concavity_factor * (x ** 2 + y ** 2)
-    return z
+    return abs(z)
 
 
 def flat(i, j, width, height):
@@ -43,16 +44,16 @@ def flat(i, j, width, height):
 
 
 def convex(i, j, width, height):
-    concavity_factor = 0.15
+    concavity_factor = 0.05
     centre = [width / 2, height / 2]
     x = i - centre[0]
     y = j - centre[1]
     z = concavity_factor * (x ** 2 + y ** 2)
-    return z
+    return abs(z)
 
 
 def wave(i, j, width, height):
     wave_factor = 3.5
     frequency = 0.2
     z = wave_factor * math.sin(i * frequency) * math.sin(j * frequency)
-    return z
+    return abs(z)

@@ -23,48 +23,38 @@ class FENICS:
         self.mesh_boost = mesh
         self.rank_material = rank_material
 
-        # 1) Get the domain of the mesh (allows defining regions or subdomains)
+        # 1) The domain of the mesh (allows defining regions or subdomains)
         self.DOMAIN = FEDomain(name='domain', mesh=self.mesh_boost.meshio_mesh)
 
-    def apply_vertex_force(self, point_ID):
-        F = 10
+    def apply_volume_force(self, F=0.55):
+        """
+        Apply a volume force to the mesh (uniform across the top surface)
+        :param F: force value in N
+        :return: displacement u of the mesh
+        """
         force = Material(name='f', val=F)
+        top, bottom = self.mesh_boost.get_regions(self.DOMAIN)
+        displacements = self.solve(top, force)
+        return displacements
 
-        # Define the cells by their Ids and use vertex <id>[, <id>, ...]
-        expr = 'vertex ' + str(point_ID)
+    def apply_vertex_specific_force(self, vertex_ids, F=0.05):
+        """
+        :param vertex_ids: ids of the vertices where the force is applied
+        :param F: force value in N
+        :return: displacement u of the mesh
+        """
 
-        # Create a region for the vertex
-        force_region = self.DOMAIN.create_region(name='vertex_force', select=expr, kind='vertex')
-
-        self.solve(force_region, force)
-
-    def apply_volume_force(self, domain, integral, v):
-        F = 10
-        force = Material(name='f', val=F)
-        top, bottom = self.mesh_boost.get_regions(domain)
-        return Term.new(
-            'dw_surface_ltr(f.val, v)', integral=integral, region=top, f=force, v=v
-        )
-
-    def apply_cell_force(self, cell):
-
-        # cell_id = cell.GetCellId()  # Replace this with how you get the cell id
-        cell_id = 10  # Replace this with how you get the cell id
-        val = 10
-
-        # Create a region for this cell
-        expr = 'cell ' + str(cell_id)
-        cell_region = self.DOMAIN.create_region(name='cell_force', select=expr, kind='cell')
-
-        print(cell_region)
+        # Create a region with the vertices of the cell
+        expr = 'vertex ' + ', '.join([str(ID) for ID in vertex_ids])
+        region = self.DOMAIN.create_region(name='region', select=expr, kind='facet')
 
         # Create a material for the cell
-        force = Material(name='f', val=val)
+        force = Material(name='f', val=F)
 
-        self.solve(cell_region, force)
+        displacements = self.solve(region, force)
+        return displacements
 
-
-    def solve(self, region=None, f=None):
+    def solve(self, region, f):
         """
         Elasticity problem solved with FEniCS.
         (the displacement of each node in the mesh)
@@ -112,14 +102,9 @@ class FENICS:
             name='dw_lin_elastic_iso(m.lam, m.mu, v, u)', integral=integral, region=omega, m=material, v=v, u=u
         )
 
-        if region is None or f is None:
-            force_term = self.apply_volume_force(self.DOMAIN, integral, v)
-        else:
-            force_term = Term.new(
-                'dw_surface_ltr(f.val, v)', integral=integral, region=region, f=f, v=v
-            )
-        # force_term = self.apply_volume_force(self.DOMAIN, integral, v)
-        # force_term = self.apply_vertex_force(DOMAIN, integral, v)
+        force_term = Term.new(
+            'dw_surface_ltr(f.val, v)', integral=integral, region=region, f=f, v=v
+        )
 
         # 8) Define the equation with force term
         equations = Equations([Equation('balance', elasticity_term + force_term)])
@@ -147,6 +132,7 @@ class FENICS:
         u = variables()
         # Reshape so that each displacement vector is in a row [x, y, z] displacements
         u = u.reshape((int(u.shape[0] / dim), dim))
+
         print('maximum displacement x:', np.abs(u[:, 0]).max())
         print('maximum displacement y:', np.abs(u[:, 1]).max())
         print('maximum displacement z:', np.abs(u[:, 2]).max())
@@ -156,34 +142,6 @@ class FENICS:
 
 if __name__ == "__main__":
 
-    # rectangle_wave = TriangularMesh(
-    #     RectangleMesh(20, 15, z_function=wave)
-    # )
-    # elbow = MeshFromFile(
-    #     'C:/Users/majag/Desktop/marble/MARBLE/AI/meshes/elbow.mesh'
-    # )
-    # perfusion = MeshFromFile(
-    #     'C:/Users/majag/Desktop/marble/MARBLE/AI/meshes/perfusion_micro3d.mesh'
-    # )
-    #
-    # extruded_rectangle_wave = ExtrudedTriangularMesh(
-    #     RectangleMesh(10, 5, z_function=wave)
-    # )
-
-    # cuboid = MeshFromFile(
-    #     'C:/Users/majag/Desktop/marble/MARBLE/AI/meshes/block.mesh'
-    # )
-
-    # circle_wave = ExtrudedTriangularMesh(RectangleMesh(10, 15, z_function=flat))
-    # circle_wave = ExtrudedTriangularMesh(CircleMesh(10, 15, z_function=wave))
-    #
-    # hexa_mesh = MeshFromFile(
-    #     'C:/Users/majag/Desktop/marble/MARBLE/AI/meshes/acoustics_mesh3d.mesh'
-    # )
-    #
-    hexa = GridMesh(10, 10, z_function=wave)
-
-    display_mesh()
-    # FENICS(hexa, rubber).solve()
-    FENICS(hexa, rubber).apply_cell_force(10)
-
+    hexa = GridMesh(15, 15, z_function=concave)
+    u = FENICS(hexa, rubber).apply_volume_force()
+    hexa.update(u)

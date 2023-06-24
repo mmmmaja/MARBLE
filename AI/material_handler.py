@@ -1,9 +1,23 @@
+import random
+
+_colors = [
+    '#ad1a95',
+    '#FF00FF',
+    'e874ff',
+    '#e2a4ff',
+    '#689dff',
+    '#14ccff',
+    '#17d8db',
+    '#62fff8',
+    '#98ff9a',
+    '#ff9a9a'
+]
+
+
 class Rank_Material:
 
-    def __init__(self, density, young_modulus, poisson_ratio):
+    def __init__(self, young_modulus, poisson_ratio, visual_properties=None):
         """
-        :param density: [g/cm^3]
-            Measure of material's mass per unit volume
 
         :param young_modulus: [Gpa]
              Property of the material that tells us how easily it can stretch and deform
@@ -22,9 +36,20 @@ class Rank_Material:
             For most materials, it's a value between 0 and 0.5.
         """
 
-        self.density = density
         self.young_modulus = young_modulus
         self.poisson_ratio = poisson_ratio
+
+        if visual_properties is None:
+            self.visual_properties = {
+                'color': 'linen',
+                'diffuse': 1,
+                'specular': 0.5,
+                'specular_power': 20,
+                'metallic': 0.9,
+                'roughness': 0.04
+            }
+        else:
+            self.visual_properties = visual_properties
 
     def get_properties(self):
         """
@@ -46,34 +71,55 @@ class Rank_Material:
             'alpha': 0.00  # thermal expansion coefficient
         }
 
-    def get_visual_properties(self):
-        """
-        TODO: add visualization properties
-        :return: properties to be added to the visualizer
-        """
-        # Example settings for the metallic material
-        color = 'linen'
-        diffuse = 1
-        specular = 0.5
-        specular_power = 20
-        metallic = 0.9
-        roughness = 0.04
+def get_edge_color(surface_color):
+    """
+    Returns a lighter version of the color
+    :param surface_color: color of the surface
+    :return: lighter color
+    """
+    # convert to rgb
+    surface_color = surface_color.lstrip('#')
+    surface_color = tuple(int(surface_color[i:i + 2], 16) for i in (0, 2, 4))
+    # Get the lighter version of the color
+    surface_color = tuple([int((x + 255) / 2) for x in surface_color])
+    return surface_color
 
+
+silicon_color = random.choice(_colors)
+rubber_color = '08a9ff'
+steel_color = 'C0C0C0'
+
+# Create a database of materials
 
 silicon = Rank_Material(
-    density=2.329, young_modulus=140.0, poisson_ratio=0.265
-)
-rubber = Rank_Material(
-    density=1.2, young_modulus=0.01, poisson_ratio=0.49
+    young_modulus=140.0, poisson_ratio=0.265,
+    visual_properties={
+        'color': silicon_color,
+        'specular': 0.1,
+        'metallic': 0.02,
+        'roughness': 0.5,
+        'edge_color': get_edge_color(silicon_color)
+    }
 )
 
-colors = [
-            'purple',
-            'violet'
-            'magenta',
-            'deepskyblue'
-            'aqua'
-            'turquoise'
-            'lightgreen',
-            'lime'
-        ]
+rubber = Rank_Material(
+    young_modulus=0.05, poisson_ratio=0.49,
+    visual_properties={
+        'color': rubber_color,
+        'specular': 0.00,
+        'metallic': 0.0,
+        'roughness': 0.95,
+        'edge_color': get_edge_color(rubber_color)
+    }
+)
+
+steel = Rank_Material(
+    young_modulus=190.0, poisson_ratio=0.28,
+    visual_properties={
+        'color': steel_color,
+        'specular': 0.9,
+        'metallic': 1.0,
+        'roughness': 0.01,
+        'edge_color': get_edge_color(steel_color)
+    }
+)

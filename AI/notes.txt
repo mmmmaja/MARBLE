@@ -6,6 +6,8 @@ read about different solvers and boundary conditions in
 
 fix meshing, introduce 3D elements
 
+ADD MATERIAL TO THE MESH CLASS
+
 
 15.00 write abstract
 
