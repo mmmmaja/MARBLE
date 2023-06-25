@@ -32,7 +32,7 @@ def apply_volume_force(mesh, plotter, fenics):
     :param mesh: Mesh object including the Pyvista mesh
     """
 
-    u = fenics.apply_volume_force(F=1)
+    u = fenics.apply_volume_force(F=1.9)
     mesh.update(u)
 
     # Reloading the mesh to the scene
@@ -55,7 +55,7 @@ def apply_cell_force(cell, fenics, plotter, mesh):
     vertex_ids = mesh.get_vertex_ids_from_coords(cell.points)
     print("Activated vertices: ", vertex_ids)
 
-    u = fenics.apply_vertex_specific_force(vertex_ids, F=1.55)
+    u = fenics.apply_vertex_specific_force(vertex_ids, F=1.9)
     mesh.update(u)
     # Reloading the mesh to the scene
     plotter.clear()
@@ -67,8 +67,8 @@ def apply_cell_force(cell, fenics, plotter, mesh):
 
 app = QApplication(sys.argv)
 
-mesh_boost = GridMesh(20, 20, z_function=wave)
-_fenics = FENICS(mesh_boost, rubber)
+mesh_boost = GridMesh(30, 30, z_function=wave)
+_fenics = FENICS(mesh_boost, silicon)
 
 """
 Background plotter
@@ -86,9 +86,14 @@ _plotter = pvqt.BackgroundPlotter()
 # Add the mesh to the plotter
 add_mesh(mesh_boost.vtk_mesh, _plotter, _fenics)
 
+# Add the material name to the plotter
+text = _fenics.rank_material.name + \
+       '\nE: ' + str(_fenics.rank_material.young_modulus) + \
+       '\nv: ' + str(_fenics.rank_material.poisson_ratio)
+_plotter.add_text(text, position='lower_left', font_size=8, color='white', shadow=True)
+
 # Add the event on the press of the space bar
 _plotter.add_key_event("space", lambda: apply_volume_force(mesh_boost, _plotter, _fenics))
-
 
 _plotter.enable_cell_picking(
     callback=lambda cell: apply_cell_force(cell, _fenics, _plotter, mesh_boost),

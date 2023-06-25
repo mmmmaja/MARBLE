@@ -30,7 +30,7 @@ def get_edge_color(surface_color):
 
 class Rank_Material:
 
-    def __init__(self, young_modulus, poisson_ratio, visual_properties=None):
+    def __init__(self, name, young_modulus, poisson_ratio, visual_properties=None):
         """
 
         :param young_modulus: [Gpa]
@@ -49,7 +49,7 @@ class Rank_Material:
             in one direction when being stretched in another.
             For most materials, it's a value between 0 and 0.5.
         """
-
+        self.name = name
         self.young_modulus = young_modulus
         self.poisson_ratio = poisson_ratio
 
@@ -94,6 +94,7 @@ foam_color = '#ffc291'
 # Create a database of materials
 
 silicon = Rank_Material(
+    name='Silicon',
     young_modulus=140.0, poisson_ratio=0.265,
     visual_properties={
         'color': silicon_color,
@@ -105,6 +106,7 @@ silicon = Rank_Material(
 )
 
 rubber = Rank_Material(
+    name='Rubber',
     young_modulus=0.05, poisson_ratio=0.49,
     visual_properties={
         'color': rubber_color,
@@ -116,6 +118,7 @@ rubber = Rank_Material(
 )
 
 steel = Rank_Material(
+    name='Steel',
     young_modulus=190.0, poisson_ratio=0.28,
     visual_properties={
         'color': steel_color,
@@ -127,6 +130,7 @@ steel = Rank_Material(
 )
 
 polyurethane_foam = Rank_Material(
+    name='Polyurethane foam',
     young_modulus=0.003, poisson_ratio=0.3,
     visual_properties={
         'color': foam_color,
