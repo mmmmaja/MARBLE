@@ -151,3 +151,33 @@ class ExtrudedTriangularMesh(MeshBoost):
         bottom = domain.create_region(name='Bottom', select=expr_extruded, kind='facet')
 
         return top, bottom
+
+
+
+"""""""""""""""""""""""""""""""""""""""""""""""
+ #     self.dt = 10  # ms
+    #     self.t = 0.0
+    #     self.total_time = 8000.0
+    #     self.F0 = FORCE
+    #
+    #     self.timer = QTimer()
+    #     # Call the timer_loop function every dt ms
+    #     self.timer.timeout.connect(self.timer_loop)
+    #     self.timer.start(self.dt)  # period in ms
+    #
+    # def relaxation_loop(self):
+    #     # calculate the current force
+    #     F = self.F0 * np.exp(-self.t / self.fenics.rank_material.time_constant)
+    #
+    #     print("FORCE: ", F)
+    #     # calculate the displacement
+    #     u = self.fenics.apply_volume_force(F)
+    #     # update
+    #     self.update(u)
+    #     # advance the time variable
+    #     self.t += self.dt
+    #
+    #     # Disable the timer when the u is close to 0
+    #     if np.linalg.norm(u) < 1e-6:
+    #         self.timer.stop()
+    #         self.timer.deleteLater()

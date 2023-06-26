@@ -46,7 +46,8 @@ class MeshBoost:
         mesh in the .vtk format
         FIXME now it overrides the mesh
         """
-        self.vtk_mesh.points = self.vtk_mesh.points + u
+
+        self.vtk_mesh.points += u
 
         # Check for negative z values
         # If present assign zero

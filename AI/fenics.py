@@ -17,45 +17,45 @@ from AI.mesh_converter import *
 class FENICS:
 
     def __init__(self, mesh, rank_material):
-        # Get the trivial mesh of the sensor array
 
         # Meshio format is valid for SFepy library
         self.mesh_boost = mesh
+        # Material with physical properties
         self.rank_material = rank_material
 
-        # 1) The domain of the mesh (allows defining regions or subdomains)
+        # The domain of the mesh (allows defining regions or subdomains)
         self.DOMAIN = FEDomain(name='domain', mesh=self.mesh_boost.meshio_mesh)
 
-    def apply_volume_force(self, F=0.95):
+    def apply_force(self, vertex_ids, F=0.55):
         """
-        Apply a volume force to the mesh (uniform across the top surface)
+        :param vertex_ids: ids of the vertices where the force is applied,
+        if set to None then apply force to entire top face of the mesh
+
         :param F: force value in N
-        :return: displacement u of the mesh
-        """
-        force = Material(name='f', val=F)
-        top, bottom = self.mesh_boost.get_regions(self.DOMAIN)
-        displacements = self.solve(top, force)
-        return displacements
-
-    def apply_vertex_specific_force(self, vertex_ids, F=0.55):
-        """
-        :param vertex_ids: ids of the vertices where the force is applied
-        :param F: force value in N
-        :return: displacement u of the mesh
+        :return: displacement u of the mesh for each vertex in x, y, z direction
         """
 
-        # Create a region with the vertices of the cell
-        expr = 'vertex ' + ', '.join([str(ID) for ID in vertex_ids])
-        region = self.DOMAIN.create_region(name='region', select=expr, kind='facet')
+        if vertex_ids is None:
+            top, bottom = self.mesh_boost.get_regions(self.DOMAIN)
+            region = top
 
-        # Create a material for the cell
+        else:
+            # Create a region with the vertices of the cell
+            print(vertex_ids)
+            expr = 'vertex ' + ', '.join([str(ID) for ID in vertex_ids])
+            region = self.DOMAIN.create_region(name='region', select=expr, kind='facet')
+
+        # Create a material that will be the force applied to the body
         force = Material(name='f', val=F)
 
-        displacements = self.solve(region, force)
-        return displacements
+        # Solve Finite element method for displacements
+        return self.solve(region, force)
 
     def solve(self, region, f):
         """
+        :param region: Region where the force will be applied
+        :param f: Force material applied to this region
+
         Elasticity problem solved with FEniCS.
         (the displacement of each node in the mesh)
 
@@ -138,10 +138,3 @@ class FENICS:
         print('maximum displacement z:', np.abs(u[:, 2]).max())
 
         return u
-
-
-if __name__ == "__main__":
-
-    hexa = GridMesh(15, 15, z_function=concave)
-    u = FENICS(hexa, rubber).apply_volume_force()
-    hexa.update(u)
