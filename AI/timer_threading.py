@@ -1,3 +1,4 @@
+import time
 import pyvistaqt as pvqt  # For updating plots real time
 from PyQt5.QtWidgets import QApplication
 from AI.fenics import *
@@ -5,7 +6,7 @@ from AI.mesh_converter import *
 from AI.material_handler import *
 from PyQt5.QtCore import QObject, QTimer
 
-FORCE = 0.5
+FORCE = 30.5
 
 
 def add_mesh(plotter, vtk_mesh, rank_material):
@@ -17,7 +18,6 @@ def add_mesh(plotter, vtk_mesh, rank_material):
     Took it out of the Main to create a separate timer class
     Adds the mesh in the .vtk format to the plotter
     """
-
     _visual_properties = rank_material.visual_properties
     plotter.add_mesh(
         vtk_mesh,
@@ -28,16 +28,17 @@ def add_mesh(plotter, vtk_mesh, rank_material):
         color=_visual_properties['color'],
         specular=_visual_properties['specular'],
         metallic=_visual_properties['metallic'],
-        roughness=_visual_properties['roughness']
+        roughness=_visual_properties['roughness'],
+        name='initial_mesh'
     )
     plotter.enable_lightkit()
 
 
 def update(u, plotter, mesh_boost, rank_material):
     # update the mesh
-    mesh_boost.update(u)
+    mesh_boost.update_vtk(u)
     plotter.clear()
-    add_mesh(plotter, mesh_boost.vtk_mesh, rank_material)
+    add_mesh(plotter, mesh_boost.current_vtk, rank_material)
     plotter.update()
 
 
@@ -58,12 +59,13 @@ class StressRelaxation:
     Generalized Maxwell model
     """
 
-    def __init__(self, plotter, fenics, u0, F0):
+    def __init__(self, plotter, fenics, u0, F0, vertex_ids):
 
         # Time step: how many milliseconds between each update
         self.dt = 10  # ms
         # Current time of the stress relaxation simulation
         self.t = 0
+        self.PRESS_TIME = 2 * 1000  # n seconds in ms
 
         self.plotter = plotter
         # The solver
@@ -72,14 +74,29 @@ class StressRelaxation:
         self.u0 = u0
         # The initial force applied to the body
         self.F0 = F0
+        # Where the mesh was pressed
+        self.vertex_ids = vertex_ids
 
-        self.timer = None
+        self.relaxation_timer = None
+        self.wait_timer = None
 
     def initiate(self):
-        self.timer = QTimer()
-        # Call the timer_loop function every dt ms
-        self.timer.timeout.connect(self.timer_loop)
-        self.timer.start(self.dt)  # period in ms
+        # Timer for relaxation process, but don't start yet
+        self.relaxation_timer = QTimer()
+        self.relaxation_timer.timeout.connect(self.timer_loop)
+
+        print("Start waiting process")
+        # Timer for initial 5 seconds wait
+        self.wait_timer = QTimer()
+        self.wait_timer.setSingleShot(True)  # Ensure the timer only triggers once
+        self.wait_timer.timeout.connect(self.start_relaxation)
+        self.wait_timer.start(self.PRESS_TIME)  # Wait for the given interval (simulate the press)
+
+    def start_relaxation(self):
+        print("Start relaxation process")
+        # This function will be called after the wait timer is finished
+        # Start the relaxation process here
+        self.relaxation_timer.start(self.dt)  # period of dt milliseconds
 
     def timer_loop(self):
         """
@@ -93,24 +110,22 @@ class StressRelaxation:
 
         # calculate the current force
         F = self.F0 * np.exp(-self.t / self.fenics.rank_material.time_constant)
-
         print("FORCE: ", F)
-        # calculate the displacement
-        u = self.fenics.apply_volume_force(F)
 
-        # calculate the relaxation
-        u_relaxation = u * (1 - np.exp(-self.t / self.fenics.rank_material.time_constant))
+        # calculate the displacement
+        u = self.fenics.apply_force(self.vertex_ids, F)
 
         # update
-        update(u_relaxation, self.plotter, self.fenics.mesh_boost, self.fenics.rank_material)
+        update(u, self.plotter, self.fenics.mesh_boost, self.fenics.rank_material)
 
         # advance the time variable
         self.t += self.dt
 
         # Disable the timer when the u is close to 0
-        if np.linalg.norm(u) < 1e-6:
-            self.timer.stop()
-            self.timer.deleteLater()
+        if F < 1e-2:
+            print("Stop relaxation process")
+            self.relaxation_timer.stop()
+            self.relaxation_timer.deleteLater()
 
 
 class Main:
@@ -134,7 +149,7 @@ class Main:
     def create_plot(self):
         # Creates a plotter object and sets all the initial settings
         self.plotter = pvqt.BackgroundPlotter()
-        add_mesh(self.plotter, self.mesh_boost.vtk_mesh, self.rank_material)
+        add_mesh(self.plotter, self.mesh_boost.current_vtk, self.rank_material)
 
         # Add the material name to the plotter
         text = self.rank_material.name
@@ -156,7 +171,6 @@ class Main:
 
         # Add the event on the press of the space bar
         self.plotter.add_key_event('space', self.apply_force)
-
         self.plotter.show()
 
     def apply_force(self, cell=None, F=FORCE):
@@ -166,6 +180,11 @@ class Main:
         if cell is not None:
             vertex_ids = self.mesh_boost.get_vertex_ids_from_coords(cell.points)
             print("Triggered cell force")
+
+            # If the list is empty
+            if len(vertex_ids) == 0:
+                print("No vertices found")
+                return
 
         else:
             vertex_ids = None
@@ -177,6 +196,10 @@ class Main:
         u = self.fenics.apply_force(vertex_ids, F)
         # Update plot and meshes
         update(u, self.plotter, self.mesh_boost, self.rank_material)
+
+        # Start the stress relaxation process
+        stress_relaxation = StressRelaxation(self.plotter, self.fenics, u0=u, F0=F, vertex_ids=vertex_ids)
+        stress_relaxation.initiate()
 
 
 app = QApplication(sys.argv)

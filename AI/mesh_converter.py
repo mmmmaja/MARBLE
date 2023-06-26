@@ -24,7 +24,9 @@ class MeshBoost:
             self.path = path
 
         self.meshio_mesh = self.create_mesh()
-        self.vtk_mesh = convert_to_vtk(self.path)
+
+        self.initial_vtk = convert_to_vtk(self.path)
+        self.current_vtk = self.initial_vtk.copy()
 
     @abstractmethod
     def create_mesh(self) -> None:
@@ -49,30 +51,26 @@ class MeshBoost:
         """
         Updates the mesh with the new displacement
         mesh in the .vtk format
-        FIXME now it overrides the mesh
+
+        :param u: displacement of the mesh
+        :return: copy of the mesh with updated displacements
         """
 
-        self.vtk_mesh.points += u
+        # Create a copy of the mesh
+        self.current_vtk = self.initial_vtk.copy()
+
+        # Apply displacement to the mesh points
+        self.current_vtk.points += u
 
         # Check for negative z values
         # If present assign zero
-        self.vtk_mesh.points[:, 2] = np.where(self.vtk_mesh.points[:, 2] < 0, 0, self.vtk_mesh.points[:, 2])
-
-    def update_meshio(self, u):
-        """
-        TODO
-        """
-        return
-
-    def update(self, u):
-        self.update_vtk(u)
-        self.update_meshio(u)
+        self.current_vtk.points[:, 2] = np.where(self.current_vtk.points[:, 2] < 0, 0, self.current_vtk.points[:, 2])
 
     def get_vertex_ids_from_coords(self, cell_coords):
         """
         Given a mesh and cell coordinates, find the matching vertex IDs in the mesh.
         """
-        mesh_points = self.vtk_mesh.points
+        mesh_points = self.current_vtk.points
         vertex_ids = []
 
         for cell_point in cell_coords:
