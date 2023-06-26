@@ -1,4 +1,9 @@
 from AI.mesh_helper import *
+from abc import abstractmethod
+import numpy as np
+import meshio
+import pyvista as pv
+from sfepy.discrete.fem import Mesh
 
 # Thickness of the mesh (Applies to the extruded meshes only)
 THICKNESS = 0.53
@@ -132,18 +137,15 @@ class GridMesh(MeshBoost):
                     0
                 ])
 
-        # Create fixed bottom part of the mesh
-        # Get the furthest point in the z-axis
-        Z = np.amin(np.array(bottom_vertices)[:, 2])
-
-        # Assign the same z-coordinate to all the bottom vertices
-        for v in bottom_vertices:
-            v[2] = Z
+        # Assign the same z-coordinate to all the bottom vertices (the smallest top z-coordinate)
+        Z = np.amin(np.array(top_vertices)[:, 2])
+        if Z < 0:
+            for v in top_vertices:
+                v[2] -= Z
 
         # Combine the top and bottom vertices
         vertices = np.concatenate([top_vertices, bottom_vertices], axis=0)
         n = len(vertices) // 2
-        print('n: ', n)
 
         # Create the cells (give the indices of vertices of each tetrahedron)
         cells = []

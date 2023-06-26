@@ -1,9 +1,4 @@
 import math
-from abc import abstractmethod
-import numpy as np
-import meshio
-import pyvista as pv
-from sfepy.discrete.fem import Mesh
 import pyvista
 
 
@@ -31,12 +26,14 @@ def display_mesh(mesh_path=PATH):
 
 
 def concave(i, j, width, height):
-    concavity_factor = 0.05
+    # Make the convexity dependent on the width and height of the mesh
+    # The bump is in the middle of the mesh
+    bump_factor = 0.05
     centre = [width / 2, height / 2]
     x = i - centre[0]
     y = j - centre[1]
-    z = -concavity_factor * (x ** 2 + y ** 2)
-    return abs(z)
+    z = - bump_factor * (x ** 2 + y ** 2)
+    return z
 
 
 def flat(i, j, width, height):
@@ -44,16 +41,20 @@ def flat(i, j, width, height):
 
 
 def convex(i, j, width, height):
-    concavity_factor = 0.05
+    # Make the convexity dependent on the width and height of the mesh
+    # The bump is in the middle of the mesh
+    bump_factor = 0.05
     centre = [width / 2, height / 2]
     x = i - centre[0]
     y = j - centre[1]
-    z = concavity_factor * (x ** 2 + y ** 2)
-    return abs(z)
+    z = bump_factor * (x ** 2 + y ** 2)
+    return z
 
 
 def wave(i, j, width, height):
-    wave_factor = 3.5
-    frequency = 0.2
-    z = wave_factor * math.sin(i * frequency) * math.sin(j * frequency)
-    return abs(z)
+    # Make the wave dependent on the width and height of the mesh
+    wave_factor = 5.4
+    x = i / width
+    y = j / height
+    z = wave_factor * math.sin(2 * math.pi * x) * math.sin(2 * math.pi * y)
+    return z

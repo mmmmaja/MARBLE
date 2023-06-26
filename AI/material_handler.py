@@ -149,3 +149,20 @@ polyurethane_foam = Rank_Material(
     }
 )
 # F(t) = F0 * exp(-t/tau)
+
+"""
+For later:
+Here are some typical values for the damping coefficient of various materials:
+
+Rubber: η = 1e5 - 1e8 Pa*s
+Polyurethane Foam: η = 1e5 - 1e8 Pa*s
+Steel: η = 1e3 - 1e6 Pa*s
+Silicon: η = 1e6 - 1e9 Pa*s
+
+τ = η / E
+Where:
+
+τ is the relaxation time,
+η is the viscoelastic damping coefficient (or viscosity in the SLS model),
+E is the elastic modulus (Young's modulus).
+"""
