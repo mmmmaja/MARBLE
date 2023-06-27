@@ -6,7 +6,7 @@ import pyvista as pv
 from sfepy.discrete.fem import Mesh
 
 # Thickness of the mesh (Applies to the extruded meshes only)
-THICKNESS = 0.53
+THICKNESS = 1.23
 
 
 def convert_to_vtk(path):
@@ -127,7 +127,7 @@ class GridMesh(MeshBoost):
                 top_vertices.append([
                     i * self.cell_distance,
                     j * self.cell_distance,
-                    self.z_function(i, j, self.width, self.height) + THICKNESS
+                    self.z_function(i, j, self.width, self.height)
                 ])
                 bottom_vertices.append([
                     i * self.cell_distance,
@@ -140,6 +140,9 @@ class GridMesh(MeshBoost):
         if Z < 0:
             for v in top_vertices:
                 v[2] -= Z
+        # add the thickness to the top vertices
+        for v in top_vertices:
+            v[2] += THICKNESS
 
         # Combine the top and bottom vertices
         vertices = np.concatenate([top_vertices, bottom_vertices], axis=0)

@@ -19,7 +19,7 @@ def add_mesh(plotter, vtk_mesh, rank_material):
     Adds the mesh in the .vtk format to the plotter
     """
     _visual_properties = rank_material.visual_properties
-    plotter.add_mesh(
+    actor = plotter.add_mesh(
         vtk_mesh,
         show_edges=True,
         smooth_shading=True,
@@ -29,7 +29,7 @@ def add_mesh(plotter, vtk_mesh, rank_material):
         specular=_visual_properties['specular'],
         metallic=_visual_properties['metallic'],
         roughness=_visual_properties['roughness'],
-        name='initial_mesh'
+        name='my_mesh'
     )
     plotter.enable_lightkit()
 
@@ -85,18 +85,20 @@ class StressRelaxation:
         self.relaxation_timer = QTimer()
         self.relaxation_timer.timeout.connect(self.timer_loop)
 
-        print("Start waiting process")
-        # Timer for initial 5 seconds wait
+        # Start the waiting process
+        # Timer for initial n seconds wait
         self.wait_timer = QTimer()
         self.wait_timer.setSingleShot(True)  # Ensure the timer only triggers once
         self.wait_timer.timeout.connect(self.start_relaxation)
         self.wait_timer.start(self.PRESS_TIME)  # Wait for the given interval (simulate the press)
 
     def start_relaxation(self):
-        print("Start relaxation process")
         # This function will be called after the wait timer is finished
         # Start the relaxation process here
         self.relaxation_timer.start(self.dt)  # period of dt milliseconds
+
+    def calculate_force(self):
+        return self.F0 * np.exp(-self.t / self.fenics.rank_material.time_constant)
 
     def timer_loop(self):
         """
@@ -108,9 +110,9 @@ class StressRelaxation:
         :return:
         """
 
-        # calculate the current force
-        F = self.F0 * np.exp(-self.t / self.fenics.rank_material.time_constant)
-        print("FORCE: ", F)
+        # calculate the force
+        F = self.calculate_force()
+        print("F: ", F)
 
         # calculate the displacement
         u = self.fenics.apply_force(self.vertex_ids, F)
@@ -136,6 +138,7 @@ class Main:
         self.rank_material = fenics.rank_material
 
         self.plotter = None
+        self.mesh_actor = None
 
         self.create_plot()
 
@@ -171,6 +174,7 @@ class Main:
 
         # Add the event on the press of the space bar
         self.plotter.add_key_event('space', self.apply_force)
+
         self.plotter.show()
 
     def apply_force(self, cell=None, F=FORCE):
@@ -183,7 +187,6 @@ class Main:
 
             # If the list is empty
             if len(vertex_ids) == 0:
-                print("No vertices found")
                 return
 
         else:
@@ -198,12 +201,14 @@ class Main:
         update(u, self.plotter, self.mesh_boost, self.rank_material)
 
         # Start the stress relaxation process
-        stress_relaxation = StressRelaxation(self.plotter, self.fenics, u0=u, F0=F, vertex_ids=vertex_ids)
+        stress_relaxation = StressRelaxation(
+            self.plotter, self.fenics, u0=u, F0=F, vertex_ids=vertex_ids
+        )
         stress_relaxation.initiate()
 
 
 app = QApplication(sys.argv)
-_mesh_boost = GridMesh(30, 30, z_function=concave)
-_fenics = FENICS(_mesh_boost, rubber)
+_mesh_boost = GridMesh(30, 30, z_function=wave)
+_fenics = FENICS(_mesh_boost, silicon)
 Main(_fenics)
 app.exec_()

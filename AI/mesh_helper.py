@@ -52,9 +52,10 @@ def convex(i, j, width, height):
 
 
 def wave(i, j, width, height):
-    # Make the wave dependent on the width and height of the mesh
-    wave_factor = 5.4
-    x = i / width
-    y = j / height
-    z = wave_factor * math.sin(2 * math.pi * x) * math.sin(2 * math.pi * y)
+    # Make the wave independent on the width and height of the mesh
+    bump_factor = 0.55
+    x = i
+    y = j
+    z = bump_factor * math.sin(x) * math.sin(y)
     return z
+
