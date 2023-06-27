@@ -1,12 +1,13 @@
+import numpy as np
 import pyvista as pv
+
 
 class Sphere:
 
     def __init__(self, radius):
         self.radius = radius
-        self.position = [0, 0, 0]
+        self.position = np.zeros(3)
 
-    def create_visualization(self):
+    def get_visualization(self):
         sphere = pv.Sphere(radius=self.radius, center=self.position)
-        sphere = sphere.extract_geometry()
         return sphere
