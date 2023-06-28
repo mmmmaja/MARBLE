@@ -1,24 +1,60 @@
+import sys
+
 import vtk
+from pyvista import Cell
 
 from AI.gui import GUIHandler
 from PyQt5.QtWidgets import QApplication
 from AI.fenics import *
 from AI.mesh_converter import *
 from AI.material_handler import *
-from AI.stress_relaxation import StressRelaxation
 from AI.simulis import *
-from PyQt5.QtCore import QObject, pyqtSignal
+from AI.stress_relaxation import StressRelaxation
+
+FORCE = 2.5
+
+
+def apply_force(fenics, gui, cell_coords=None, F=FORCE, relaxation=False):
+    """
+    Function that applies a vertex specific force or volume (stable) force across the whole mesh
+    """
+    if cell_coords is not None:
+        vertex_ids = fenics.mesh_boost.get_vertex_ids_from_coords(cell_coords)
+        print("Triggered cell force")
+        # If the list is empty
+        if len(vertex_ids) == 0:
+            return
+    else:
+        vertex_ids = None
+        print("Triggered volume force")
+
+    # Immediately apply the force to the body (might change it later and push it to the loop)
+    print("FORCE applied: ", F)
+    # Calculate the displacement
+    u = fenics.apply_force(vertex_ids, F)
+    # Update plot and meshes
+    fenics.mesh_boost.update_vtk(u)
+    gui.draw_mesh()
+
+    if relaxation:
+        # Start the stress relaxation process
+        stress_relaxation = StressRelaxation(
+            gui, fenics, u0=u, F0=F, vertex_ids=vertex_ids
+        )
+        stress_relaxation.initiate()
 
 
 class NoRotateStyle(vtk.vtkInteractorStyleTrackballCamera):
 
-    def __init__(self, parent=None, gui=None, *args, **kwargs):
+    def __init__(self, parent=None, gui=None, fenics=None, *args, **kwargs):
         self.gui = gui
+        self.fenics = fenics
+
         self.mouse_pressed = False
 
+        # Create a cell picker for the mesh
         self.picker = vtk.vtkCellPicker()
         self.picker.AddPickList(self.gui.mesh_actor)
-        print("Picker added")
 
         self.AddObserver("LeftButtonPressEvent", self.left_button_press_event)
         self.AddObserver("MiddleButtonPressEvent", self.middle_button_press_event)
@@ -57,12 +93,19 @@ class NoRotateStyle(vtk.vtkInteractorStyleTrackballCamera):
         cell_id = self.picker.GetCellId()
         if cell_id != -1:
             print(f"Cell {cell_id} picked.")
-            # TODO apply force to cell
-            # Here you can activate your cell
 
+            # It will return the ids of the 8 points that make up the hexahedron
+            cell_points_ids = self.picker.GetActor().GetMapper().GetInput().GetCell(cell_id).GetPointIds()
 
+            # The points list will contain the coordinates of the points that belong to the cell
+            points = []
+            for i in range(cell_points_ids.GetNumberOfIds()):
+                point_id = cell_points_ids.GetId(i)
+                points.append(self.picker.GetActor().GetMapper().GetInput().GetPoint(point_id))
 
-FORCE = 2.5
+            # Remove the bottom layer of points (Points with z coordinate == 0)
+            points = [point for point in points if point[2] != 0]
+            apply_force(self.fenics, self.gui, points)
 
 
 class Main:
@@ -76,9 +119,9 @@ class Main:
     def create_GUI(self):
         gui = GUIHandler(self.fenics.mesh_boost, self.fenics.rank_material, self.stimuli)
         # Add the interactive events
-        gui.plotter.add_key_event('space', self.apply_force)
+        gui.plotter.add_key_event('space', lambda: apply_force(self.fenics, gui))
         gui.plotter.enable_cell_picking(
-            callback=self.apply_force,
+            callback=lambda cell: apply_force(self.fenics, gui, cell_coords=cell.points),
             point_size=30, line_width=5, font_size=10,
             style='wireframe', color='white', through=False
         )
@@ -86,34 +129,6 @@ class Main:
         gui.plotter.add_key_event('m', self.toggle_interactive)
         gui.plotter.show()
         return gui
-
-    def apply_force(self, cell=None, F=FORCE):
-        """
-        Function that applies a vertex specific force or volume (stable) force across the whole mesh
-        """
-        if cell is not None:
-            vertex_ids = self.fenics.mesh_boost.get_vertex_ids_from_coords(cell.points)
-            print("Triggered cell force")
-            # If the list is empty
-            if len(vertex_ids) == 0:
-                return
-        else:
-            vertex_ids = None
-            print("Triggered volume force")
-
-        # Immediately apply the force to the body (might change it later and push it to the loop)
-        print("FORCE applied: ", F)
-        # Calculate the displacement
-        u = self.fenics.apply_force(vertex_ids, F)
-        # Update plot and meshes
-        self.fenics.mesh_boost.update_vtk(u)
-        self.gui.draw_mesh()
-
-        # # Start the stress relaxation process
-        # stress_relaxation = StressRelaxation(
-        #     self.gui, self.fenics, u0=u, F0=F, vertex_ids=vertex_ids
-        # )
-        # stress_relaxation.initiate()
 
     def toggle_interactive(self):
         print("Interactive mode toggled")
@@ -124,7 +139,8 @@ class Main:
         else:
             self.gui.update_mode_text("Activation")
             self.gui.plotter.interactor.SetInteractorStyle(NoRotateStyle(
-                gui=self.gui
+                gui=self.gui,
+                fenics=self.fenics,
             ))
 
 
