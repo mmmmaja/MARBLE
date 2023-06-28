@@ -19,7 +19,7 @@ class FENICS:
         self.rank_material = rank_material
 
         # The domain of the mesh (allows defining regions or subdomains)
-        self.DOMAIN = FEDomain(name='domain', mesh=self.mesh_boost.meshio_mesh)
+        self.DOMAIN = FEDomain(name='domain', mesh=self.mesh_boost.sfepy_mesh)
 
     def apply_force(self, vertex_ids, F=0.55):
         """
@@ -38,7 +38,11 @@ class FENICS:
             # Create a region with the vertices of the cell
             print(vertex_ids)
             expr = 'vertex ' + ', '.join([str(ID) for ID in vertex_ids])
-            region = self.DOMAIN.create_region(name='region', select=expr, kind='facet')
+            try:
+                region = self.DOMAIN.create_region(name='region', select=expr, kind='facet')
+            except ValueError:
+                # Return 0 displacement if the region is empty
+                return np.zeros((len(vertex_ids), 3))
 
         # Create a material that will be the force applied to the body
         force = Material(name='f', val=F)

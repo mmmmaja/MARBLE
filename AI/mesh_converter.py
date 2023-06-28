@@ -1,9 +1,12 @@
+import sfepy
+
 from AI.mesh_helper import *
 from abc import abstractmethod
 import numpy as np
 import meshio
 import pyvista as pv
 from sfepy.discrete.fem import Mesh
+from copy import deepcopy
 
 # Thickness of the mesh (Applies to the extruded meshes only)
 THICKNESS = 0.53
@@ -23,7 +26,7 @@ class MeshBoost:
         else:
             self.path = path
 
-        self.meshio_mesh = self.create_mesh()
+        self.sfepy_mesh = self.create_mesh()
 
         self.initial_vtk = convert_to_vtk(self.path)
         self.current_vtk = self.initial_vtk.copy()
@@ -47,24 +50,51 @@ class MeshBoost:
         top = domain.create_region('top', 'vertices in y > %.10f' % (min_y - eps_y), 'facet')
         return top, bottom
 
-    def update_vtk(self, u):
+    def update_sfepy_mesh(self, u):
         """
-        Updates the mesh with the new displacement
-        mesh in the .vtk format
+        Updates the Sfepy mesh with the new displacement
 
         :param u: displacement of the mesh
-        :return: copy of the mesh with updated displacements
+        :return: None
         """
 
-        # Create a copy of the mesh
-        self.current_vtk = self.initial_vtk.copy()
+        # Compute the new coordinates
+        new_coords = self.sfepy_mesh.coors + u
 
-        # Apply displacement to the mesh points
+        # Check for negative z values
+        # If present assign zero
+        new_coords[:, 2] = np.where(new_coords[:, 2] < 0, 0, new_coords[:, 2])
+
+        # Create a new mesh with updated coordinates
+        # Create a new mesh with updated coordinates
+        # Create a new mesh with updated coordinates
+        cons = self.sfepy_mesh.create_conn_graph()
+        descs = '3_4'
+
+        # self.sfepy_mesh = Mesh.from_data(
+        #     name, coors=new_coords, ngroups, conns, mat_ids, descs)
+
+    def override_mesh(self, u):
+        # 1) Override the vtk version of the mesh
+        # Copy the initial mesh
+        self.current_vtk.points = self.initial_vtk.points.copy() + u
+        # Check for negative z values
+        # If present assign zero
+        self.current_vtk.points[:, 2] = np.where(self.current_vtk.points[:, 2] < 0, 0, self.current_vtk.points[:, 2])
+
+    def update_mesh(self, u):
+        # 1) Update the vtk version of the mesh
+        # Add displacement to the mesh points
         self.current_vtk.points += u
 
         # Check for negative z values
         # If present assign zero
         self.current_vtk.points[:, 2] = np.where(self.current_vtk.points[:, 2] < 0, 0, self.current_vtk.points[:, 2])
+
+        # 2) Update the sfepy version of the mesh
+        # Save this mesh as a .vtk file
+        self.current_vtk.save(PATH)
+        self.sfepy_mesh = Mesh.from_file(PATH)
 
     def get_vertex_ids_from_coords(self, cell_coords):
         """
@@ -180,7 +210,7 @@ class GridMesh(MeshBoost):
 
         # vertices = np.concatenate([top_vertices, bottom_vertices], axis=0)
         # Get the number of vertices
-        n = self.meshio_mesh.n_nod // 2
+        n = self.sfepy_mesh.n_nod // 2
 
         # Create a top region (Where the displacements happen)
         top_range = range(n)

@@ -7,7 +7,7 @@ from AI.mesh_converter import *
 from AI.material_handler import *
 from AI.stress_script import StressRelaxation
 
-FORCE = 2.5
+FORCE = 1.07
 
 # I need to hold the reference to the timer class and destroy it
 # when the simulation of the relaxation process is over
@@ -113,8 +113,11 @@ def apply_force(fenics, gui, cell_coords=None, F=FORCE, relaxation=True):
     print("FORCE applied: ", F)
     # Calculate the displacement
     u = fenics.apply_force(vertex_ids, F)
-    # Update plot and meshes
-    gui.update(u, fenics.mesh_boost)
+
+    # UPDATE plot and meshes
+    fenics.mesh_boost.update_mesh(u)
+    gui.draw_mesh(fenics.mesh_boost.current_vtk)
+    gui.plotter.update()
 
     if relaxation:
         # Start the stress relaxation process
@@ -144,7 +147,7 @@ class Main:
     def add_interactive_events(self):
         # Enable cell picking
         self.gui.plotter.enable_cell_picking(
-            callback=lambda cell_id: apply_force(self.fenics, self.gui, cell_id.points),
+            callback=lambda cell_id: apply_force(self.fenics, self.gui, cell_id.points, relaxation=True),
             font_size=10,
             color='white',
             point_size=30,
@@ -155,7 +158,7 @@ class Main:
 
         # Add the event on the press of the space bar, apply the force
         self.gui.plotter.add_key_event(
-            'space', lambda: apply_force(self.fenics, self.gui)
+            'space', lambda: apply_force(self.fenics, self.gui, relaxation=True)
         )
 
         # If the enter button is pressed, the interactive mode is toggled

@@ -87,8 +87,11 @@ class StressRelaxation:
         # calculate the displacement
         u = self.fenics.apply_force(self.vertex_ids, F)
 
-        # update
-        self.gui.update(u, self.fenics.mesh_boost)
+        # OVERRIDE the GUI
+        self.fenics.mesh_boost.override_mesh(u)
+        self.gui.draw_mesh(self.fenics.mesh_boost.current_vtk)
+        self.gui.plotter.update()
+
         QApplication.processEvents()
 
         # advance the time variable

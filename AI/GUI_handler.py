@@ -68,9 +68,3 @@ class GUI:
         self.mode_text_actor = self.plotter.add_text(
             text, position='upper_right', font_size=8, color='white', shadow=True
         )
-
-    def update(self, u, mesh_boost):
-        # update the mesh
-        mesh_boost.update_vtk(u)
-        self.draw_mesh(mesh_boost.current_vtk)
-        self.plotter.update()
