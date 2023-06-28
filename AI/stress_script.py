@@ -2,6 +2,8 @@ from PyQt5.QtWidgets import QApplication
 from AI.mesh_converter import *
 from PyQt5.QtCore import QTimer
 
+FORCE_LIMIT = 1e-2
+
 
 class StressRelaxation:
     """
@@ -18,6 +20,8 @@ class StressRelaxation:
 
     If doesn't work try:
     Generalized Maxwell model
+
+    TODO try the simple visualization of the stress relaxation process not involving fenics class
     """
 
     def __init__(self, gui, fenics, u0, F0, vertex_ids):
@@ -47,7 +51,7 @@ class StressRelaxation:
         self.relaxation_timer.timeout.connect(self.timer_loop)
 
         print("Start waiting process")
-        # Timer for initial 5 seconds wait
+        # Timer for initial n seconds wait
         self.wait_timer = QTimer()
         self.wait_timer.setSingleShot(True)  # Ensure the timer only triggers once
         self.wait_timer.timeout.connect(self.start_relaxation)
@@ -59,18 +63,25 @@ class StressRelaxation:
         # Start the relaxation process here
         self.relaxation_timer.start(self.dt)  # period of dt milliseconds
 
-    def timer_loop(self):
+    def get_force(self):
         """
         Stress relaxation behavior is described by the equation:
         u(t) = u0 * (1 - exp(-t/τ))
             u0 is the maximum displacement,
             t is the current time of the simulation,
             τ is the relaxation time of the material.
-        :return:
+        :return: the current force dependant of the time t of the simulation
+        """
+        return self.F0 * np.exp(-self.t / self.fenics.rank_material.time_constant)
+
+    def timer_loop(self):
+        """
+        This function is called every dt milliseconds
+        Updates the displacement of the mesh and the GUI
         """
 
         # calculate the current force
-        F = self.F0 * np.exp(-self.t / self.fenics.rank_material.time_constant)
+        F = self.get_force()
         print("FORCE: ", F)
 
         # calculate the displacement
@@ -84,18 +95,22 @@ class StressRelaxation:
         self.t += self.dt
 
         # Disable the timer when the u is close to 0
-        if F < 1e-2:
+        if F < FORCE_LIMIT:
             print("Stop relaxation process")
             self.relaxation_timer.stop()
-            # self.relaxation_timer.deleteLater()
 
     def stop(self):
+        """
+        Stop the relaxation process and delete the timers
+        Otherwise the timers will keep running in the background and display will keep freezing
+        """
         if self.relaxation_timer is not None:
             if self.relaxation_timer.isActive():
                 print("Stop relaxation process")
                 self.relaxation_timer.stop()
                 self.relaxation_timer.deleteLater()
                 self.relaxation_timer = None
+
         if self.wait_timer is not None:
             if self.wait_timer.isActive():
                 self.wait_timer.stop()

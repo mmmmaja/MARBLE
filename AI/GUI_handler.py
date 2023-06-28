@@ -5,23 +5,27 @@ class GUI:
 
     def __init__(self, mesh_material, vtk_mesh):
 
+        # Rank material for rendering the mesh
         self.mesh_material = mesh_material
 
+        # Define the plotter (pyvistaqt)
         self.plotter = pvqt.BackgroundPlotter()
 
-        # Define all the actors
+        # Define all the actors present in the scene
         self.mesh_actor = None
         self.material_text_actor = None
         self.mode_text_actor = None
 
+        # Add all the actors to the scene
         self.draw_mesh(vtk_mesh)
         self.add_material_text()
         self.add_mode_text('Interactive')
+
+        # Update the plotter and show it
         self.plotter.update()
         self.plotter.show()
 
     def add_material_text(self):
-
         # Add the material name to the plotter
         text = self.mesh_material.name
         text += '\nE: ' + str(self.mesh_material.young_modulus)
