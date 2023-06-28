@@ -104,7 +104,7 @@ class GridMesh(MeshBoost):
         :param width: dimension of the grid
         :param height: dimension of the grid
         :param z_function: function that defines the height of the grid
-        :param cell_distance: distance between each cells in a grid
+        :param cell_distance: distance between each cell in a grid
 
         TODO add sensors later
         """
@@ -140,6 +140,9 @@ class GridMesh(MeshBoost):
         if Z < 0:
             for v in top_vertices:
                 v[2] -= Z
+        # add the thickness to the top vertices
+        for v in top_vertices:
+            v[2] += THICKNESS
 
         # Combine the top and bottom vertices
         vertices = np.concatenate([top_vertices, bottom_vertices], axis=0)

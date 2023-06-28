@@ -6,7 +6,37 @@ from AI.mesh_converter import *
 from AI.material_handler import *
 from PyQt5.QtCore import QObject, QTimer
 
-FORCE = 30.5
+FORCE = 2.5
+
+
+def apply_force(fenics, plotter, cell=None, F=FORCE, relaxation=True):
+    """
+    Function that applies a vertex specific force or volume (stable) force across the whole mesh
+    """
+    if cell is not None:
+        vertex_ids = fenics.mesh_boost.get_vertex_ids_from_coords(cell.points)
+        print("Triggered cell force")
+
+        # If the list is empty
+        if len(vertex_ids) == 0:
+            print("No vertices found")
+            return
+
+    else:
+        vertex_ids = None
+        print("Triggered volume force")
+
+    # Immediately apply the force to the body (might change it later and push it to the loop)
+    print("FORCE applied: ", F)
+    # Calculate the displacement
+    u = fenics.apply_force(vertex_ids, F)
+    # Update plot and meshes
+    update(u, plotter, fenics.mesh_boost, fenics.rank_material)
+
+    if relaxation:
+        # Start the stress relaxation process
+        stress_relaxation = StressRelaxation(plotter, fenics, u0=u, F0=F, vertex_ids=vertex_ids)
+        stress_relaxation.initiate()
 
 
 def add_mesh(plotter, vtk_mesh, rank_material):
@@ -60,9 +90,9 @@ class StressRelaxation:
     """
 
     def __init__(self, plotter, fenics, u0, F0, vertex_ids):
-
         # Time step: how many milliseconds between each update
-        self.dt = 10  # ms
+        # When having 40 ms program is not freezing, all smaller values freeze the program
+        self.dt = 40  # ms
         # Current time of the stress relaxation simulation
         self.t = 0
         self.PRESS_TIME = 2 * 1000  # n seconds in ms
@@ -117,6 +147,7 @@ class StressRelaxation:
 
         # update
         update(u, self.plotter, self.fenics.mesh_boost, self.fenics.rank_material)
+        QApplication.processEvents()
 
         # advance the time variable
         self.t += self.dt
@@ -144,7 +175,6 @@ class Main:
         Documentation:
         https://doc.qt.io/qtforpython-5/PySide2/QtCore/QTimer.html
         """
-        self.timer = None
 
     def create_plot(self):
         # Creates a plotter object and sets all the initial settings
@@ -160,7 +190,7 @@ class Main:
 
         # Enable cell picking
         self.plotter.enable_cell_picking(
-            callback=self.apply_force,
+            callback=lambda cell_id: apply_force(self.fenics, self.plotter, cell_id),
             font_size=10,
             color='white',
             point_size=30,
@@ -169,37 +199,9 @@ class Main:
             through=False
         )
 
-        # Add the event on the press of the space bar
-        self.plotter.add_key_event('space', self.apply_force)
+        # Add the event on the press of the space bar, apply the force
+        self.plotter.add_key_event('space', lambda: apply_force(self.fenics, self.plotter))
         self.plotter.show()
-
-    def apply_force(self, cell=None, F=FORCE):
-        """
-        Function that applies a vertex specific force or volume (stable) force across the whole mesh
-        """
-        if cell is not None:
-            vertex_ids = self.mesh_boost.get_vertex_ids_from_coords(cell.points)
-            print("Triggered cell force")
-
-            # If the list is empty
-            if len(vertex_ids) == 0:
-                print("No vertices found")
-                return
-
-        else:
-            vertex_ids = None
-            print("Triggered volume force")
-
-        # Immediately apply the force to the body (might change it later and push it to the loop)
-        print("FORCE applied: ", F)
-        # Calculate the displacement
-        u = self.fenics.apply_force(vertex_ids, F)
-        # Update plot and meshes
-        update(u, self.plotter, self.mesh_boost, self.rank_material)
-
-        # Start the stress relaxation process
-        stress_relaxation = StressRelaxation(self.plotter, self.fenics, u0=u, F0=F, vertex_ids=vertex_ids)
-        stress_relaxation.initiate()
 
 
 app = QApplication(sys.argv)
