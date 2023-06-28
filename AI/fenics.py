@@ -1,12 +1,7 @@
 from __future__ import absolute_import
-import sys
 from sfepy.base.base import IndexedStruct
-from sfepy.solvers.ts_solvers import TimeSteppingSolver
-from AI.material_handler import *
-from fea_.advanced_mesh_2 import *
-import numpy as np
-from sfepy.discrete import (FieldVariable, Integral, Function, Equation, Equations, Problem, Material, Region)
-from sfepy.discrete.fem import Mesh, FEDomain, Field
+from sfepy.discrete import (FieldVariable, Integral, Equation, Equations, Problem, Material)
+from sfepy.discrete.fem import FEDomain, Field
 from sfepy.terms import Term
 from sfepy.discrete.conditions import Conditions, EssentialBC
 from sfepy.solvers.ls import ScipyDirect

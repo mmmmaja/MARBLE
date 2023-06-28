@@ -1,10 +1,6 @@
 import igl
-import sys
 import numpy as np
 from matplotlib import pyplot as plt
-from fea_ import advanced_mesh_2, stimuli_2
-from fea_.advanced_mesh_2 import *
-from fea_.stimuli_2 import *
 
 
 # https://libigl.github.io/libigl-python-bindings/tut-chapter4/

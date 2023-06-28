@@ -1,11 +1,5 @@
-import sys
-import numpy as np
 import pygame
 from pygame.locals import *
-from OpenGL.GL import *
-from OpenGL.GLUT import *
-from OpenGL.GLU import *
-from fea_ import fea_main
 from fea_main import FEA, Material
 from advanced_mesh_2 import *
 from stimuli_2 import *

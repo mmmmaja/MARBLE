@@ -1,6 +1,5 @@
 import math
 import random
-from fea_.basic_mesh_2 import *
 from _csv import reader
 
 

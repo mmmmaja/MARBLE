@@ -1,7 +1,7 @@
 import sys
 import numpy as np
 from scipy.sparse import coo_matrix
-from fea_.components import Triangle
+from trsh.fea_.components import Triangle
 from scipy.sparse.linalg import spsolve
 from AI.ai import pressure_image
 
