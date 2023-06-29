@@ -11,15 +11,21 @@ class GUI:
         # Define the plotter (pyvistaqt)
         self.plotter = pvqt.BackgroundPlotter()
 
+        self.FORCE = 0.5
+
         # Define all the actors present in the scene
         self.mesh_actor = None
         self.material_text_actor = None
         self.mode_text_actor = None
+        self.force_indicator_actor = None
 
         # Add all the actors to the scene
         self.draw_mesh(vtk_mesh)
         self.add_material_text()
         self.add_mode_text('Interactive')
+
+        self.add_force_events()
+        self.add_force_indicator()
 
         # Update the plotter and show it
         self.plotter.update()
@@ -67,3 +73,35 @@ class GUI:
         self.mode_text_actor = self.plotter.add_text(
             text, position='upper_right', font_size=8, color='white', shadow=True
         )
+
+    def add_force_indicator(self):
+        if self.force_indicator_actor is not None:
+            self.plotter.remove_actor(self.force_indicator_actor)
+
+        text = f'Force: {self.FORCE} N'
+        self.force_indicator_actor = self.plotter.add_text(
+            text, position='lower_right', font_size=8, color='white', shadow=True
+        )
+
+    def increase_force(self):
+        self.FORCE = round(min(self.FORCE + 0.1, 20), 2)
+        self.add_force_indicator()
+
+    def decrease_force(self):
+        self.FORCE = round(max(self.FORCE - 0.1, 0), 2)
+        self.add_force_indicator()
+
+    def add_force_events(self):
+
+        # Add key event on the right arrow press
+        self.plotter.add_key_event('Right', self.increase_force)
+
+        # Add key event on the left arrow press
+        self.plotter.add_key_event('Left', self.decrease_force)
+
+    def on_mouse_scroll(self, *args):
+        # Detect scroll direction and change the force accordingly.
+        if args[0].GetEventPosition()[1] > args[1]:
+            self.increase_force()
+        else:
+            self.decrease_force()

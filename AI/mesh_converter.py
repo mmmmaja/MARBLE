@@ -9,7 +9,7 @@ from sfepy.discrete.fem import Mesh
 from copy import deepcopy
 
 # Thickness of the mesh (Applies to the extruded meshes only)
-THICKNESS = 0.53
+THICKNESS = 1.53
 
 
 def convert_to_vtk(path):
@@ -49,30 +49,6 @@ class MeshBoost:
         bottom = domain.create_region('bottom', 'vertices in y < %.10f' % (min_y + eps_y), 'facet')
         top = domain.create_region('top', 'vertices in y > %.10f' % (min_y - eps_y), 'facet')
         return top, bottom
-
-    def update_sfepy_mesh(self, u):
-        """
-        Updates the Sfepy mesh with the new displacement
-
-        :param u: displacement of the mesh
-        :return: None
-        """
-
-        # Compute the new coordinates
-        new_coords = self.sfepy_mesh.coors + u
-
-        # Check for negative z values
-        # If present assign zero
-        new_coords[:, 2] = np.where(new_coords[:, 2] < 0, 0, new_coords[:, 2])
-
-        # Create a new mesh with updated coordinates
-        # Create a new mesh with updated coordinates
-        # Create a new mesh with updated coordinates
-        cons = self.sfepy_mesh.create_conn_graph()
-        descs = '3_4'
-
-        # self.sfepy_mesh = Mesh.from_data(
-        #     name, coors=new_coords, ngroups, conns, mat_ids, descs)
 
     def override_mesh(self, u):
         # 1) Override the vtk version of the mesh

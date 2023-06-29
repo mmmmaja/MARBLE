@@ -10,10 +10,6 @@ import sys
 
 TERMINAL_OUTPUT = True
 
-# Global force applied to the mesh at each interactive case
-# TODO adjust force based on the mouse wheel
-FORCE = 0.27
-
 # I need to hold the reference to the timer class and destroy it
 # when the simulation of the relaxation process is over
 stress_relaxation_ref = None
@@ -95,7 +91,7 @@ class NoRotateStyle(vtk.vtkInteractorStyleTrackballCamera):
             apply_force(self.fenics, self.gui, points, relaxation=False)
 
 
-def apply_force(fenics, gui, cell_coords=None, F=FORCE, relaxation=True):
+def apply_force(fenics, gui, cell_coords=None, relaxation=True):
     """
     Function that applies a vertex specific force or volume (stable) force across the whole mesh
     """
@@ -115,12 +111,13 @@ def apply_force(fenics, gui, cell_coords=None, F=FORCE, relaxation=True):
         print("Triggered volume force")
 
     # Immediately apply the force to the body (might change it later and push it to the loop)
-    print("FORCE applied: ", F)
+    print("FORCE applied: ", gui.FORCE)
     # Calculate the displacement
-    u = fenics.apply_force(vertex_ids, F)
+    u = fenics.apply_force(vertex_ids, gui.FORCE)
 
     # UPDATE plot and meshes
     fenics.mesh_boost.update_mesh(u)
+
     gui.draw_mesh(fenics.mesh_boost.current_vtk)
     gui.plotter.update()
 
@@ -130,7 +127,7 @@ def apply_force(fenics, gui, cell_coords=None, F=FORCE, relaxation=True):
         if stress_relaxation_ref is not None:
             stress_relaxation_ref.stop()
         stress_relaxation_ref = StressRelaxation(
-            gui, fenics, u0=u, F0=F, vertex_ids=vertex_ids
+            gui, fenics, u0=u, F0=gui.FORCE, vertex_ids=vertex_ids
         )
         stress_relaxation_ref.initiate()
 
@@ -188,7 +185,7 @@ if not TERMINAL_OUTPUT:
     sys.stdout = text_trap
 
 app = QApplication(sys.argv)
-_mesh_boost = GridMesh(30, 30, z_function=concave)
+_mesh_boost = GridMesh(50, 50, z_function=wave)
 _fenics = FENICS(_mesh_boost, rubber)
 Main(_fenics)
 app.exec_()
@@ -196,7 +193,5 @@ app.exec_()
 
 # less resolution
 # interpolation
-# mouse for force
-# adjust stress relaxation
 # Generate recording
-# ADD FORCE SLIDER
+# Do not remove the actor but update it
