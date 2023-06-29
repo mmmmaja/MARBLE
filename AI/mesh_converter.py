@@ -85,6 +85,7 @@ class MeshBoost:
     def update_mesh(self, u):
         # 1) Update the vtk version of the mesh
         # Add displacement to the mesh points
+        print('vtk: ', self.current_vtk.points.shape, 'u: ', u.shape)
         self.current_vtk.points += u
 
         # Check for negative z values
@@ -93,8 +94,13 @@ class MeshBoost:
 
         # 2) Update the sfepy version of the mesh
         # Save this mesh as a .vtk file
-        self.current_vtk.save(PATH)
-        self.sfepy_mesh = Mesh.from_file(PATH)
+        """
+        FIXME
+            raise RuntimeError('elements cannot be oriented! (%s)' % key)
+        RuntimeError: elements cannot be oriented! (3_8)
+        """
+        # self.current_vtk.save(PATH)
+        # self.sfepy_mesh = Mesh.from_file(PATH)
 
     def get_vertex_ids_from_coords(self, cell_coords):
         """

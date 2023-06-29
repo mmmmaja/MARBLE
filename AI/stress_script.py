@@ -27,7 +27,7 @@ class StressRelaxation:
     def __init__(self, gui, fenics, u0, F0, vertex_ids):
         # Time step: how many milliseconds between each update
         # When having 40 ms program is not freezing, all smaller values freeze the program
-        self.dt = 40  # ms
+        self.dt = 20  # ms
         # Current time of the stress relaxation simulation
         self.t = 0
         self.PRESS_TIME = 4 * 1000  # n seconds in ms

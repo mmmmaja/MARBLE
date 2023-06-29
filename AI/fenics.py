@@ -1,4 +1,7 @@
 from __future__ import absolute_import
+
+import sys
+
 from sfepy.base.base import IndexedStruct
 from sfepy.discrete import (FieldVariable, Integral, Equation, Equations, Problem, Material)
 from sfepy.discrete.fem import FEDomain, Field
@@ -18,8 +21,7 @@ class FENICS:
         # Material with physical properties
         self.rank_material = rank_material
 
-        # The domain of the mesh (allows defining regions or subdomains)
-        self.DOMAIN = FEDomain(name='domain', mesh=self.mesh_boost.sfepy_mesh)
+        self.DOMAIN = None
 
     def apply_force(self, vertex_ids, F=0.55):
         """
@@ -29,6 +31,9 @@ class FENICS:
         :param F: force value in N
         :return: displacement u of the mesh for each vertex in x, y, z direction
         """
+
+        # The domain of the mesh (allows defining regions or subdomains)
+        self.DOMAIN = FEDomain(name='domain', mesh=self.mesh_boost.sfepy_mesh)
 
         if vertex_ids is None:
             top, bottom = self.mesh_boost.get_regions(self.DOMAIN)
@@ -42,7 +47,8 @@ class FENICS:
                 region = self.DOMAIN.create_region(name='region', select=expr, kind='facet')
             except ValueError:
                 # Return 0 displacement if the region is empty
-                return np.zeros((len(vertex_ids), 3))
+                print('Empty region')
+                return np.zeros(self.mesh_boost.sfepy_mesh.coors.shape)
 
         # Create a material that will be the force applied to the body
         force = Material(name='f', val=F)

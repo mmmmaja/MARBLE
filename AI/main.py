@@ -1,4 +1,3 @@
-import sys
 import vtk
 from PyQt5.QtWidgets import QApplication
 from AI.GUI_handler import GUI
@@ -6,8 +5,14 @@ from AI.fenics import *
 from AI.mesh_converter import *
 from AI.material_handler import *
 from AI.stress_script import StressRelaxation
+import io
+import sys
 
-FORCE = 1.07
+TERMINAL_OUTPUT = True
+
+# Global force applied to the mesh at each interactive case
+# TODO adjust force based on the mouse wheel
+FORCE = 0.27
 
 # I need to hold the reference to the timer class and destroy it
 # when the simulation of the relaxation process is over
@@ -40,6 +45,7 @@ class NoRotateStyle(vtk.vtkInteractorStyleTrackballCamera):
         self.AddObserver("RightButtonPressEvent", self.right_button_press_event)
         self.AddObserver("LeftButtonReleaseEvent", self.left_button_release_event)
         self.AddObserver("MouseMoveEvent", self.mouse_move_event)
+        # TODO supress more events
 
         super().__init__(*args, **kwargs)
 
@@ -100,9 +106,8 @@ def apply_force(fenics, gui, cell_coords=None, F=FORCE, relaxation=True):
         vertex_ids = fenics.mesh_boost.get_vertex_ids_from_coords(cell_coords)
         print("Triggered cell force")
 
-        # If the list is empty
+        # If the list is empty and no vertices were found
         if len(vertex_ids) == 0:
-            print("No vertices found")
             return
 
     else:
@@ -138,16 +143,14 @@ class Main:
         self.gui = GUI(self.fenics.rank_material, fenics.mesh_boost.current_vtk)
         self.add_interactive_events()
 
-        """
-        Timer for updating the state during fenics calculations (Starts a new thread)
-        Documentation:
-        https://doc.qt.io/qtforpython-5/PySide2/QtCore/QTimer.html
-        """
-
     def add_interactive_events(self):
         # Enable cell picking
         self.gui.plotter.enable_cell_picking(
-            callback=lambda cell_id: apply_force(self.fenics, self.gui, cell_id.points, relaxation=True),
+            # if cell is not none, apply force to the cell
+            callback=lambda cell:
+                apply_force(
+                    self.fenics, self.gui, cell_coords=cell.points, relaxation=True
+                ) if cell is not None else None,
             font_size=10,
             color='white',
             point_size=30,
@@ -179,8 +182,21 @@ class Main:
             ))
 
 
+if not TERMINAL_OUTPUT:
+    # create a text trap and redirect stdout
+    text_trap = io.StringIO()
+    sys.stdout = text_trap
+
 app = QApplication(sys.argv)
 _mesh_boost = GridMesh(30, 30, z_function=concave)
 _fenics = FENICS(_mesh_boost, rubber)
 Main(_fenics)
 app.exec_()
+
+
+# less resolution
+# interpolation
+# mouse for force
+# adjust stress relaxation
+# Generate recording
+# ADD FORCE SLIDER
