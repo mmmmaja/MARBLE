@@ -54,7 +54,7 @@ class GUI:
         visual_properties = self.mesh_material.visual_properties
         self.mesh_actor = self.plotter.add_mesh(
             vtk_mesh,
-            show_edges=True,
+            show_edges=False,
             smooth_shading=True,
             show_scalar_bar=False,
             edge_color=visual_properties['edge_color'],

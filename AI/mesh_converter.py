@@ -110,7 +110,7 @@ class MeshFromFile(MeshBoost):
 
 class GridMesh(MeshBoost):
 
-    def __init__(self, width, height, z_function=flat, cell_distance=1):
+    def __init__(self, width, height, z_function=flat, cell_distance=1, layers=2):
         """
         Defines the mesh as a grid of sensors
         :param width: dimension of the grid
@@ -126,55 +126,62 @@ class GridMesh(MeshBoost):
         self.z_function = z_function
         self.cell_distance = cell_distance
 
+        self.layers = layers
+
         super().__init__()
 
     def create_mesh(self):
 
         # Create the vertices of the tetrahedrons
         # Define two regions of the mesh
-        top_vertices, bottom_vertices = [], []
+        all_layers = []
+        for i in range(self.layers):
+            all_layers.append([])
+
         for i in range(self.height):
             for j in range(self.width):
 
-                top_vertices.append([
+                all_layers[0].append([
                     i * self.cell_distance,
                     j * self.cell_distance,
-                    self.z_function(i, j, self.width, self.height) + THICKNESS
+                    self.z_function(i, j, self.width, self.height)
                 ])
-                bottom_vertices.append([
-                    i * self.cell_distance,
-                    j * self.cell_distance,
-                    0
-                ])
+                for k in range(1, self.layers):
+                    all_layers[k].append([
+                        i * self.cell_distance,
+                        j * self.cell_distance,
+                        (self.layers - k - 1) * THICKNESS
+                    ])
 
-        # Assign the same z-coordinate to all the bottom vertices (the smallest top z-coordinate)
-        Z = np.amin(np.array(top_vertices)[:, 2])
+        # Assign the same z-coordinate to all the TOP vertices (the smallest top z-coordinate)
+        Z = np.amin(np.array(all_layers[0])[:, 2])
         if Z < 0:
-            for v in top_vertices:
+            for v in all_layers[0]:
                 v[2] -= Z
         # add the thickness to the top vertices
-        for v in top_vertices:
-            v[2] += THICKNESS
+        for v in all_layers[0]:
+            v[2] += (self.layers - 1) * THICKNESS
 
-        # Combine the top and bottom vertices
-        vertices = np.concatenate([top_vertices, bottom_vertices], axis=0)
-        n = len(vertices) // 2
+        # Combine all the vertices
+        vertices = [vertex for vertices in all_layers for vertex in vertices]
+        n = len(vertices) // self.layers
 
-        # Create the cells (give the indices of vertices of each tetrahedron)
+        # Create the cells (give the indices of vertices of each hexahedron)
         cells = []
         for i in range(self.height - 1):
             for j in range(self.width - 1):
+                for k in range(self.layers - 1):
 
-                a_bottom, b_bottom = i * self.width + j, i * self.width + j + 1
-                c_bottom, d_bottom = (i + 1) * self.width + j + 1, (i + 1) * self.width + j
+                    a_top, b_top = i * self.width + j + k*n, i * self.width + j + 1 + k*n
+                    c_top, d_top = (i + 1) * self.width + j + 1 + k*n, (i + 1) * self.width + j + k*n
 
-                a_top, b_top = a_bottom + n, b_bottom + n
-                c_top, d_top = c_bottom + n, d_bottom + n
+                    a_bottom, b_bottom = a_top + n, b_top + n
+                    c_bottom, d_bottom = c_top + n, d_top + n
 
-                cells.append([
-                    a_bottom, b_bottom, c_bottom, d_bottom,
-                    a_top, b_top, c_top, d_top
-                ])
+                    cells.append([
+                        a_top, b_top, c_top, d_top,
+                        a_bottom, b_bottom, c_bottom, d_bottom
+                    ])
 
         # Create hexahedron mesh
         mesh = meshio.Mesh(points=vertices, cells={"hexahedron": cells})
@@ -192,7 +199,7 @@ class GridMesh(MeshBoost):
 
         # vertices = np.concatenate([top_vertices, bottom_vertices], axis=0)
         # Get the number of vertices
-        n = self.sfepy_mesh.n_nod // 2
+        n = self.sfepy_mesh.n_nod // self.layers
 
         # Create a top region (Where the displacements happen)
         top_range = range(n)
@@ -200,7 +207,7 @@ class GridMesh(MeshBoost):
         top = domain.create_region(name='Top', select=expr_base, kind='facet')
 
         # Create a bottom region (Where the boundary conditions apply so that the positions are fixed)
-        bottom_range = range(n, 2 * n)
+        bottom_range = range((self.layers - 1) * n, self.layers * n)
         # Define the cells by their Ids and use vertex <id>[, <id>, ...]
         expr_extruded = 'vertex ' + ', '.join([str(i) for i in bottom_range])
         bottom = domain.create_region(name='Bottom', select=expr_extruded, kind='facet')

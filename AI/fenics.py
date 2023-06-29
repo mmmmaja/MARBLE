@@ -1,7 +1,5 @@
 from __future__ import absolute_import
-
 import sys
-
 from sfepy.base.base import IndexedStruct
 from sfepy.discrete import (FieldVariable, Integral, Equation, Equations, Problem, Material)
 from sfepy.discrete.fem import FEDomain, Field

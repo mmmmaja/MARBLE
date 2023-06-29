@@ -185,7 +185,7 @@ if not TERMINAL_OUTPUT:
     sys.stdout = text_trap
 
 app = QApplication(sys.argv)
-_mesh_boost = GridMesh(50, 50, z_function=wave)
+_mesh_boost = GridMesh(30, 30, z_function=wave, layers=2)
 _fenics = FENICS(_mesh_boost, rubber)
 Main(_fenics)
 app.exec_()
