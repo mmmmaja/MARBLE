@@ -74,7 +74,7 @@ class MeshBoost:
         FIXME
             raise RuntimeError('elements cannot be oriented! (%s)' % key)
         RuntimeError: elements cannot be oriented! (3_8)
-        """
+        # """
         # self.current_vtk.save(PATH)
         # self.sfepy_mesh = Mesh.from_file(PATH)
 

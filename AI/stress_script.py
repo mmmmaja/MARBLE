@@ -20,21 +20,21 @@ class StressRelaxation:
 
     If doesn't work try:
     Generalized Maxwell model
-
-    TODO try the simple visualization of the stress relaxation process not involving fenics class
     """
 
-    def __init__(self, gui, fenics, u0, F0, vertex_ids):
+    def __init__(self, gui, mesh_boost, rank_material, u0, F0, vertex_ids):
         # Time step: how many milliseconds between each update
         # When having 40 ms program is not freezing, all smaller values freeze the program
         self.dt = 20  # ms
         # Current time of the stress relaxation simulation
         self.t = 0
-        self.PRESS_TIME = 4 * 1000  # n seconds in ms
+        self.PRESS_TIME = 2 * 1000  # n seconds in ms
 
         self.gui = gui
         # The solver
-        self.fenics = fenics
+        self.mesh_boost = mesh_boost
+        self.rank_material = rank_material
+
         # The maximum displacement of the body
         self.u0 = u0
         # The initial force applied to the body
@@ -72,7 +72,7 @@ class StressRelaxation:
             τ is the relaxation time of the material.
         :return: the current displacement dependant of the time t of the simulation
         """
-        return self.u0 * np.exp(-self.t / self.fenics.rank_material.time_constant)
+        return self.u0 * np.exp(-self.t / self.rank_material.time_constant)
 
     def timer_loop(self):
         """
@@ -84,8 +84,8 @@ class StressRelaxation:
         u = self.get_displacement()
 
         # OVERRIDE the GUI
-        self.fenics.mesh_boost.override_mesh(u)
-        self.gui.draw_mesh(self.fenics.mesh_boost.current_vtk)
+        self.mesh_boost.override_mesh(u)
+        self.gui.draw_mesh(self.mesh_boost.current_vtk)
         self.gui.plotter.update()
 
         QApplication.processEvents()

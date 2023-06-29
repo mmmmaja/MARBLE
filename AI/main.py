@@ -8,7 +8,7 @@ from AI.stress_script import StressRelaxation
 import io
 import sys
 
-TERMINAL_OUTPUT = True
+TERMINAL_OUTPUT = False
 
 # I need to hold the reference to the timer class and destroy it
 # when the simulation of the relaxation process is over
@@ -16,7 +16,6 @@ stress_relaxation_ref = None
 
 
 class NoRotateStyle(vtk.vtkInteractorStyleTrackballCamera):
-
     """
     This class was added to override the default mouse events of the vtkInteractorStyleTrackballCamera class.
     It disables the rotation of the mesh when the left mouse button is pressed.
@@ -127,17 +126,17 @@ def apply_force(fenics, gui, cell_coords=None, relaxation=True):
         if stress_relaxation_ref is not None:
             stress_relaxation_ref.stop()
         stress_relaxation_ref = StressRelaxation(
-            gui, fenics, u0=u, F0=gui.FORCE, vertex_ids=vertex_ids
+            gui, fenics.mesh_boost, fenics.rank_material, u0=u, F0=gui.FORCE, vertex_ids=vertex_ids
         )
         stress_relaxation_ref.initiate()
 
 
 class Main:
 
-    def __init__(self, fenics):
-        self.fenics = fenics
+    def __init__(self, mesh_boost, rank_material):
+        self.fenics = FENICS(mesh_boost, rank_material)
 
-        self.gui = GUI(self.fenics.rank_material, fenics.mesh_boost.current_vtk)
+        self.gui = GUI(rank_material, mesh_boost.current_vtk)
         self.add_interactive_events()
 
     def add_interactive_events(self):
@@ -145,9 +144,10 @@ class Main:
         self.gui.plotter.enable_cell_picking(
             # if cell is not none, apply force to the cell
             callback=lambda cell:
-                apply_force(
-                    self.fenics, self.gui, cell_coords=cell.points, relaxation=True
-                ) if cell is not None else None,
+            apply_force(
+                self.fenics, self.gui,
+                cell_coords=cell.points, relaxation=True
+            ) if cell is not None else None,
             font_size=10,
             color='white',
             point_size=30,
@@ -157,9 +157,7 @@ class Main:
         )
 
         # Add the event on the press of the space bar, apply the force
-        self.gui.plotter.add_key_event(
-            'space', lambda: apply_force(self.fenics, self.gui, relaxation=True)
-        )
+        self.gui.plotter.add_key_event('space', lambda: apply_force(self.fenics, self.gui, relaxation=True))
 
         # If the enter button is pressed, the interactive mode is toggled
         self.gui.plotter.add_key_event('m', self.toggle_interactive)
@@ -175,7 +173,7 @@ class Main:
             self.gui.add_mode_text("Activation")
             self.gui.plotter.interactor.SetInteractorStyle(NoRotateStyle(
                 gui=self.gui,
-                fenics=self.fenics,
+                fenics=self.fenics
             ))
 
 
@@ -185,11 +183,9 @@ if not TERMINAL_OUTPUT:
     sys.stdout = text_trap
 
 app = QApplication(sys.argv)
-_mesh_boost = GridMesh(30, 30, z_function=wave, layers=2)
-_fenics = FENICS(_mesh_boost, rubber)
-Main(_fenics)
+_mesh_boost = GridMesh(30, 30, z_function=wave, layers=3)
+Main(_mesh_boost, rubber)
 app.exec_()
-
 
 # less resolution
 # interpolation
