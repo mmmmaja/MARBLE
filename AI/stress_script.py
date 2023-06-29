@@ -63,16 +63,16 @@ class StressRelaxation:
         # Start the relaxation process here
         self.relaxation_timer.start(self.dt)  # period of dt milliseconds
 
-    def get_force(self):
+    def get_displacement(self):
         """
         Stress relaxation behavior is described by the equation:
-        u(t) = u0 * (1 - exp(-t/τ))
+        u(t) = u0 * exp(-t/τ)
             u0 is the maximum displacement,
             t is the current time of the simulation,
             τ is the relaxation time of the material.
-        :return: the current force dependant of the time t of the simulation
+        :return: the current displacement dependant of the time t of the simulation
         """
-        return self.F0 * np.exp(-self.t / self.fenics.rank_material.time_constant)
+        return self.u0 * np.exp(-self.t / self.fenics.rank_material.time_constant)
 
     def timer_loop(self):
         """
@@ -80,12 +80,8 @@ class StressRelaxation:
         Updates the displacement of the mesh and the GUI
         """
 
-        # calculate the current force
-        F = self.get_force()
-        print("FORCE: ", F)
-
         # calculate the displacement
-        u = self.fenics.apply_force(self.vertex_ids, F)
+        u = self.get_displacement()
 
         # OVERRIDE the GUI
         self.fenics.mesh_boost.override_mesh(u)
@@ -97,8 +93,8 @@ class StressRelaxation:
         # advance the time variable
         self.t += self.dt
 
-        # Disable the timer when the u is close to 0
-        if F < FORCE_LIMIT:
+        # Disable the timer when the magnitude of u is close to 0
+        if np.linalg.norm(u) < FORCE_LIMIT:
             print("Stop relaxation process")
             self.relaxation_timer.stop()
 

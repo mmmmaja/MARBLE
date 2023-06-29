@@ -58,7 +58,6 @@ class GUI:
             roughness=visual_properties['roughness'],
             name='initial_mesh'
         )
-        self.plotter.enable_lightkit()
 
     def add_mode_text(self, text):
         # Remove the text
