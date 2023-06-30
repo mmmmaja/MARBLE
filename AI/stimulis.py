@@ -33,13 +33,16 @@ class Sphere(Stimuli):
         self.radius = radius
         self.color = '#62fff8'
 
+        # FIXME later, this is just for testing
+        self.position = np.array([5.0, 5.0, 4.2])
+
     def get_visualization(self):
         # Return pyvista sphere
         sphere = pv.Sphere(
             radius=self.radius, center=self.position,
             # theta resolution is the number of points in the longitude direction.
             # phi resolution is the number of points in the latitude direction.
-            theta_resolution=15, phi_resolution=15
+            theta_resolution=10, phi_resolution=10
         )
         return sphere
 
@@ -47,7 +50,9 @@ class Sphere(Stimuli):
         direction = self.position - point
         distance = np.linalg.norm(direction)
         force = direction / distance ** 3  # Assuming inverse square law
-        return force
+
+        # FIXME later, this is just for testing
+        return force[2]
 
 
 class Cylinder(Stimuli):

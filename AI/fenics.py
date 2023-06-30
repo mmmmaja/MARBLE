@@ -55,68 +55,81 @@ class FENICS:
         # Integrals specify which numerical scheme to use.
         self.integral = Integral('i', order=1)
 
-    def apply_force(self, vertex_ids, F=0.55):
+    def get_force_terms(self, force, v):
         """
-        :param vertex_ids: ids of the vertices where the force is applied,
-        if set to None then apply force to entire top face of the mesh
+        :param force: numpy array of the form [ [vertex_ids, force] ] or a single force value
+        :param v: The test variable
+        :return: The force terms associated with the given regions
 
-        :param F: force value in N
-        :return: displacement u of the mesh for each vertex in x, y, z direction
+        Check out the documentation for the Term class here:
+        https://sfepy.org/doc-devel/terms_overview.html
         """
 
-        if vertex_ids is None:
+        # Apply the force to the entire top face of the mesh
+        # Check if the force is a single value or a dictionary
+        if isinstance(force, int) or isinstance(force, float):
+            print('Apply volume force')
             top, bottom = self.mesh_boost.get_regions(self.DOMAIN)
             region = top
-
+            # Create a material that will be the force applied to the body
+            f = Material(name='f', val=force)
+            force_terms = [Term.new(
+                    'dw_surface_ltr(f.val, v)', integral=self.integral, region=region, f=f, v=v
+            )]
         else:
-            # Create a region with the vertices of the cell
-            print(vertex_ids)
-            expr = 'vertex ' + ', '.join([str(ID) for ID in vertex_ids])
-            try:
-                region = self.DOMAIN.create_region(name='region', select=expr, kind='facet')
-            except ValueError:
-                # Return 0 displacement if the region is empty
-                print('Empty region')
-                return np.zeros(self.mesh_boost.sfepy_mesh.coors.shape)
+            print('Apply vertex specific force')
+            # In this case, the force is a dictionary of the form [ [vertex_ids, force] ]
+            # Create the force terms for each vertex
+            force_terms = []
+            for i in range(len(force)):
+                vertex_ids, force_value = force[i][0], force[i][1]
 
-        # Create a material that will be the force applied to the body
-        force = Material(name='f', val=F)
+                # Create a region with the vertices of the cell
+                expr = 'vertex ' + ', '.join([str(ID) for ID in vertex_ids])
+                try:
+                    # Create the region with the given expression
+                    region = self.DOMAIN.create_region(name='region', select=expr, kind='facet')
+                    # Create a material that will be the force applied to the body
+                    f = Material(name='f', val=force_value)
+                    # Create the force term
+                    # FIXME its gonna be a problem if there are more than one force term
+                    force_terms.append(Term.new(
+                            'dw_surface_ltr(f.val, v)', integral=self.integral, region=region, f=f, v=v
+                    ))
+                except ValueError:
+                    # The region is empty, so it is not created
+                    continue
 
-        # Solve Finite element method for displacements
-        return self.solve(region, force)
+        return force_terms
 
-    def solve(self, region, f):
+    def apply_force(self, force):
         """
-        :param region: Region where the force will be applied
-        :param f: Force material applied to this region
-
         Elasticity problem solved with FEniCS.
-        (the displacement of each node in the mesh)
 
         Inspired by:
         https://github.com/sfepy/sfepy/blob/master/doc/tutorial.rst
         https://github.com/sfepy/sfepy/issues/740
 
-        :return: Displacement of the mesh for each node (shape: (num_sensors, 3)) in 3D
+        :param force: numpy array of the form [ [vertex_ids, force] ] or a single force value
+        :return: displacement u of the mesh for each vertex in x, y, z direction
         """
 
-        # 2) Define the REGIONS of the mesh
+        # 1) Define the REGIONS of the mesh
         top, bottom = self.mesh_boost.get_regions(self.DOMAIN)
 
-        # 3) Define the field of the mesh (finite element approximation)
+        # 2) Define the field of the mesh (finite element approximation)
         # approx_order indicates the order of the approximation (1 = linear, 2 = quadratic, ...)
         field = Field.from_args(
             name='field', dtype=np.float64, shape='vector', region=self.omega, approx_order=1
         )
 
-        # 4) Define the field variables
+        # 3) Define the field variables
         # 'u' is the displacement field of the mesh (3D)
         u = FieldVariable(name='u', kind='unknown', field=field)
         # v is the test variable associated with u
         v = FieldVariable(name='v', kind='test', field=field, primary_var_name='u')
 
-        # 7) Define the terms of the equation
-        # They are combined to form the equation
+        # 4) Define the terms of the equation
 
         # Define the elasticity term of the material with specified material properties
         elasticity_term = Term.new(
@@ -124,20 +137,27 @@ class FENICS:
             integral=self.integral, region=self.omega, m=self.material, v=v, u=u
         )
 
-        force_term = Term.new(
-            'dw_surface_ltr(f.val, v)', integral=self.integral, region=region, f=f, v=v
-        )
+        # Get the specific force terms
+        force_terms = self.get_force_terms(force, v)
 
-        # 8) Define the equation with force term
-        equations = Equations([Equation('balance', elasticity_term + force_term)])
+        # If there are no force terms, return zero displacement array
+        if len(force_terms) == 0:
+            return np.zeros(self.mesh_boost.sfepy_mesh.coors.shape)
+
+        print('number of force terms: ', len(force_terms))
+
+        # Create equations
+        equations = [Equation('balance_' + str(i), elasticity_term + force_term) for i, force_term in
+                     enumerate(force_terms)]
+        # Initialize the equations object
+        equations = Equations(equations)
 
         # 9) Define the problem
         PROBLEM = Problem(name='elasticity', equations=equations, domain=self.DOMAIN)
 
-        # Add the boundary conditions to the problem
+        # Add the boundary conditions to the problem and add the solver
         boundary_conditions = EssentialBC('fix_bottom', bottom, {'u.all': 0.0})
         PROBLEM.set_bcs(ebcs=Conditions([boundary_conditions]))
-
         PROBLEM.set_solver(get_solver())
 
         # 10) Solve the problem

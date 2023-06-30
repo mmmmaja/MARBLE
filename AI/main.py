@@ -9,7 +9,7 @@ from AI.stress_script import StressRelaxation
 import io
 import sys
 
-TERMINAL_OUTPUT = False
+TERMINAL_OUTPUT = True
 
 # I need to hold the reference to the timer class and destroy it
 # when the simulation of the relaxation process is over
@@ -41,7 +41,6 @@ class NoRotateStyle(vtk.vtkInteractorStyleTrackballCamera):
         self.AddObserver("RightButtonPressEvent", self.right_button_press_event)
         self.AddObserver("LeftButtonReleaseEvent", self.left_button_release_event)
         self.AddObserver("MouseMoveEvent", self.mouse_move_event)
-        # TODO supress more events
 
         super().__init__(*args, **kwargs)
 
@@ -88,32 +87,27 @@ class NoRotateStyle(vtk.vtkInteractorStyleTrackballCamera):
 
             # Remove the bottom layer of points (Points with z coordinate == 0)
             points = [point for point in points if point[2] != 0]
-            apply_force(self.fenics, self.gui, points, relaxation=False)
+
+            # Get the ids of the vertices that belong to the cell
+            vertex_ids = self.fenics.mesh_boost.get_vertex_ids_from_coords(points)
+            # Create the force dictionary
+            force = [[vertex_ids, self.gui.FORCE]]
+            # Apply the force to the mesh
+            apply_force(self.fenics, self.gui, force, relaxation=False)
 
 
-def apply_force(fenics, gui, cell_coords=None, relaxation=True):
+def apply_force(fenics, gui, force, relaxation=True):
     """
+    :param fenics: FENICS class
+    :param gui: GUI class
+    :param force: numpy array of the form [ [vertex_ids, force] ] or a single force value
+    :param relaxation: boolean that indicates if the stress relaxation process should be started
     Function that applies a vertex specific force or volume (stable) force across the whole mesh
     """
-
     global stress_relaxation_ref
 
-    if cell_coords is not None:
-        vertex_ids = fenics.mesh_boost.get_vertex_ids_from_coords(cell_coords)
-        print("Triggered cell force")
-
-        # If the list is empty and no vertices were found
-        if len(vertex_ids) == 0:
-            return
-
-    else:
-        vertex_ids = None
-        print("Triggered volume force")
-
-    # Immediately apply the force to the body (might change it later and push it to the loop)
-    print("FORCE applied: ", gui.FORCE)
     # Calculate the displacement
-    u = fenics.apply_force(vertex_ids, gui.FORCE)
+    u = fenics.apply_force(force)
 
     # UPDATE plot and meshes
     fenics.mesh_boost.update_mesh(u)
@@ -126,10 +120,43 @@ def apply_force(fenics, gui, cell_coords=None, relaxation=True):
         # Stop existing relaxation process
         if stress_relaxation_ref is not None:
             stress_relaxation_ref.stop()
+
+        # if force is a float then vertex_ids = None
+        if isinstance(force, float) or isinstance(force, int):
+            vertex_ids = None
+        else:
+            # vertex Ids are entries of the first column of the force array
+            vertex_ids = [force[i][0] for i in range(len(force))]
         stress_relaxation_ref = StressRelaxation(
             gui, fenics.mesh_boost, fenics.rank_material, u0=u, F0=gui.FORCE, vertex_ids=vertex_ids
         )
         stress_relaxation_ref.initiate()
+
+
+def apply_stimuli(fenics, gui, stimuli):
+    # vertex_ids : force
+    FORCE = []
+
+    force_lim = 0.2
+
+    # Get the hexahedral cells
+    # It consists of a list of 8 points (3D coordinates) for each cell
+    hexa_cells = fenics.mesh_boost.vtk_cells_coordinates
+
+    # Check the distance between the centre of the face and the stimuli
+    for top_face in hexa_cells:
+        # Find the centre of the rectangle face
+        face_center = np.mean(top_face, axis=0)
+        force = stimuli.calculate_force(face_center)
+
+        # Apply the force just if the magnitude is greater than the limit
+        if np.linalg.norm(force) > force_lim:
+            vertices = fenics.mesh_boost.get_vertex_ids_from_coords(top_face)
+            # Transform the coordinates of the cell to the vertex ids
+            FORCE.append([vertices, force])
+
+    # Apply the force to the mesh
+    apply_force(fenics, gui, FORCE, relaxation=False)
 
 
 class Main:
@@ -141,14 +168,16 @@ class Main:
         self.gui = GUI(mesh_boost.current_vtk, rank_material, stimuli)
         self.add_interactive_events()
 
+        apply_stimuli(self.fenics, self.gui, self.stimuli)
+
     def add_interactive_events(self):
         # Enable cell picking
         self.gui.plotter.enable_cell_picking(
             # if cell is not none, apply force to the cell
             callback=lambda cell:
             apply_force(
-                self.fenics, self.gui,
-                cell_coords=cell.points, relaxation=True
+                self.fenics, self.gui, relaxation=True,
+                force=[[self.fenics.mesh_boost.get_vertex_ids_from_coords(cell.points), self.gui.FORCE]],
             ) if cell is not None else None,
             font_size=10,
             color='white',
@@ -159,7 +188,9 @@ class Main:
         )
 
         # Add the event on the press of the space bar, apply the force
-        self.gui.plotter.add_key_event('space', lambda: apply_force(self.fenics, self.gui, relaxation=True))
+        self.gui.plotter.add_key_event('space', lambda: apply_force(
+            self.fenics, self.gui, relaxation=True, force=self.gui.FORCE
+        ))
 
         # If the enter button is pressed, the interactive mode is toggled
         self.gui.plotter.add_key_event('m', self.toggle_interactive)
@@ -187,6 +218,7 @@ if not TERMINAL_OUTPUT:
 app = QApplication(sys.argv)
 _mesh_boost = GridMesh(30, 30, z_function=wave, layers=3)
 _stimuli = Sphere(radius=1.0)
+
 
 Main(_mesh_boost, _stimuli, rubber)
 app.exec_()

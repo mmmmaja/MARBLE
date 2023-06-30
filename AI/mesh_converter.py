@@ -1,3 +1,5 @@
+import sys
+
 import sfepy
 
 from AI.mesh_helper import *
@@ -27,8 +29,10 @@ class MeshBoost:
     def __init__(self, path=PATH):
         # Path to the .mesh file
         self.path = path
+
         # The mesh object in Sfepy format for calculations
-        self.sfepy_mesh = self.create_mesh()
+        # The minimum and maximum z values of the top layer of the mesh
+        self.sfepy_mesh, self.z_min, self.z_max = self.create_mesh()
         # The mesh object in .vtk format for visualization
         self.initial_vtk = convert_to_vtk(self.path)
 
@@ -36,11 +40,21 @@ class MeshBoost:
         # Mind be changed later
         self.current_vtk = self.initial_vtk.copy()
 
+        # The coordinates of the cells in the mesh in the top layer
+        self.vtk_cells_coordinates = self.create_top_cells_coordinates()
+
     @abstractmethod
-    def create_mesh(self) -> sfepy.discrete.fem.mesh.Mesh:
+    def create_mesh(self) -> [sfepy.discrete.fem.mesh.Mesh, float, float]:
         """
         TODO override in subclasses
         :return: The mesh object in Meshio format
+        """
+
+    @abstractmethod
+    def create_top_cells_coordinates(self) -> np.ndarray:
+        """
+        TODO override in subclasses
+        :return: The coordinates of the cells in the mesh
         """
 
     def get_regions(self, domain):
@@ -103,20 +117,6 @@ class MeshBoost:
         return vertex_ids
 
 
-class MeshFromFile(MeshBoost):
-
-    def __init__(self, path):
-        """
-        Read the mesh from a file (supports .mesh and .vtk files)
-        :param path: path to the .mesh file
-        """
-        self.path = path
-        super().__init__(path)
-
-    def create_mesh(self):
-        return Mesh.from_file(self.path)
-
-
 class GridMesh(MeshBoost):
 
     def __init__(self, width, height, z_function=flat, layers=2):
@@ -164,6 +164,9 @@ class GridMesh(MeshBoost):
         # Add the thickness to the top vertices
         top_layer[:, 2] += (self.layers - 1) * THICKNESS
 
+        # Get the min and max z-coordinates in the top layer
+        z_min, z_max = np.amin(top_layer[:, 2]), np.amax(top_layer[:, 2])
+
         # Convert the adjusted numpy array back to list and assign it back to all_layers[0]
         all_layers[0] = top_layer.tolist()
 
@@ -188,7 +191,7 @@ class GridMesh(MeshBoost):
         mesh = meshio.Mesh(points=vertices, cells={"hexahedron": cells})
         meshio.write(PATH, mesh)
         # Convert the meshio mesh to sfepy mesh
-        return Mesh.from_file(PATH)
+        return Mesh.from_file(PATH), z_min, z_max
 
     def get_regions(self, domain):
         """
@@ -215,3 +218,25 @@ class GridMesh(MeshBoost):
         bottom = domain.create_region(name='Bottom', select=expr_extruded, kind='facet')
 
         return top, bottom
+
+    def create_top_cells_coordinates(self):
+        # Ensure the mesh cells are hexahedrons (12 nodes per cell)
+
+        hexa_cells = []
+
+        # Extract the hexahedron cells
+        # The first number in each cell is the number of points (8 for hexahedrons)
+        cells = self.current_vtk.cells.reshape(-1, 9)[:, 1:]
+
+        # Loop through all the cells
+        for i in range(self.current_vtk.n_cells):
+            hexahedron = cells[i]
+            cell_points = self.current_vtk.points[hexahedron]  # Get the cell points by using the indices
+            # Get the top face of the hexahedron (4 points)
+            top_face = cell_points[np.argsort(cell_points[:, 2])[-4:]]
+
+            # Check if the z coordinate of all points in the cell are within the range
+            if self.z_min <= top_face[:, 2].min() <= top_face[:, 2].max() <= self.z_max:
+                hexa_cells.append(top_face)
+
+        return hexa_cells
