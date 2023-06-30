@@ -44,7 +44,8 @@ def triangulate(sensor_array):
 
 class Mesh:
 
-    def __init__(self):
+    def __init__(self,save_path= "../pygame_model/data.csv"):
+        self.save_path = save_path
         self.SENSOR_ARRAY = self.create()
         set_frame_position(self.SENSOR_ARRAY)
         self.delaunay_points, self.triangles = triangulate(self.SENSOR_ARRAY)
@@ -75,13 +76,15 @@ class Mesh:
             data.append(i.deformation)
         DATA.append(data)
 
-    def save_data(self, path='fake_data/data.csv'):
+        if len(DATA) % 100 == 1: print("Recording Length: ",len(DATA))
+
+    def save_data(self):
 
         sensor_positions = []
         for i in self.SENSOR_ARRAY:
             pos = str(i.real_position[0]) + ',' + str(i.real_position[1]) + ',' + str(i.real_position[2])
             sensor_positions.append(pos)
-        with open(path, 'w', newline='') as file:
+        with open(self.save_path, 'w', newline='') as file:
             writer = csv.writer(file)
             writer.writerow(sensor_positions)
             writer.writerows(DATA)

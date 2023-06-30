@@ -163,7 +163,7 @@ def recording_fitness(data):
     return sum(penalties) / len(data)
 
 
-def evaluate_recording(path=DATA_PATH + '/data.csv'):
+def evaluate_recording(path=DATA_PATH + '/random_min0,5_max2.csv'):
     """
     :param path: path to the recording in .csv file to be evaluated
     :return: Evaluation of the recording <0,1>

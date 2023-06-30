@@ -54,7 +54,7 @@ class Mesh:
             data.append(i.deformation)
         DATA.append(data)
 
-    def save_data(self, path='fake_data/data.csv'):
+    def save_data(self, path='fake_data/data_2sz.csv'):
 
         sensor_positions = []
         for i in self.SENSOR_ARRAY:

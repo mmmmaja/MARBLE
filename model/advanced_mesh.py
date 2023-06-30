@@ -70,6 +70,46 @@ class ARM_mesh(Mesh):
         super().__init__()
 
 
+class RandomMesh(Mesh):
+
+    def __init__(self,save_path,area, sensor_cnt,min_sep, seed = 1):
+        np.random.seed(seed)
+        self.area = area
+        self.sensor_cnt = sensor_cnt
+        self.min_sep = min_sep
+        print(self.sensor_cnt)
+        super().__init__(save_path = save_path)
+
+    def create(self):
+        """"
+        Read positions of the sensors from a csv file
+        """
+
+        locs = []
+        sensor_array = []
+        for i in range(self.sensor_cnt):
+            loc = np.zeros(len(self.area))
+
+            while True:
+                for i, r_ in enumerate(self.area):
+                    loc[i] = (r_[1]-r_[0])*np.random.random() + r_[0]
+
+                repeat = False
+                for loc_ in locs:
+                    if np.linalg.norm(loc_ - loc) < self.min_sep:
+                        repeat = True
+                        break
+                if not repeat: break
+
+            locs.append(loc)
+            sensor_array.append(Sensor(real_position=loc))
+        return sensor_array
+
+    def set_displayed_points(self):
+        return [self.SENSOR_ARRAY[0], self.SENSOR_ARRAY[1]]
+
+
+
 # Here the pressure data will be saved
 DATA = []
 
@@ -110,11 +150,12 @@ def triangulate(sensor_array):
 
 class Mesh:
 
-    def __init__(self):
+    def __init__(self,save_path = "../pygame_model/data.csv"):
         self.SENSOR_ARRAY = self.create()
         set_frame_position(self.SENSOR_ARRAY)
         self.delaunay_points, self.triangles = triangulate(self.SENSOR_ARRAY)
         self.displayed_points = self.set_displayed_points()
+        self.save_path = save_path
 
     def create(self):
         # To be overridden by a child class
@@ -135,13 +176,13 @@ class Mesh:
             data.append(i.deformation)
         DATA.append(data)
 
-    def save_data(self, path='fake_data/data.csv'):
+    def save_data(self):
 
         sensor_positions = []
         for i in self.SENSOR_ARRAY:
             pos = str(i.real_position[0]) + ',' + str(i.real_position[1]) + ',' + str(i.real_position[2])
             sensor_positions.append(pos)
-        with open(path, 'w', newline='') as file:
+        with open(self.path, 'w', newline='') as file:
             writer = csv.writer(file)
             writer.writerow(sensor_positions)
             writer.writerows(DATA)

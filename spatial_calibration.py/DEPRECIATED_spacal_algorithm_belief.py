@@ -2,9 +2,11 @@ import sys
 
 import numpy as np
 import random
-from separation_functions import *
+from DEPRECIATED_separation_functions import *
 import scipy
 from pressure_recording_manager import *
+from GUI_models import BeliefModel
+
 
 from activation_decider import *
 
@@ -34,6 +36,7 @@ class BeliefSpacalAlgo:
         """
         self.random = random.Random()
         self.random.seed(seed)
+        np.random.seed(seed)
 
         self.decider = decider
 
@@ -44,7 +47,7 @@ class BeliefSpacalAlgo:
         self.loc_dim = len(area_range)
         self.sensor_cnt = sensor_cnt
         self.sensor_locations = self.init_sensor_positions(self.sensor_cnt, area_range=self.area_range)
-        self.sensor_beliefs = np.array([1 / sensor_cnt] * sensor_cnt)
+        self.sensor_beliefs = np.array([0.0] * sensor_cnt,dtype=float)
 
         self.known_sensors = set()
 
@@ -200,7 +203,7 @@ class BeliefSpacalAlgo:
 
             if a_id in self.known_sensors: continue
 
-            cross_belief = 1-a_belief
+            cross_belief = 0
             for j in range(len(activated_sensors)):
                 if i == j: continue
 
@@ -209,9 +212,10 @@ class BeliefSpacalAlgo:
 
                 cross_belief += b_belief
 
-            cross_belief /= len(activated_sensors)
 
-            new_beliefs[a_id] = BeliefSpacalAlgo.NEW_BELIEF*cross_belief + BeliefSpacalAlgo.OLD_BELIEF*a_belief
+
+            new_beliefs[a_id] = (a_belief*500 + cross_belief)/500.0
+            if new_beliefs[a_id] >= 0.99: new_beliefs[a_id] = 0.99
 
         self.sensor_beliefs = new_beliefs
 
@@ -253,16 +257,19 @@ if __name__ == "__main__":
     MIN_SEP = 1
     MAX_SEP = 2
 
-    sensor_positions, time_frames = read_recording("../pygame_model/data.csv")
+    sensor_positions, time_frames = read_labeled_recording("../pygame_model/data_2sz.csv")
     known_pts, known_positions = filter_sensors(set(range(42, 62, 3)), sensor_positions)
 
     known_pts = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 19, 20, 29, 30, 39, 40, 49, 50, 59, 60, 69, 70, 79, 80, 89, 90, 91,
                  92, 93, 94, 95, 96, 97, 98, 99]
+    #known_pts = [0,9,90,99]
+    #known_pts = [0]
     known_positions = get_positions_of_sensors(sensor_positions, known_pts)
 
-    model = SpatialModel(time_frames=time_frames, positions=sensor_positions, static_points=known_pts)
+    model = BeliefModel(time_frames=time_frames, positions=sensor_positions, static_points=known_pts)
 
     decider = MeanThresholdDecider(threshold=3)
+    decider = CountDecider(4)
     algo = BeliefSpacalAlgo(decider,MIN_SEP,MAX_SEP,len(sensor_positions),area_range=((0,9),(0,9),(0,0)),seed=1)
 
     algo.set_known_sensors(known_pts, known_positions)
@@ -278,7 +285,7 @@ if __name__ == "__main__":
         for frame in time_frames:
             algo.update_sensor_locations(frame)
 
-    algo.correct_sensor_locations()
+        algo.correct_sensor_locations()
 
     point_ev.append(algo.get_locations())
     belief_ev.append(algo.get_beliefs())

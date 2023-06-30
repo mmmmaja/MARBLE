@@ -195,10 +195,13 @@ def main(fea):
 if __name__ == "__main__":
     silicon = Material(density=2.329, young_modulus=140.0, poisson_ratio=0.265, thickness=1.25)
 
+    LRT = "../model/meshes_csv/web.csv"
+    MRT= "C:/Users/majag/Desktop/marble/MARBLE/model/meshes_csv/web.csv"
+
     # Apply Boundary Conditions
     # Ku = F where u is the unknown displacement vector of all nodes
 
     # _mesh = advanced_mesh.RectangleMesh(10, 10)
-    _mesh = csvMesh('C:/Users/majag/Desktop/marble/MARBLE/model/meshes_csv/web.csv')
+    _mesh = csvMesh(LRT)
 
     main(FEA(_mesh, silicon))

@@ -1,13 +1,11 @@
 import numpy as np
 import random
 from pressure_recording_manager import *
-from matplotlib import cm
-import queue
 import scipy
-from mpl_toolkits.mplot3d import axes3d
-import matplotlib.pyplot as plt
 from activation_decider import *
+from utilities import *
 import queue
+from GUI_models import *
 
 
 ## LocationDistribution is a class that aggregates all the distinc root nodes with which unknown node was activated with
@@ -57,9 +55,11 @@ class LocationDistribution:
             d_ += 10e-10
             log_p += np.log(d_)
 
+        log_p /= len(self.root_locs)
+
         return np.exp(log_p) if not log else log_p
 
-    def plot(self,range_ = ((-5,-5,0),(5,5,0)), max_ = False):
+    def plot(self,range_ = ((-10,-10,0),(10,10,0)), max_ = False):
 
         a = np.linspace(range_[0][0],range_[1][0],100)
         b = np.linspace(range_[0][1],range_[1][1],100)
@@ -83,12 +83,54 @@ class LocationDistribution:
 
 
         # Plot the 3D surface
-        ax.plot_surface(X, Y, Z, edgecolor='royalblue', lw=0.3, rstride=3, cstride=3,
-                        alpha=0.35,antialiased = True)
-
+        ax.plot_surface(X, Y, Z, cmap='copper', lw=0.3, rstride=3, cstride=3,
+                        alpha=0.55,antialiased = True)
+        ax.set_xlabel("X")
+        ax.set_ylabel("Y")
+        ax.set_zlabel("probability")
         plt.show()
 
 
+
+
+class PEdge:
+    """
+    Auxiliary class for edge objects
+    handles storing edge values
+    Example: sensor A, and Sensor B were activated together.  We store information about the activation in the edge object.
+    If sensor A, B were already activated, and their edge exists, we just add the newly recorded information to the already known data
+    """
+
+
+    def __init__(self, pressure_a,pressure_b, max_sep):
+
+        self.p_a = pressure_a
+        self.p_b = pressure_b
+
+        self.sep = max_sep
+
+        self.e_cnt = 1
+
+    def __repr__(self):
+
+        return f"pa: {self.p_a}, pb: {self.p_b}"
+
+    def add(self,pressure_a,pressure_b,max_sep):
+
+        if pressure_a + pressure_b > self.p_a + self.p_b:
+
+            self.p_a = pressure_a
+            self.p_b = pressure_b
+
+        self.sep += max_sep
+
+        self.e_cnt += 1
+
+        return self
+
+    def get_pressure_pair(self):
+
+        return np.array([self.p_a,self.p_b])/1
 
 class SensorNode:
     """
@@ -112,6 +154,8 @@ class SensorNode:
             raise Exception("If sensor is rooted, we need to know its location")
 
         self.neighborhood = dict()
+
+
 
     def __repr__(self):
 
@@ -140,7 +184,7 @@ class SensorNode:
         if self.location is None: return None
         return np.copy(self.location)
 
-    def add_neighbor(self,node,pressure, max_sep):
+    def add_neighbor(self,node,pressure_pair, max_sep):
         """
         adds a neighboring node - creates an edge between itself and another node
         :param node: the node we want to add to neighborhood
@@ -150,10 +194,13 @@ class SensorNode:
         """
 
         if node not in self.neighborhood:
-            self.neighborhood[node] = np.array([pressure,max_sep])
-            node.neighborhood[self] = np.array([pressure,max_sep])
+            edge = PEdge(pressure_pair[0],pressure_pair[1],max_sep)
+            self.neighborhood[node] = edge
+            node.neighborhood[self] = edge
+
         else:
-            edge = (self.neighborhood[node] + np.array([pressure,max_sep])) / 2
+
+            edge = self.neighborhood[node].add(pressure_pair[0],pressure_pair[1],max_sep)
 
             self.neighborhood[node] = edge
             node.neighborhood[self] = edge
@@ -165,10 +212,11 @@ class SensorNode:
         :param root: the value of how much is sensor rooted
         :return:
         """
-        if root == 1 and location is None:
+        if root > 0 and location is None:
             raise Exception("Rooted node must have specified location")
 
-        if root != 1: location = None
+        if root == 0: location = None
+
         self.root = root
         self.location = location
 
@@ -179,22 +227,26 @@ class SensorNode:
         """
         self.location = location
 
-    def make_rooted(self,location):
+    def make_rooted(self,location, root_val = 1.0):
         """
         make sensor node rooted (set self.root = 1). For this a location is necessary
+        :param root_val:
         :param location: the location of the sensor node
         :return:
         """
-        self.root = 1
+        self.root = root_val
         self.location = location
 
 
-    def is_root(self):
-        """
+    def get_root_val(self):
 
-        :return: returns True of sensor is a root (self.root == 1)
-        """
-        return self.root == 1
+        return self.root
+
+    def copy(self):
+        s = SensorNode(id_=self.id_,root=self.root,location=np.copy(self.location))
+        s.neighborhood = self.neighborhood
+        return s
+
 
     def __hash__(self):
         return self.id_
@@ -239,18 +291,26 @@ class VicinityGraph:
         """
         return list(self.roots.values())
 
-    def set_root(self, node : SensorNode, location):
+    def set_root(self, id_, location, root_val = 1.0):
         """
         sets a node to be root
-        :param node: node to be added as root
+        :param root_val:
+        :param id_: node to be added as root
         :param location: set the location of the new root
         :param location: set the location of the new root
         :return:
         """
+
+        node = self.node_set[id_]
+        if root_val == 0:
+            print(f"[Warning] root_val = 0; .set_root() will make node {node} NOT rooted")
+            self.remove_root(node)
+            return
+
         if len(location) != self.dim:
             raise Exception(f"[ERROR] location dim is expected to be {self.dim} for sensor node")
 
-        node.make_rooted(location)
+        node.make_rooted(location, root_val)
         self.roots[node.id_] = node
 
     def remove_root(self,node : SensorNode):
@@ -263,9 +323,10 @@ class VicinityGraph:
         node.set_root(0)
         self.roots.pop(node.id_)
 
-    def set_roots(self,ids, locations):
+    def set_roots(self,ids, locations, root_val = 1.0):
         """
         set a list of sensor nodes as roots
+        :param root_val:
         :param ids: ids of sensors to be set to roots
         :param locations: locations of the sensors that will be set to roots
         :return:
@@ -273,8 +334,7 @@ class VicinityGraph:
 
         for ix, id_ in enumerate(ids):
 
-            node = self.node_set[id_]
-            self.set_root(node,np.array(locations[ix]))
+            self.set_root(id_,np.array(locations[ix]), root_val)
 
     def add_neighborhood(self,activated_sensors, pressure_values, MAX_SEP):
         """
@@ -292,9 +352,9 @@ class VicinityGraph:
                 b_id = activated_sensors[j]
                 node_b = self.node_set[b_id]
 
-                pressure = min(pressure_values[i],pressure_values[j])
+                pressure_pair = (pressure_values[i],pressure_values[j])
 
-                node_a.add_neighbor(node_b,pressure,MAX_SEP)
+                node_a.add_neighbor(node_b,pressure_pair,MAX_SEP)
 
     def get_forest(self):
         """
@@ -386,7 +446,7 @@ class VicinityGraph:
                     visited.add(n)
                     q.put(n)
 
-            if neighbor.is_root():
+            if neighbor.get_root_val() > 0:
 
                 d_ = np.linalg.norm(loc - neighbor.get_location())
                 if distance is None or distance > d_:
@@ -400,7 +460,7 @@ class VicinityGraph:
 
 
 
-class BayesSpacalAlgo:
+class MultilatSpacialAlgo:
     """
     Bayes Spacal Algorithm is an alternative algorithm for determining the locations of sensors
     It is based on:
@@ -409,7 +469,7 @@ class BayesSpacalAlgo:
     3. We place sensors with unknown positions continually according to 2. in specific locations, and make their locations known, and then repeat with a new set of unknown sensors
     """
 
-    def __init__(self, decider : ActivationDecider, min_sep, max_sep, sensor_cnt,ngh_lim = 2,dim = 3, seed=0):
+    def __init__(self, decider : ActivationDecider, min_sep, max_sep, sensor_cnt,dim = 2, branch_factor = 3,discount = 0.9, seed=0):
         """
 
         :param decider: decider that decides which sensors are activated
@@ -420,23 +480,27 @@ class BayesSpacalAlgo:
         :param seed: seed for reproducibility
         """
 
-        self.dim = 3
+        self.dim = dim
+        self.true_dim = 3
         self.decider = decider
         self.random = random.Random()
         self.random.seed(seed)
+        np.random.seed(seed)
 
         self.min_sep = min_sep
         self.max_sep = max_sep
 
         self.sensor_cnt = sensor_cnt
 
+        self.converter = PressureNormalConverter(self.min_sep,self.max_sep)
 
-        self.ngh_lim = ngh_lim
+
         self.distance_lim = self.min_sep*0.33
+        self.discount = discount
+        self.branch_factor = branch_factor
 
+        self.vicinity_graph = VicinityGraph(sensor_cnt,dim = self.true_dim)
 
-
-        self.vicinity_graph = VicinityGraph(sensor_cnt,self.dim)
 
 
     def get_sensors(self):
@@ -453,6 +517,11 @@ class BayesSpacalAlgo:
         :return:
         """
 
+        if np.max(np.abs(sensors)) <= 10-3:
+            print("[Warning] No pressure was exhibited on sensors; time frame will be ignored")
+
+        sensors = normalize_pressures(sensors)
+
 
         # determine which sensors were activated
         activated_sensors, pressure_values = self.decider.decide_activated(sensors)
@@ -467,7 +536,7 @@ class BayesSpacalAlgo:
             self.vicinity_graph.add_neighborhood(activated_sensors,pressure_values,self.max_sep)
 
 
-    def set_roots(self, root_ids, root_locs):
+    def set_roots(self, root_ids, root_locs, root_val = 1):
         """
         sets a subset of sensor nodes to roots - so sensors whose location is 100% known
         :param root_ids: ids of sensors to set to roots
@@ -475,9 +544,29 @@ class BayesSpacalAlgo:
         :return:
         """
 
-        self.vicinity_graph.set_roots(root_ids,root_locs)
+        self.vicinity_graph.set_roots(root_ids,root_locs, root_val= root_val)
 
-    def propagate_location_estimates(self,iter_ = None):
+
+    def print_recording_evaluation(self):
+
+        degrees = self.vicinity_graph.get_node_degree_list()
+        print("Minimum sensor sensor relations: ",np.min(degrees))
+        print("Maximum sensor sensor relations: ",np.max(degrees))
+        print("Mean sensor sensor relations: ",np.mean(degrees))
+        print("Variance of sensor sensor relations: ",np.var(degrees))
+
+    def build_map(self,iter_ = None,find_all = False):
+
+        self.print_recording_evaluation()
+
+        if find_all:
+            self.best_hypothesis = (None,0)
+
+        self.propagate_location_estimates(iter_=iter_,find_all = find_all, cumulative_prob=0)
+
+        if find_all: return self.best_hypothesis[0], self.best_hypothesis[1]
+
+    def propagate_location_estimates(self,iter_ = None,find_all = False, cumulative_prob = 0):
         """
         propagates the locations of sensors through the graphs. We start with the neighbors of roots, determine their location, make them roots
         , and then repeat until all sensors are set or itet_ = 0.
@@ -489,7 +578,13 @@ class BayesSpacalAlgo:
         :return:
         """
 
-        if iter_ is not None and iter_ <= 0: return True
+        if iter_ is not None and iter_ <= 0:
+            if find_all:
+                print("CUMP: ",cumulative_prob)
+                if cumulative_prob > self.best_hypothesis[1]:
+                    self.best_hypothesis = (self.get_locations_snapshot(),cumulative_prob)
+
+            return True
 
         roots = self.vicinity_graph.get_roots()
 
@@ -498,11 +593,14 @@ class BayesSpacalAlgo:
             raise Exception("No roots are present [For location estimation, at leas one root has to be set]")
         elif len(roots) == self.sensor_cnt: # all sensors were set to position
             print("All sensors Set!")
+            if find_all:
+                if cumulative_prob > self.best_hypothesis[1]:
+                    self.best_hypothesis = (self.get_locations_snapshot(), cumulative_prob)
             return True
 
 
         # get the possible candidates for next root
-        candidate_roots = self.get_ordered_candidate_rootnodes(roots)
+        candidate_roots = self.get_ordered_ranked_candidate_rootnodes(roots)
 
         # if there are no candidate roots, due to the above if statements, it implies there are sensors with unknown location left,
         # but there are no roots that we can use to estimate their location
@@ -510,40 +608,48 @@ class BayesSpacalAlgo:
             print("No candidate roots!")
             return True # TODO: change to False (since no candidate roots are possible, but we still have nodes that are not rooted, it is not good!)
 
+
+        # Size down the branching factor, only branch out if the candidate roots are do not have enough already present roots to narrow their location
+        if len(candidate_roots[0][0].get_neighbors()) < 3:
+            candidate_roots = candidate_roots[:1]
+        else:
+            candidate_roots = candidate_roots[:1]
+
         # Try out making every candidate root an actual root, and recursively repeat
-        for candidate_root, neighboring_roots in candidate_roots:
+        for candidate_root, total_rt_val in candidate_roots:
 
-            optimal_location = self.get_new_root_location(candidate_root,neighboring_roots)
+            neighboring_roots = set(self.vicinity_graph.get_roots()).intersection(set(candidate_root.get_neighbors()))
+            candidate_locations = self.get_new_root_locations(candidate_root,neighboring_roots,self.branch_factor)
 
-            print("next rt: ", candidate_root)
-            print("opt loc: ", optimal_location)
-            print("ngh rts: ",neighboring_roots)
-
-            self.vicinity_graph.set_root(candidate_root,optimal_location)
-
-            nearest_root, distance = self.vicinity_graph.get_nearest(candidate_root, lim=25)
-
-
-            if distance > self.distance_lim:
-
-                correct_build = self.propagate_location_estimates(iter_ - 1 if iter_ is not None else None)
-
-                # if the lower level recursion tells us that we correctly built the locations of sensors, we do not try to reconfigure the
-                # locations of sensors in a different way. We just terminate.
-                if correct_build: return True
-
-            # if adding the new root causes sensors to be too close (closer then possible), we try adding a different node as a root first
+            # If a candidate root node does not have enough neighbors to narrow its location completely, make several branches
+            if len(neighboring_roots) < 3:
+                candidate_locations = candidate_locations[:(3 -  len(neighboring_roots) + 1)]
             else:
+                candidate_locations = candidate_locations[:1]
+
+
+            # Try out all candidate locations for a given candidate root
+            for candidate_location, pdf_val in candidate_locations:
+
+
+                self.vicinity_graph.set_root(candidate_root.id_,candidate_location,root_val=self.discount*total_rt_val/len(neighboring_roots))
+
+                result = self.propagate_location_estimates(iter_ - 1 if iter_ is not None else None,find_all = find_all,cumulative_prob = cumulative_prob + pdf_val)
+
+                if result and not find_all: return True
+
                 self.vicinity_graph.remove_root(candidate_root)
 
+
         # if adding no root was successful, we return false to notify the upper level of recursion
-        return False
+        return True
 
 
-    def get_new_root_location(self,candidate_root,neighboring_roots, optimize = True):
+    def get_new_root_locations(self,candidate_root,neighboring_roots,n, optimize = True):
         """
         returns the most probable location of a sensors that is goint to be set to root
-        :param next_root: the sensor in question
+        :param n: amount of candidate root locations
+        :param candidate_root: the sensor in question
         :param neighboring_roots: neighboring roots, that we know are near the sensor in question
         :param optimize: if True, runs faster, bust the location of the next_root might be determined incorrectly
         :return: location of the next_root
@@ -552,31 +658,47 @@ class BayesSpacalAlgo:
         ## Create The governing location probability distribution of an unknown sensor
         loc_dist = self.build_distribution(candidate_root,neighboring_roots)
 
-        ## Get initial starting location
-        best_loc = np.random.rand(self.dim-1)
-        best_pdf = -loc_dist.pdf(best_loc,log= True)
 
-        start_locs = self.get_starting_locations(neighboring_roots)
+        start_locs = self.get_starting_locations(neighboring_roots, loc_dist,n*3)
+
+        candidate_locations = []
+
+        temp_locs_list = []
 
         for start_loc in start_locs:
 
-            start_loc = start_loc[:2]
+            start_loc = start_loc[:self.dim]
 
             ## find the location with the highest value for a location distribution - the location with the highest probability
             ## instead of the actual rpobability, we optimize upon Log(probability), since the probabilities may become very small - numerical stability
-            optimal_location = scipy.optimize.minimize(lambda X: -loc_dist.pdf(X, log=True), start_loc)
+            optimal_location = scipy.optimize.minimize(lambda X: -loc_dist.pdf(X, log=True), start_loc,options={"gtol":10e-3})
             optimal_location = optimal_location.x
+            optimal_location = np.concatenate([optimal_location,np.zeros(self.true_dim - self.dim)])
 
 
             pdf_ = -loc_dist.pdf(optimal_location,log = True)
 
-            if pdf_ < best_pdf:
-                best_pdf = pdf_
-                best_loc = optimal_location
+
+            if len(temp_locs_list) == 0:
+                temp_locs_list.append(optimal_location)
+                candidate_locations.append((optimal_location,pdf_))
+
+            elif self.closest_dist_to_set(temp_locs_list,optimal_location) > 10e-3:
+                temp_locs_list.append(optimal_location)
+                candidate_locations.append((optimal_location, pdf_))
 
 
-        best_loc = np.concatenate([best_loc,np.zeros(self.dim - len(best_loc))])
-        return best_loc
+        return sorted(candidate_locations, key = lambda x: x[1])[:n]
+
+    def closest_dist_to_set(self,locations_set, key_loc):
+
+        min_dist = np.linalg.norm(locations_set[0] - key_loc)
+
+        for l in locations_set:
+            dist = np.linalg.norm(l - key_loc)
+            if dist < min_dist: min_dist = dist
+
+        return min_dist
 
     def build_distribution(self,candidate_root : SensorNode,neighboring_roots):
         """
@@ -588,55 +710,64 @@ class BayesSpacalAlgo:
         :return: probabilistic distribution of a sensor location, given the neighboring roots
         """
 
+        all_roots = set(self.vicinity_graph.get_roots())
+
         root_locs = []
         distributions = []
+        roots_of_interest = set()
         for root in neighboring_roots:
-            pressure = candidate_root.get_neighbors()[root][0]
-            print(root)
-            s = 0.5743268
-            loc = 0.811029
-            print("loc : ",loc)
+            roots_of_interest.update(all_roots.intersection(set(root.get_neighbor_nodes())))
+
+
+            pressure_pair = candidate_root.get_neighbors()[root].get_pressure_pair()
+
+            mean, std = self.converter.convert(pressure_pair[0],pressure_pair[1])
+
             root_locs.append(root.get_location())
-            distributions.append(scipy.stats.lognorm(loc = loc,s = s))
+
+            distributions.append(scipy.stats.norm(loc = mean,scale= std))
+
+
+        roots_of_interest = roots_of_interest.difference(set(neighboring_roots))
+        for rootint in roots_of_interest:
+            root_locs.append(rootint.get_location())
+            distributions.append(LinearSeparationPenalty(self.min_sep))
+
+
 
         loc_dist = LocationDistribution(root_locs, distributions)
 
         return loc_dist
 
-    # NOTE: Choosing a good starting point is vital. This is because in some (nonsmall) regions the pdf will have 0 value
-    # and that is because it is so small, it cannot be represented by a float
-    # Generally, the the lognorm pdf have parameters such that if x (the input distance) less then the MIN_SEP distance, the pdf will return very low value
-    # In this case the gradient will be zero, and optimization will not work. To fix this, we have to find a start point such that, for all pdfs for all roots
-    # the distance of the start point to all roots is at least MIN_SEP
-    def get_starting_locations(self,neighboring_roots):
+    def get_starting_locations(self,neighboring_roots, location_distribution, n):
         """
         this method determines what will be the starting point of an optimization process for a certain sensor node, where we will look for a sensor location,
         that maximizes the probability of that location.
         It is necessary to choose the starting point wisely, since based on that the gradient ascent optimization will continue.
+        :param n: pick n best locations
         :param neighboring_roots: list of neighboring roots
+        :param location_distribution: probability distribution of the location of the candidate root sensor
         :return: returns a good estimate for the starting position from which we will then optimize to find the local optimum (highest probability)
         """
-        neighboring_roots = list(neighboring_roots)
-
-        corner_point = neighboring_roots[0].get_location()
 
 
-        mean_loc = np.zeros(len(corner_point))
-        for neighbor in neighboring_roots:
-            mean_loc += neighbor.get_location()
+        center = 0
+        for root in neighboring_roots: center += root.get_location()
+        center /= len(neighboring_roots)
 
-        mean_loc /= len(neighboring_roots)
+        initial_locs = self.generate_random_locs(center,n = self.sensor_cnt)
 
-        locs = [mean_loc]
+        locs_with_pdf = [ (loc, location_distribution.pdf(loc, log = True)) for loc in initial_locs ]
 
-        for shift in [np.array([1,0,0]),np.array([0,1,0]),np.array([-1,0,0]),np.array([0,-1,0])]:
-            locs.append(mean_loc + shift*self.min_sep)
+        top_n = sorted(locs_with_pdf,key=lambda x: x[1], reverse=True)
 
-        return locs
+        top_n = top_n[:n]
+
+        return [loc[0] for loc in top_n]
 
 
 
-    def get_ordered_candidate_rootnodes(self,roots):
+    def get_ordered_ranked_candidate_rootnodes(self,roots):
         """
         this method determines which nodes should we estimate the locations of next. It returns a list of all nodes that are connected
         to at least one root node. The list is ordered, so in the first positions, sensor nodes that have many connections to roots appear.
@@ -654,13 +785,40 @@ class BayesSpacalAlgo:
 
             neighbor_roots = set(node.get_neighbors().keys()).intersection(roots)
 
-            if len(neighbor_roots) >= len(roots) or len(neighbor_roots) >= self.ngh_lim: # Note: if we have less roots than the amount of roots we want to have, if course we cannot enforce the condition
-                candidate_roots.append([node,neighbor_roots])
+            sum_rt = 0
+            for r in neighbor_roots: sum_rt += r.get_root_val()
+
+            if len(neighbor_roots) > 0:
+                candidate_roots.append([node,sum_rt])
 
         ## Note: we want to take care of the nodes that have the most root connections first
-        candidate_roots = sorted(candidate_roots,key=lambda x: len(x[1]),reverse=True)
+        candidate_roots = sorted(candidate_roots,key=lambda x: x[1],reverse=True)
 
-        return candidate_roots
+        return candidate_roots[:self.branch_factor]
+
+
+    def generate_random_locs(self,center,n = 1):
+
+
+        locs = [ center + np.concatenate([4*self.max_sep*np.random.random(self.dim) - 2*np.ones(self.dim)*self.max_sep,np.zeros(self.true_dim - self.dim)]) for i in range(n)]
+
+        return locs
+
+
+
+    def get_locations_snapshot(self):
+
+        l = [None]*self.sensor_cnt
+        nodes = self.vicinity_graph.get_nodes()
+        for node in nodes:
+            l[node.id_] = node.get_location()
+
+        return l
+
+
+
+
+
 
 
 
@@ -670,21 +828,22 @@ if __name__ == "__main__":
     MIN_SEP = 1
     MAX_SEP = 2
 
-    sensor_positions, time_frames = read_recording("../pygame_model/data.csv")
+    sensor_positions, time_frames = read_labeled_recording("../pygame_model/data_2sz.csv")
     known_pts, known_positions = filter_sensors(set([0]), sensor_positions)
 
     known_pts = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 19, 20, 29, 30, 39, 40, 49, 50, 59, 60, 69, 70, 79, 80, 89, 90, 91,
                  92, 93, 94, 95, 96, 97, 98, 99]
 
-    #known_pts = [0,9,90,99]
+    known_pts = [0,9,90,99]
     known_pts = [0]
+   # known_pts = [36]
     known_positions = get_positions_of_sensors(sensor_positions, known_pts)
 
-    #model = SpatialModel(time_frames=time_frames, positions=sensor_positions, static_points=known_pts)
-    #
-    decider = MeanThresholdDecider(threshold=3)
+
+   # model = SpatialModel(time_frames=time_frames, positions=sensor_positions, static_points=known_pts)
+
     decider = CountDecider(4)
-    algo = BayesSpacalAlgo(decider, MIN_SEP, MAX_SEP, len(sensor_positions),
+    algo = MultilatSpacialAlgo(decider, MIN_SEP, MAX_SEP, len(sensor_positions),dim= 2,
                             seed=1)
 
 
@@ -696,17 +855,28 @@ if __name__ == "__main__":
 
 
 
-
     algo.set_roots(known_pts,known_positions)
-    algo.propagate_location_estimates(iter_=3)
+    #locs, pdf = algo.build_map(iter_=1,find_all=True)
+    algo.build_map(iter_=100,find_all=False)
 
-    print(algo.get_sensors())
-    model =GraphModel()
-    print(len(algo.get_sensors()))
-    model.plot_graph(algo.get_sensors())
+    est_locs = algo.get_locations_snapshot()
+
+    X =  matrix_least_squares(est_locs,sensor_positions)
+    #
+    est_locs = [X.dot(loc) for loc in est_locs]
+    print(np.linalg.det(X[:2,:2]))
+    # print(est_locs)
+   #  print(algo.get_sensors())
+   # print(len(algo.get_sensors()))
+     #model =GraphModel()
+   #  model.plot_nodes(algo.get_sensors())
+   # model.plot_evolution(nodes_ev)
+
+    model = GeneralModel()
+    model.plot_points(est_locs)
 
 
-    # loc_dist = LocationDistribution([np.array([0,0,0]),np.array([-1.56,0,0]),np.array([-0.78,0.504,0])],[scipy.stats.lognorm(loc = 0.831029,s =1.33),scipy.stats.lognorm(loc = 0.831029,s = 1.25),scipy.stats.lognorm(loc = 0.831029,s = 0.2)])
+    # loc_dist = LocationDistribution([np.array([0,0,0]),np.array([0,3,0]),np.array([3,0,0])],[scipy.stats.norm(loc = 2,scale =1),scipy.stats.norm(loc = 2,scale =1),scipy.stats.norm(loc = 2,scale =1)])
     # loc_dist.plot(max_=True)
 
    # loc_dist = LocationDistribution([np.array([0,0,0]),np.array([2,0,0])],[scipy.stats.lognorm(loc = 0.831029,s = 0.6743268),scipy.stats.lognorm(loc = 0.831029,s = 0.6743268)])

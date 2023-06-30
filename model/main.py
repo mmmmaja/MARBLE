@@ -235,13 +235,19 @@ class Display:
         pygame.display.update()
 
 
-rectangle_stimuli = stimulis.Cuboid(DeformationFunction(), 2, 2)
-sphere_stimuli = stimulis.Sphere(DeformationFunction(), 1)
+if __name__ == "__main__":
 
-# rect_mesh = advanced_mesh.RectangleMesh(10, 10)
-csv_mesh = advanced_mesh.csvMesh('meshes_csv/web.csv')
+    rectangle_stimuli = stimulis.Cuboid(DeformationFunction(), 2, 2)
+    sphere_stimuli = stimulis.Sphere(DeformationFunction(), 1)
 
-display = Display(csv_mesh, sphere_stimuli)
-display.run()
+    csv_mesh = advanced_mesh.csvMesh('meshes_csv/random.csv')
+    rect_mesh = advanced_mesh.RectangleMesh(10, 10)
+    rand_mesh = advanced_mesh.RandomMesh(save_path="../pygame_model/randX.csv",area=((0,10),(0,10),(0,0)),sensor_cnt=100,min_sep=0.5,seed=1)
+
+    display = Display(rand_mesh, sphere_stimuli)
+    display.run()
+
+
+
 
 

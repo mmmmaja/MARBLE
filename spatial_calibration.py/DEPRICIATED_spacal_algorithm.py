@@ -1,6 +1,6 @@
 import numpy as np
 import random
-from separation_functions import *
+from DEPRECIATED_separation_functions import *
 import scipy
 from pressure_recording_manager import *
 import random
@@ -8,8 +8,8 @@ from matplotlib.backend_bases import MouseButton
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Button
 from pressure_recording_manager import *
-from spacal_algorithm_belief import *
-from discrete_spacal_algo_DEPRICIATED import *
+from DEPRECIATED_spacal_algorithm_belief import *
+from DEPRICIATED_discrete_spacal_algo import *
 
 
 
@@ -270,7 +270,7 @@ if __name__ == "__main__":
 
     sep_function = ExpSep(MIN_SEP, MAX_SEP)
 
-    sensor_positions, time_frames = read_recording("../pygame_model/data.csv")
+    sensor_positions, time_frames = read_recording("../pygame_model/data_2sz.csv")
     known_pts, known_positions = filter_sensors(set(range(42, 62, 3)), sensor_positions)
 
     known_pts = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 19, 20, 29, 30, 39, 40, 49, 50, 59, 60, 69, 70, 79, 80, 89, 90, 91,
