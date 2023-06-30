@@ -3,10 +3,12 @@ import pyvistaqt as pvqt  # For updating plots real time
 
 class GUI:
 
-    def __init__(self, mesh_material, vtk_mesh):
+    def __init__(self, vtk_mesh, mesh_material, stimuli):
 
         # Rank material for rendering the mesh
         self.mesh_material = mesh_material
+
+        self.stimuli = stimuli
 
         # Define the plotter (pyvistaqt)
         self.plotter = pvqt.BackgroundPlotter()
@@ -15,12 +17,14 @@ class GUI:
 
         # Define all the actors present in the scene
         self.mesh_actor = None
+        self.stimuli_actor = None
         self.material_text_actor = None
         self.mode_text_actor = None
         self.force_indicator_actor = None
 
         # Add all the actors to the scene
         self.draw_mesh(vtk_mesh)
+        self.draw_stimuli()
         self.add_material_text()
         self.add_mode_text('Interactive')
 
@@ -63,6 +67,21 @@ class GUI:
             metallic=visual_properties['metallic'],
             roughness=visual_properties['roughness'],
             name='initial_mesh'
+        )
+
+    def draw_stimuli(self):
+        if self.stimuli_actor is not None:
+            self.plotter.remove_actor(self.stimuli_actor)
+
+        self.stimuli_actor = self.plotter.add_mesh(
+            self.stimuli.get_visualization(),
+            color=self.stimuli.color,
+            name='stimuli',
+            show_edges=False,
+            smooth_shading=True,
+            specular=0.8,
+            metallic=0.95,
+            roughness=0.0,
         )
 
     def add_mode_text(self, text):

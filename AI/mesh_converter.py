@@ -8,31 +8,36 @@ import pyvista as pv
 from sfepy.discrete.fem import Mesh
 from copy import deepcopy
 
-# Thickness of the mesh (Applies to the extruded meshes only)
+# Thickness of the mesh
 THICKNESS = 1.53
 
 
 def convert_to_vtk(path):
+    """
+    Convert a mesh file to a vtk object (UnstructuredGrid)
+    :param path: Path to the mesh file
+    """
     return pv.UnstructuredGrid(path)
 
 
 class MeshBoost:
 
-    def __init__(self, path=None):
+    # This is a parent class for all the meshes in the project
 
+    def __init__(self, path=PATH):
         # Path to the .mesh file
-        if path is None:
-            self.path = PATH
-        else:
-            self.path = path
-
+        self.path = path
+        # The mesh object in Sfepy format for calculations
         self.sfepy_mesh = self.create_mesh()
-
+        # The mesh object in .vtk format for visualization
         self.initial_vtk = convert_to_vtk(self.path)
+
+        # Represents the current displacements of the mesh
+        # Mind be changed later
         self.current_vtk = self.initial_vtk.copy()
 
     @abstractmethod
-    def create_mesh(self) -> None:
+    def create_mesh(self) -> sfepy.discrete.fem.mesh.Mesh:
         """
         TODO override in subclasses
         :return: The mesh object in Meshio format
@@ -40,18 +45,22 @@ class MeshBoost:
 
     def get_regions(self, domain):
 
+        # Get the boundaries of the mesh
         min_x, max_x = domain.get_mesh_bounding_box()[:, 0]
         min_y, max_y = domain.get_mesh_bounding_box()[:, 1]
 
+        # Create a tolerance for the boundaries
         tol = 1e-1
         eps_x, eps_y = tol * (max_x - min_x), tol * (max_y - min_y)
 
+        # Create the regions (they do not really represent top and the bottom regions,
+        # but rather just some fixed points -> this method is meant to be overriden in the child classes anyway)
         bottom = domain.create_region('bottom', 'vertices in y < %.10f' % (min_y + eps_y), 'facet')
         top = domain.create_region('top', 'vertices in y > %.10f' % (min_y - eps_y), 'facet')
         return top, bottom
 
     def override_mesh(self, u):
-        # 1) Override the vtk version of the mesh
+        # Override the vtk version of the mesh
         # Copy the initial mesh
         self.current_vtk.points = self.initial_vtk.points.copy() + u
         # Check for negative z values
@@ -59,7 +68,7 @@ class MeshBoost:
         self.current_vtk.points[:, 2] = np.where(self.current_vtk.points[:, 2] < 0, 0, self.current_vtk.points[:, 2])
 
     def update_mesh(self, u):
-        # 1) Update the vtk version of the mesh
+        # Update the vtk version of the mesh
         # Add displacement to the mesh points
         print('vtk: ', self.current_vtk.points.shape, 'u: ', u.shape)
         self.current_vtk.points += u
@@ -110,23 +119,18 @@ class MeshFromFile(MeshBoost):
 
 class GridMesh(MeshBoost):
 
-    def __init__(self, width, height, z_function=flat, cell_distance=1, layers=2):
+    def __init__(self, width, height, z_function=flat, layers=2):
         """
-        Defines the mesh as a grid of sensors
+        Defines the mesh as a grid of vertices
+        Consists of HEXA elements(!)
+
         :param width: dimension of the grid
         :param height: dimension of the grid
         :param z_function: function that defines the height of the grid
-        :param cell_distance: distance between each cell in a grid
-
-        TODO add sensors later
+        :param layers: number of layers in the grid (in z direction)
         """
-        self.width = width
-        self.height = height
-
-        self.z_function = z_function
-        self.cell_distance = cell_distance
-
-        self.layers = layers
+        self.width, self.height = width, height
+        self.z_function, self.layers = z_function, layers
 
         super().__init__()
 
@@ -138,29 +142,30 @@ class GridMesh(MeshBoost):
         for i in range(self.layers):
             all_layers.append([])
 
+        # Add the vertices to the regions
         for i in range(self.height):
             for j in range(self.width):
-
                 all_layers[0].append([
-                    i * self.cell_distance,
-                    j * self.cell_distance,
-                    self.z_function(i, j, self.width, self.height)
+                    i, j, self.z_function(i, j, self.width, self.height)
                 ])
                 for k in range(1, self.layers):
                     all_layers[k].append([
-                        i * self.cell_distance,
-                        j * self.cell_distance,
-                        (self.layers - k - 1) * THICKNESS
+                        i, j, (self.layers - k - 1) * THICKNESS
                     ])
 
-        # Assign the same z-coordinate to all the TOP vertices (the smallest top z-coordinate)
-        Z = np.amin(np.array(all_layers[0])[:, 2])
-        if Z < 0:
-            for v in all_layers[0]:
-                v[2] -= Z
-        # add the thickness to the top vertices
-        for v in all_layers[0]:
-            v[2] += (self.layers - 1) * THICKNESS
+        # ADJUST THE TOP LAYER (where the deformations will be applied)
+
+        # Convert all_layers[0] to numpy array for vectorized operation
+        top_layer = np.array(all_layers[0])
+
+        # Adjust the z-coordinates and ensure all are non-negative
+        top_layer[:, 2] = np.maximum(top_layer[:, 2] - np.amin(top_layer[:, 2]), 0)
+
+        # Add the thickness to the top vertices
+        top_layer[:, 2] += (self.layers - 1) * THICKNESS
+
+        # Convert the adjusted numpy array back to list and assign it back to all_layers[0]
+        all_layers[0] = top_layer.tolist()
 
         # Combine all the vertices
         vertices = [vertex for vertices in all_layers for vertex in vertices]
@@ -170,22 +175,19 @@ class GridMesh(MeshBoost):
         cells = []
         for i in range(self.height - 1):
             for j in range(self.width - 1):
+                # Go through all the layers
                 for k in range(self.layers - 1):
-
-                    a_top, b_top = i * self.width + j + k*n, i * self.width + j + 1 + k*n
-                    c_top, d_top = (i + 1) * self.width + j + 1 + k*n, (i + 1) * self.width + j + k*n
-
-                    a_bottom, b_bottom = a_top + n, b_top + n
-                    c_bottom, d_bottom = c_top + n, d_top + n
-
+                    a_top, b_top = i * self.width + j + k * n, i * self.width + j + 1 + k * n
+                    c_top, d_top = (i + 1) * self.width + j + 1 + k * n, (i + 1) * self.width + j + k * n
                     cells.append([
                         a_top, b_top, c_top, d_top,
-                        a_bottom, b_bottom, c_bottom, d_bottom
+                        a_top + n, b_top + n,  c_top + n, d_top + n
                     ])
 
-        # Create hexahedron mesh
+        # Create hexahedron mesh in the meshio format
         mesh = meshio.Mesh(points=vertices, cells={"hexahedron": cells})
         meshio.write(PATH, mesh)
+        # Convert the meshio mesh to sfepy mesh
         return Mesh.from_file(PATH)
 
     def get_regions(self, domain):
@@ -213,5 +215,3 @@ class GridMesh(MeshBoost):
         bottom = domain.create_region(name='Bottom', select=expr_extruded, kind='facet')
 
         return top, bottom
-
-

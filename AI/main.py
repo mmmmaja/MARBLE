@@ -4,6 +4,7 @@ from AI.GUI_handler import GUI
 from AI.fenics import *
 from AI.mesh_converter import *
 from AI.material_handler import *
+from AI.stimulis import *
 from AI.stress_script import StressRelaxation
 import io
 import sys
@@ -133,10 +134,11 @@ def apply_force(fenics, gui, cell_coords=None, relaxation=True):
 
 class Main:
 
-    def __init__(self, mesh_boost, rank_material):
+    def __init__(self, mesh_boost, stimuli, rank_material):
+        self.stimuli = stimuli
         self.fenics = FENICS(mesh_boost, rank_material)
 
-        self.gui = GUI(rank_material, mesh_boost.current_vtk)
+        self.gui = GUI(mesh_boost.current_vtk, rank_material, stimuli)
         self.add_interactive_events()
 
     def add_interactive_events(self):
@@ -184,10 +186,15 @@ if not TERMINAL_OUTPUT:
 
 app = QApplication(sys.argv)
 _mesh_boost = GridMesh(30, 30, z_function=wave, layers=3)
-Main(_mesh_boost, rubber)
+_stimuli = Sphere(radius=1.0)
+
+Main(_mesh_boost, _stimuli, rubber)
 app.exec_()
 
-# less resolution
-# interpolation
-# Generate recording
-# Do not remove the actor but update it
+
+"""
+TODO interpolation -> less resolution
+Do not remove the actor but update it
+
+TODO apply VERTEX specific force
+"""
