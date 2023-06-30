@@ -142,3 +142,22 @@ class DisplayRecordingButton(Button):
             self.screen.blit(self.button_surface, self.button_rect)
 
         self.STATE = (self.STATE + 1) % 2
+
+
+class EvaluateRecordingButton(Button):
+
+    def add(self):
+        if self.STATE == 0:
+            self.button_surface.fill(hex2RGB('9c82dd'))
+            button_text = self.font.render("Evaluate recording", True, hex2RGB('262834'))
+            button_text_rect = button_text.get_rect(center=(self.width // 2, self.height // 2))
+            self.button_surface.blit(button_text, button_text_rect)
+
+            # Draw the button
+            self.screen.blit(self.button_surface, self.button_rect)
+
+        if self.STATE == 1:
+            # TODO
+            pass
+
+        self.STATE = (self.STATE + 1) % 2
