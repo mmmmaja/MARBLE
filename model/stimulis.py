@@ -15,9 +15,6 @@ class Stimuli:
     def set_deformation(self, deform):
         self.deformation = deform
 
-    def set_position(self, position):
-        self.position = np.copy(position)
-
     def set_frame_position(self, position):
         position = (position - OFFSET) / UNIT
         self.position = np.copy(position)

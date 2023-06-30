@@ -1,32 +1,41 @@
 import sys
 import numpy as np
-from scipy.sparse import csr_matrix, coo_matrix
+from scipy.sparse import coo_matrix
 from fea_.components import Triangle
 from scipy.sparse.linalg import spsolve
+from AI.ai import pressure_image
 
 
 class FEA:
 
-    def __init__(self, mesh, material):
+    def __init__(self, mesh, material, stimuli):
         self.mesh = mesh
+        self.material = material
+        self.stimuli = stimuli
 
         # Triangle elements (Check later if elements are not too big)
         self.elements = self.create_elements()
-        self.material = material
 
         # Define global stiffness matrix
         self.K = self.create_global_stiffness_matrix()
 
-    def solve(self, F):
+    def introduce_displacement(self, u):
         """
-        Solve the system of equations Ku = F
-        :return: The displacement vector u contains the displacements in x and y direction for each node in the mesh
+        Update the geometry of the mesh with the displacements from the previous step
+        :param u: The displacement vector u contains the displacements in xyz direction for each node in the mesh
         """
 
-        # Solve for displacements
-        u = spsolve(self.K, F)
+        # Reshape the displacement vector into a 3xN matrix
+        u = u.reshape((3, -1)).T
+        # update the geometry with the displacements from the previous step
+        self.mesh.update_geometry(u)
 
     def create_elements(self):
+        """
+        Create a list of elements from the mesh of nodes
+        Here using a triangular mesh so each element is a triangle
+        """
+
         elements = []
 
         # Array of indexes of 3 senors from SENSOR_ARRAY
@@ -77,6 +86,84 @@ class FEA:
         K = coo_matrix((data, (rows, cols)), shape=(num_nodes, num_nodes)).tocsr()
         return K
 
+    def show_pressure(self):
+        # Get the force vector
+        F = np.reshape(self.get_force(), (-1, 3))
+        for i in range(len(self.mesh.SENSOR_ARRAY)):
+            # FIXME this is not real pressure but the force in z axis applied
+            self.mesh.SENSOR_ARRAY[i].pressure = F[i, 2]
+        pressure_image.form_contact_image(self.mesh)
+        sys.exit(1)
+
+    def apply_pressure(self):
+
+        # Get the force vector
+        F = self.get_force()
+
+        """
+        Solve the system of equations Ku = F using the Newton-Raphson method
+        K U = F
+        """
+        # initial guess for the displacements
+        U = np.zeros_like(F)
+
+        # tolerance for the relative change in the solution between iterations
+        tol = 1e-6
+
+        # maximum number of iterations
+        max_iter = 100
+
+        for _ in range(max_iter):
+            # compute the residual force R
+            # The residual force is force that is left over after the applied force is removed.
+            R = self.K.dot(U) - F
+
+            # Residual is supposed to get as close to zero as possible
+            print("Residual: ", np.linalg.norm(R))
+
+            # check if the solution has converged
+            if np.linalg.norm(R) < tol:
+                break
+
+            # Create a Tangent stiffness matrix
+            # The tangent stiffness matrix is the derivative of the residual force with respect to the displacement.
+            # compute the change in displacements
+            delta_u = spsolve(self.K, -R)
+
+            # compute the change in displacements
+            delta_u = spsolve(self.K, -R)
+
+            # update the displacements
+            U += delta_u
+
+            # update the geometry and the stiffness matrix
+            self.introduce_displacement(U)
+            self.K = self.create_global_stiffness_matrix()
+
+    def get_force(self):
+        """
+        The pressure is applied to the nodes of the elements that are activated.
+        The pressure is applied in the z-direction, so it will only affect the z-displacement of the nodes.
+        The pressure is applied as a force, so it will be converted to a force using the area of the element.
+        :return:
+        """
+
+        # Get number of nodes in the sensor array
+        num_nodes = len(self.mesh.SENSOR_ARRAY)
+
+        # create an empty list to hold the forces for each node
+        forces = np.zeros((num_nodes, 3))
+        for i in range(num_nodes):
+            # Get the force applied
+            sensor_position = self.mesh.SENSOR_ARRAY[i].position
+            force = self.stimuli.get_force(sensor_position)
+            forces[i] = force
+
+        # Create a force matrix of size num_nodes * 3 (# DOF)
+        # The force matrix F is a vector of length equal to the number of degrees of freedom.
+        F = forces.flatten()
+        return F
+
 
 class Material:
 
@@ -109,6 +196,18 @@ class Material:
         self.poisson_ratio = poisson_ratio
         self.thickness = thickness
 
+    def get_properties(self):
+        """
+        Returns additional material properties
+        :return: mu and lambda
+        """
+        E = self.young_modulus
+        nu = self.poisson_ratio
 
-# MAIN
+        # # Mu is the shear modulus (shows the material's resistance to deformation)
+        # mu = Constant(E / (2.0 * (1.0 + nu)))
+        # # Lambda is the Lame parameter (defines the relationship between stress and strain)
+        # lambda_ = Constant(E * nu / ((1.0 + nu) * (1.0 - 2.0 * nu)))
+        #
+        # return mu, lambda_
 
