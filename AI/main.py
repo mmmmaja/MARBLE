@@ -9,6 +9,8 @@ from AI.stress_script import StressRelaxation
 import io
 import sys
 
+# Set to True to enable the terminal output,
+# otherwise the output will be redirected to the log file (maybe it is faster this way)
 TERMINAL_OUTPUT = True
 
 # I need to hold the reference to the timer class and destroy it
@@ -60,6 +62,7 @@ class NoRotateStyle(vtk.vtkInteractorStyleTrackballCamera):
 
     def mouse_move_event(self, obj, event):
         """
+        TODO adjust to stimuli
         Function that is triggered when the mouse is moved.
         If self.mouse_pressed is True, it updates the position of the stimuli.
         """
@@ -69,12 +72,18 @@ class NoRotateStyle(vtk.vtkInteractorStyleTrackballCamera):
             self.pick_cell(x, y)
 
     def pick_cell(self, x, y):
+        """
+        Function that picks the cell that was clicked and applies a force to it.
+        :param x: x coordinate of the mouse
+        :param y: y coordinate of the mouse
+        """
+
         # Pick the cell that was clicked
         self.picker.Pick(x, y, 0, self.gui.plotter.renderer)
         cell_id = self.picker.GetCellId()
 
+        # If the cell exists
         if cell_id != -1:
-            print(f"Cell {cell_id} picked.")
 
             # It will return the ids of the 8 points that make up the hexahedron
             cell_points_ids = self.picker.GetActor().GetMapper().GetInput().GetCell(cell_id).GetPointIds()
@@ -83,6 +92,7 @@ class NoRotateStyle(vtk.vtkInteractorStyleTrackballCamera):
             points = []
             for i in range(cell_points_ids.GetNumberOfIds()):
                 point_id = cell_points_ids.GetId(i)
+                # Map the point id to the coordinates of the mesh cells
                 points.append(self.picker.GetActor().GetMapper().GetInput().GetPoint(point_id))
 
             # Remove the bottom layer of points (Points with z coordinate == 0)
@@ -90,8 +100,11 @@ class NoRotateStyle(vtk.vtkInteractorStyleTrackballCamera):
 
             # Get the ids of the vertices that belong to the cell
             vertex_ids = self.fenics.mesh_boost.get_vertex_ids_from_coords(points)
-            # Create the force dictionary
-            force = [[vertex_ids, self.gui.FORCE]]
+
+            # Create the force dictionary (vertex_id : force [N])
+            force = [
+                [vertex_ids, self.gui.FORCE]
+            ]
             # Apply the force to the mesh
             apply_force(self.fenics, self.gui, force, relaxation=False)
 
@@ -137,20 +150,22 @@ def apply_stimuli(fenics, gui, stimuli):
     # vertex_ids : force
     FORCE = []
 
-    force_lim = 0.2
+    # Specifies when not to apply the force (for the speed of the simulation)
+    FORCE_LIM = 0.2
 
     # Get the hexahedral cells
-    # It consists of a list of 8 points (3D coordinates) for each cell
+    # It consists of a list of 4 points (3D coordinates) for each cell (top facet)
     hexa_cells = fenics.mesh_boost.vtk_cells_coordinates
 
     # Check the distance between the centre of the face and the stimuli
     for top_face in hexa_cells:
         # Find the centre of the rectangle face
         face_center = np.mean(top_face, axis=0)
+        # Calculate the force from the stimuli to the centre of the face
         force = stimuli.calculate_force(face_center)
 
         # Apply the force just if the magnitude is greater than the limit
-        if np.linalg.norm(force) > force_lim:
+        if np.linalg.norm(force) > FORCE_LIM:
             vertices = fenics.mesh_boost.get_vertex_ids_from_coords(top_face)
             # Transform the coordinates of the cell to the vertex ids
             FORCE.append([vertices, force])
@@ -168,8 +183,6 @@ class Main:
         self.gui = GUI(mesh_boost.current_vtk, rank_material, stimuli)
         self.add_interactive_events()
 
-        apply_stimuli(self.fenics, self.gui, self.stimuli)
-
     def add_interactive_events(self):
         # Enable cell picking
         self.gui.plotter.enable_cell_picking(
@@ -179,12 +192,8 @@ class Main:
                 self.fenics, self.gui, relaxation=True,
                 force=[[self.fenics.mesh_boost.get_vertex_ids_from_coords(cell.points), self.gui.FORCE]],
             ) if cell is not None else None,
-            font_size=10,
-            color='white',
-            point_size=30,
-            style='wireframe',
-            line_width=5,
-            through=False
+            font_size=10, point_size=30, line_width=5,
+            color='white', style='wireframe', through=False
         )
 
         # Add the event on the press of the space bar, apply the force
@@ -228,5 +237,7 @@ app.exec_()
 TODO interpolation -> less resolution
 Do not remove the actor but update it
 
-TODO apply VERTEX specific force
+TODO different stimuli activation
+relaxation in a normal activation
+ROBOTIC ARM
 """

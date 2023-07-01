@@ -33,9 +33,6 @@ class Sphere(Stimuli):
         self.radius = radius
         self.color = '#62fff8'
 
-        # FIXME later, this is just for testing
-        self.position = np.array([5.0, 5.0, 4.2])
-
     def get_visualization(self):
         # Return pyvista sphere
         sphere = pv.Sphere(

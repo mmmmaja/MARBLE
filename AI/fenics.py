@@ -68,6 +68,7 @@ class FENICS:
         # Apply the force to the entire top face of the mesh
         # Check if the force is a single value or a dictionary
         if isinstance(force, int) or isinstance(force, float):
+            # In this case a single value will be applied to the entire top face of the mesh
             print('Apply volume force')
             top, bottom = self.mesh_boost.get_regions(self.DOMAIN)
             region = top
