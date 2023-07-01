@@ -6,7 +6,7 @@ import numpy as np
 class Stimuli:
 
     def __init__(self):
-        self.position = np.array([18.0, 18.0, 4.0])
+        self.position = np.array([18.0, 18.0, 2.7])
         self.color = '#17d8db'
 
     @abstractmethod
@@ -89,7 +89,7 @@ class Cylinder(Stimuli):
         if distance <= self.radius and abs(point[2] - self.position[2]) <= self.height / 2:
             # distribute the pressure equally within the circular boundary
             # Intensity??
-            return 1.0
+            return 0.4
         else:
             return 0.0
 

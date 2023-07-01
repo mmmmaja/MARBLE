@@ -123,7 +123,7 @@ def apply_force(fenics, gui, force_handler, relaxation=True):
 
 
 def apply_stimuli(fenics, gui, stimuli):
-    force_handler = StimuliForce(fenics.mesh_boost, stimuli)
+    force_handler = StimuliForce(stimuli)
     # Apply the force to the mesh
     apply_force(fenics, gui, force_handler, relaxation=False)
 
@@ -139,6 +139,7 @@ class Main:
 
         # Apply the stimuli
         apply_stimuli(self.fenics, self.gui, self.stimuli)
+        self.gui.plotter.remove_actor(self.gui.stimuli_actor)
 
     def add_interactive_events(self):
         # Enable cell picking
@@ -181,7 +182,7 @@ if not TERMINAL_OUTPUT:
     sys.stdout = text_trap
 
 app = QApplication(sys.argv)
-_mesh_boost = GridMesh(30, 30, z_function=wave, layers=3)
+_mesh_boost = GridMesh(30, 30, z_function=flat, layers=3)
 # _stimuli = Sphere(radius=2.0)
 # _stimuli = Cylinder(radius=3.0, height=1.0)
 _stimuli = Cuboid(4.0, 4.0, 2.0)

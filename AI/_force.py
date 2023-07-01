@@ -67,39 +67,15 @@ def is_inside(vertex, vertex_coordinates):
 
 class StimuliForce(ForceHandler):
 
-    def __init__(self, mesh, stimuli):
+    def __init__(self, stimuli):
         super().__init__()
-        self.mesh = mesh
         self.stimuli = stimuli
-        self.force_dict = self.create_force_dict()
-
-    def create_force_dict(self):
-        dictionary = []
-
-        # Get the hexahedral cells
-        # It consists of a list of 4 points (3D coordinates) for each cell (top facet)
-        hexa_cells = self.mesh.vtk_cells_coordinates
-
-        # Check the distance between the centre of the face and the stimuli
-        for top_face_coords in hexa_cells:
-            # Find the centre of the rectangle face
-            face_center = np.mean(top_face_coords, axis=0)
-            # Calculate the force from the stimuli to the centre of the face
-            force = self.stimuli.calculate_force(face_center)
-
-            # Transform the coordinates of the cell to the vertex ids
-            dictionary.append(
-                [top_face_coords, force]
-            )
-        return dictionary
 
     def get_force(self, vertex_coordinates: np.ndarray) -> float:
-        return self.stimuli.calculate_force(vertex_coordinates)
-        # for entry in self.force_dict:
-        #     coords, force = entry[0], entry[1]
-        #     if is_inside(vertex_coordinates, coords):
-        #         return force
-        # return 0.0
+        force = self.stimuli.calculate_force(vertex_coordinates)
+        if force > 0:
+            print('force: ', force, 'position: ', vertex_coordinates)
+        return force
 
 
 class MeshIntersectionForce(ForceHandler):
