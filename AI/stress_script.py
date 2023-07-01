@@ -22,7 +22,7 @@ class StressRelaxation:
     Generalized Maxwell model
     """
 
-    def __init__(self, gui, mesh_boost, rank_material, u0, F0, vertex_ids):
+    def __init__(self, gui, mesh_boost, rank_material, u0, F0):
         # Time step: how many milliseconds between each update
         # When having 40 ms program is not freezing, all smaller values freeze the program
         self.dt = 20  # ms
@@ -39,8 +39,6 @@ class StressRelaxation:
         self.u0 = u0
         # The initial force applied to the body
         self.F0 = F0
-        # Where the mesh was pressed
-        self.vertex_ids = vertex_ids
 
         self.relaxation_timer = None
         self.wait_timer = None

@@ -9,6 +9,43 @@ from sfepy.solvers.nls import Newton
 from AI.mesh_converter import *
 
 
+def create_force_function(force_handler):
+    """
+    Convert the list of (vertex_coordinates, force_value) pairs into a dictionary
+    :param force_handler: a ForceHandler object that holds the force information
+    :return: a dictionary that maps vertex coordinates to force values which the force material can use
+    """
+
+    def force_fun(ts, coors, mode=None, **kwargs):
+        """
+            Define a function that represents the spatial distribution of the force
+
+            :param ts:
+                a TimeStepper object that holds the current time step information.
+            :param coors:
+                is a NumPy array that contains the coordinates of the points where the function should be evaluated.
+                In SfePy, when a function is evaluated, it's not evaluated at every point in the domain.
+                Instead, it's evaluated at a specific set of points, called quadrature points,
+                that are used for numerical integration.
+                The coors array contains the coordinates of these quadrature points.
+            :param mode:
+                is a string that tells the function what it should return.
+                When mode is 'qp', it means that the function is being asked to return its values at the quadrature points.
+            :param kwargs:
+            :return:
+            """
+        if mode == 'qp':  # querying values at quadrature points
+            values = np.zeros((coors.shape[0], 1, 1), dtype=np.float64)
+
+            for i in range(coors.shape[0]):
+                # If the coordinate is in the force dictionary, get the corresponding force value
+                values[i] = force_handler.get_force(coors[i])
+
+            return {'val': values}
+
+    return force_fun
+
+
 def get_solver(iterative=True):
     nls_status = IndexedStruct()
     if iterative:
@@ -35,6 +72,9 @@ class FENICS:
         self.DOMAIN, self.omega, self.material = None, None, None
         self.integral = None
 
+        # The top and bottom regions of the mesh
+        self.top, self.bottom = None, None
+
         self.innit()
 
     def innit(self):
@@ -55,9 +95,9 @@ class FENICS:
         # Integrals specify which numerical scheme to use.
         self.integral = Integral('i', order=1)
 
-    def get_force_terms(self, force, v):
+    def get_force_term(self, force_handler, v):
         """
-        :param force: numpy array of the form [ [vertex_ids, force] ] or a single force value
+        :param force_handler: a ForceHandler object
         :param v: The test variable
         :return: The force terms associated with the given regions
 
@@ -65,45 +105,18 @@ class FENICS:
         https://sfepy.org/doc-devel/terms_overview.html
         """
 
-        # Apply the force to the entire top face of the mesh
-        # Check if the force is a single value or a dictionary
-        if isinstance(force, int) or isinstance(force, float):
-            # In this case a single value will be applied to the entire top face of the mesh
-            print('Apply volume force')
-            top, bottom = self.mesh_boost.get_regions(self.DOMAIN)
-            region = top
-            # Create a material that will be the force applied to the body
-            f = Material(name='f', val=force)
-            force_terms = [Term.new(
-                    'dw_surface_ltr(f.val, v)', integral=self.integral, region=region, f=f, v=v
-            )]
-        else:
-            print('Apply vertex specific force')
-            # In this case, the force is a dictionary of the form [ [vertex_ids, force] ]
-            # Create the force terms for each vertex
-            force_terms = []
-            for i in range(len(force)):
-                vertex_ids, force_value = force[i][0], force[i][1]
+        force_fun = create_force_function(force_handler)
+        # Register the function with your materials
+        f = Material(name='f', function=force_fun)
+        # Now you can define the term using the force function:
+        force_term = Term.new(
+            'dw_surface_ltr(f.val, v)',
+            integral=self.integral, region=self.top, v=v, f=f
+        )
 
-                # Create a region with the vertices of the cell
-                expr = 'vertex ' + ', '.join([str(ID) for ID in vertex_ids])
-                try:
-                    # Create the region with the given expression
-                    region = self.DOMAIN.create_region(name='region', select=expr, kind='facet')
-                    # Create a material that will be the force applied to the body
-                    f = Material(name='f', val=force_value)
-                    # Create the force term
-                    # FIXME its gonna be a problem if there are more than one force term
-                    force_terms.append(Term.new(
-                            'dw_surface_ltr(f.val, v)', integral=self.integral, region=region, f=f, v=v
-                    ))
-                except ValueError:
-                    # The region is empty, so it is not created
-                    continue
+        return force_term
 
-        return force_terms
-
-    def apply_force(self, force):
+    def apply_force(self, force_handler):
         """
         Elasticity problem solved with FEniCS.
 
@@ -111,12 +124,12 @@ class FENICS:
         https://github.com/sfepy/sfepy/blob/master/doc/tutorial.rst
         https://github.com/sfepy/sfepy/issues/740
 
-        :param force: numpy array of the form [ [vertex_ids, force] ] or a single force value
+        :param force_handler: a ForceHandler object
         :return: displacement u of the mesh for each vertex in x, y, z direction
         """
 
         # 1) Define the REGIONS of the mesh
-        top, bottom = self.mesh_boost.get_regions(self.DOMAIN)
+        self.top, self.bottom = self.mesh_boost.get_regions(self.DOMAIN)
 
         # 2) Define the field of the mesh (finite element approximation)
         # approx_order indicates the order of the approximation (1 = linear, 2 = quadratic, ...)
@@ -139,17 +152,11 @@ class FENICS:
         )
 
         # Get the specific force terms
-        force_terms = self.get_force_terms(force, v)
-
-        # If there are no force terms, return zero displacement array
-        if len(force_terms) == 0:
-            return np.zeros(self.mesh_boost.sfepy_mesh.coors.shape)
-
-        print('number of force terms: ', len(force_terms))
+        force_term = self.get_force_term(force_handler, v)
 
         # Create equations
-        equations = [Equation('balance_' + str(i), elasticity_term + force_term) for i, force_term in
-                     enumerate(force_terms)]
+        equations = [Equation('balance', elasticity_term + force_term)]
+
         # Initialize the equations object
         equations = Equations(equations)
 
@@ -157,7 +164,7 @@ class FENICS:
         PROBLEM = Problem(name='elasticity', equations=equations, domain=self.DOMAIN)
 
         # Add the boundary conditions to the problem and add the solver
-        boundary_conditions = EssentialBC('fix_bottom', bottom, {'u.all': 0.0})
+        boundary_conditions = EssentialBC('fix_bottom', self.bottom, {'u.all': 0.0})
         PROBLEM.set_bcs(ebcs=Conditions([boundary_conditions]))
         PROBLEM.set_solver(get_solver())
 

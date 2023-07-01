@@ -1,7 +1,5 @@
 import sys
-
 import sfepy
-
 from AI.mesh_helper import *
 from abc import abstractmethod
 import numpy as np
@@ -79,7 +77,7 @@ class MeshBoost:
         self.current_vtk.points = self.initial_vtk.points.copy() + u
         # Check for negative z values
         # If present assign zero
-        self.current_vtk.points[:, 2] = np.where(self.current_vtk.points[:, 2] < 0, 0, self.current_vtk.points[:, 2])
+        # self.current_vtk.points[:, 2] = np.where(self.current_vtk.points[:, 2] < 0, 0, self.current_vtk.points[:, 2])
 
     def update_mesh(self, u):
         # Update the vtk version of the mesh
@@ -89,7 +87,7 @@ class MeshBoost:
 
         # Check for negative z values
         # If present assign zero
-        self.current_vtk.points[:, 2] = np.where(self.current_vtk.points[:, 2] < 0, 0, self.current_vtk.points[:, 2])
+        # self.current_vtk.points[:, 2] = np.where(self.current_vtk.points[:, 2] < 0, 0, self.current_vtk.points[:, 2])
 
         # 2) Update the sfepy version of the mesh
         # Save this mesh as a .vtk file

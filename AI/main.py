@@ -8,6 +8,8 @@ from AI.stimulis import *
 from AI.stress_script import StressRelaxation
 import io
 import sys
+from AI._force import *
+
 
 # Set to True to enable the terminal output,
 # otherwise the output will be redirected to the log file (maybe it is faster this way)
@@ -84,43 +86,23 @@ class NoRotateStyle(vtk.vtkInteractorStyleTrackballCamera):
 
         # If the cell exists
         if cell_id != -1:
-
-            # It will return the ids of the 8 points that make up the hexahedron
-            cell_points_ids = self.picker.GetActor().GetMapper().GetInput().GetCell(cell_id).GetPointIds()
-
-            # The points list will contain the coordinates of the points that belong to the cell
-            points = []
-            for i in range(cell_points_ids.GetNumberOfIds()):
-                point_id = cell_points_ids.GetId(i)
-                # Map the point id to the coordinates of the mesh cells
-                points.append(self.picker.GetActor().GetMapper().GetInput().GetPoint(point_id))
-
-            # Remove the bottom layer of points (Points with z coordinate == 0)
-            points = [point for point in points if point[2] != 0]
-
-            # Get the ids of the vertices that belong to the cell
-            vertex_ids = self.fenics.mesh_boost.get_vertex_ids_from_coords(points)
-
-            # Create the force dictionary (vertex_id : force [N])
-            force = [
-                [vertex_ids, self.gui.FORCE]
-            ]
+            force_handler = MeshIntersectionForce(cell_id, self.picker, self.gui.FORCE)
             # Apply the force to the mesh
-            apply_force(self.fenics, self.gui, force, relaxation=False)
+            apply_force(self.fenics, self.gui, force_handler, relaxation=False)
 
 
-def apply_force(fenics, gui, force, relaxation=True):
+def apply_force(fenics, gui, force_handler, relaxation=True):
     """
     :param fenics: FENICS class
     :param gui: GUI class
-    :param force: numpy array of the form [ [vertex_ids, force] ] or a single force value
+    :param force_handler: ForceHandler class instance
     :param relaxation: boolean that indicates if the stress relaxation process should be started
     Function that applies a vertex specific force or volume (stable) force across the whole mesh
     """
     global stress_relaxation_ref
 
     # Calculate the displacement
-    u = fenics.apply_force(force)
+    u = fenics.apply_force(force_handler)
 
     # UPDATE plot and meshes
     fenics.mesh_boost.update_mesh(u)
@@ -134,44 +116,16 @@ def apply_force(fenics, gui, force, relaxation=True):
         if stress_relaxation_ref is not None:
             stress_relaxation_ref.stop()
 
-        # if force is a float then vertex_ids = None
-        if isinstance(force, float) or isinstance(force, int):
-            vertex_ids = None
-        else:
-            # vertex Ids are entries of the first column of the force array
-            vertex_ids = [force[i][0] for i in range(len(force))]
         stress_relaxation_ref = StressRelaxation(
-            gui, fenics.mesh_boost, fenics.rank_material, u0=u, F0=gui.FORCE, vertex_ids=vertex_ids
+            gui, fenics.mesh_boost, fenics.rank_material, u0=u, F0=gui.FORCE
         )
         stress_relaxation_ref.initiate()
 
 
 def apply_stimuli(fenics, gui, stimuli):
-    # vertex_ids : force
-    FORCE = []
-
-    # Specifies when not to apply the force (for the speed of the simulation)
-    FORCE_LIM = 0.2
-
-    # Get the hexahedral cells
-    # It consists of a list of 4 points (3D coordinates) for each cell (top facet)
-    hexa_cells = fenics.mesh_boost.vtk_cells_coordinates
-
-    # Check the distance between the centre of the face and the stimuli
-    for top_face in hexa_cells:
-        # Find the centre of the rectangle face
-        face_center = np.mean(top_face, axis=0)
-        # Calculate the force from the stimuli to the centre of the face
-        force = stimuli.calculate_force(face_center)
-
-        # Apply the force just if the magnitude is greater than the limit
-        if np.linalg.norm(force) > FORCE_LIM:
-            vertices = fenics.mesh_boost.get_vertex_ids_from_coords(top_face)
-            # Transform the coordinates of the cell to the vertex ids
-            FORCE.append([vertices, force])
-
+    force_handler = StimuliForce(fenics.mesh_boost, stimuli)
     # Apply the force to the mesh
-    apply_force(fenics, gui, FORCE, relaxation=False)
+    apply_force(fenics, gui, force_handler, relaxation=False)
 
 
 class Main:
@@ -183,14 +137,16 @@ class Main:
         self.gui = GUI(mesh_boost.current_vtk, rank_material, stimuli)
         self.add_interactive_events()
 
+        # Apply the stimuli
+        apply_stimuli(self.fenics, self.gui, self.stimuli)
+
     def add_interactive_events(self):
         # Enable cell picking
         self.gui.plotter.enable_cell_picking(
             # if cell is not none, apply force to the cell
             callback=lambda cell:
             apply_force(
-                self.fenics, self.gui, relaxation=True,
-                force=[[self.fenics.mesh_boost.get_vertex_ids_from_coords(cell.points), self.gui.FORCE]],
+                self.fenics, self.gui, CellSpecificForce(cell.points, self.gui.FORCE), relaxation=True,
             ) if cell is not None else None,
             font_size=10, point_size=30, line_width=5,
             color='white', style='wireframe', through=False
@@ -198,7 +154,7 @@ class Main:
 
         # Add the event on the press of the space bar, apply the force
         self.gui.plotter.add_key_event('space', lambda: apply_force(
-            self.fenics, self.gui, relaxation=True, force=self.gui.FORCE
+            self.fenics, self.gui, VolumeForce(self.gui.FORCE), relaxation=True,
         ))
 
         # If the enter button is pressed, the interactive mode is toggled
@@ -226,7 +182,9 @@ if not TERMINAL_OUTPUT:
 
 app = QApplication(sys.argv)
 _mesh_boost = GridMesh(30, 30, z_function=wave, layers=3)
-_stimuli = Sphere(radius=1.0)
+# _stimuli = Sphere(radius=2.0)
+# _stimuli = Cylinder(radius=3.0, height=1.0)
+_stimuli = Cuboid(4.0, 4.0, 2.0)
 
 
 Main(_mesh_boost, _stimuli, rubber)
