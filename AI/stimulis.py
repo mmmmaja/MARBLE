@@ -6,7 +6,7 @@ import numpy as np
 class Stimuli:
 
     def __init__(self):
-        self.position = np.array([18.0, 18.0, 2.7])
+        self.position = np.array([18.0, 18.0, 3.3])
         self.color = '#17d8db'
 
     @abstractmethod
@@ -20,10 +20,12 @@ class Stimuli:
     def calculate_force(self, point: np.ndarray) -> float:
         """
         Calculate the force exerted by the stimulus on a point in space.
+        Assumption: The force decreases as the distance from the object increases.
+
         TODO override in subclasses
 
         :param point: A 3D point in space.
-        :return: A float value representing the force.
+        :return: A float value representing the force between 0 and 1 (so that it can be scaled later)
         """
 
 
@@ -53,8 +55,10 @@ class Sphere(Stimuli):
         distance = np.linalg.norm(self.position - point)
         # Check if the point is within the boundary of the shape of the stimulus
         if distance <= self.radius:
+            if distance == 0:  # Avoid division by zero
+                return 1.0
             # force is the inverse of the distance to the sphere's center
-            return 1 / distance if distance > 0 else float('inf')
+            return 1.0 / distance
         else:
             return 0.0
 
@@ -88,8 +92,7 @@ class Cylinder(Stimuli):
         # Check if the point is under the flat face of the cylinder
         if distance <= self.radius and abs(point[2] - self.position[2]) <= self.height / 2:
             # distribute the pressure equally within the circular boundary
-            # Intensity??
-            return 0.4
+            return 1.0
         else:
             return 0.0
 
@@ -119,7 +122,8 @@ class Cuboid(Stimuli):
 
         # Check if the point is within the boundary of the shape of the stimulus
         if x <= self.width / 2 and y <= self.length / 2 and z <= self.height / 2:
+            return 1.0
             # Force is the inverse of the minimum distance to the faces of the cuboid.
-            return min([1 / x, 1 / y, 1 / z]) if x > 0 and y > 0 and z > 0 else float('inf')
+            # return min([1 / x, 1 / y, 1 / z]) if x > 0 and y > 0 and z > 0 else 1.0
         else:
             return 0.0

@@ -13,7 +13,7 @@ from AI._force import *
 
 # Set to True to enable the terminal output,
 # otherwise the output will be redirected to the log file (maybe it is faster this way)
-TERMINAL_OUTPUT = True
+TERMINAL_OUTPUT = False
 
 # I need to hold the reference to the timer class and destroy it
 # when the simulation of the relaxation process is over
@@ -28,7 +28,6 @@ class NoRotateStyle(vtk.vtkInteractorStyleTrackballCamera):
     """
 
     def __init__(self, parent=None, gui=None, fenics=None, *args, **kwargs):
-
         self.gui = gui
         self.fenics = fenics
 
@@ -123,7 +122,7 @@ def apply_force(fenics, gui, force_handler, relaxation=True):
 
 
 def apply_stimuli(fenics, gui, stimuli):
-    force_handler = StimuliForce(stimuli)
+    force_handler = StimuliForce(stimuli, gui.FORCE)
     # Apply the force to the mesh
     apply_force(fenics, gui, force_handler, relaxation=False)
 
@@ -183,9 +182,9 @@ if not TERMINAL_OUTPUT:
 
 app = QApplication(sys.argv)
 _mesh_boost = GridMesh(30, 30, z_function=flat, layers=3)
-# _stimuli = Sphere(radius=2.0)
-# _stimuli = Cylinder(radius=3.0, height=1.0)
-_stimuli = Cuboid(4.0, 4.0, 2.0)
+# _stimuli = Sphere(radius=5.0)
+_stimuli = Cylinder(radius=5.0, height=1.0)
+# _stimuli = Cuboid(7.0, 4.0, 2.0)
 
 
 Main(_mesh_boost, _stimuli, rubber)

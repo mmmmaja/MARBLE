@@ -13,7 +13,8 @@ class GUI:
         # Define the plotter (pyvistaqt)
         self.plotter = pvqt.BackgroundPlotter()
 
-        self.FORCE = 0.5
+        self.FORCE = 0.92
+        self.force_dt = 0.01
 
         # Define all the actors present in the scene
         self.mesh_actor = None
@@ -103,11 +104,11 @@ class GUI:
         )
 
     def increase_force(self):
-        self.FORCE = round(min(self.FORCE + 0.1, 20), 2)
+        self.FORCE = round(min(self.FORCE + self.force_dt, 5.0), 2)
         self.add_force_indicator()
 
     def decrease_force(self):
-        self.FORCE = round(max(self.FORCE - 0.1, 0), 2)
+        self.FORCE = round(max(self.FORCE - self.force_dt, 0.0), 2)
         self.add_force_indicator()
 
     def add_force_events(self):

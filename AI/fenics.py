@@ -12,8 +12,8 @@ from AI.mesh_converter import *
 def create_force_function(force_handler):
     """
     Convert the list of (vertex_coordinates, force_value) pairs into a dictionary
-    :param force_handler: a ForceHandler object that holds the force information
-    :return: a dictionary that maps vertex coordinates to force values which the force material can use
+    :param force_handler: a ForceHandler object
+    :return:
     """
 
     def force_fun(ts, coors, mode=None, **kwargs):
