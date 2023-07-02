@@ -39,7 +39,7 @@ def create_force_function(force_handler):
 
             for i in range(coors.shape[0]):
                 # If the coordinate is in the force dictionary, get the corresponding force value
-                values[i] = force_handler.get_force(coors[i])
+                values[i] = force_handler.get_pressure(coors[i])
 
             return {'val': values}
 

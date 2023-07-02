@@ -6,37 +6,71 @@ import numpy as np
 class Stimuli:
 
     def __init__(self):
-        self.position = np.array([18.0, 18.0, 3.3])
+        self.position = np.array([18.0, 18.0, 10.3])
         self.color = '#17d8db'
+        self.visualization = self.create_visualization()
 
     @abstractmethod
-    def get_visualization(self) -> None:
+    def create_visualization(self) -> None:
         """
         TODO override in subclasses
         :return: The mesh object in vtk format
         """
 
     @abstractmethod
-    def calculate_force(self, point: np.ndarray) -> float:
+    def calculate_pressure(self, point: np.ndarray) -> float:
         """
         Calculate the force exerted by the stimulus on a point in space.
-        Assumption: The force decreases as the distance from the object increases.
+        Assumption: The pressure decreases as the distance from the object increases.
 
         TODO override in subclasses
 
         :param point: A 3D point in space.
-        :return: A float value representing the force between 0 and 1 (so that it can be scaled later)
+        :return: A float value representing the pressure between 0 and 1 (so that it can be scaled later)
         """
+
+    def move_with_key(self, key):
+        # Move the stimulus with the arrow keys
+        position_dt = 0.15
+        position_update = np.array([0.0, 0.0, 0.0])
+
+        if key == 'w':
+            # Move the object forward
+            position_update[1] += position_dt
+        elif key == 's':
+            # Move the object backward
+            position_update[1] -= position_dt
+        elif key == 'a':
+            # Move the object left
+            position_update[0] -= position_dt
+        elif key == 'd':
+            # Move the object right
+            position_update[0] += position_dt
+
+        # Add the events for moving along z axis
+        elif key == 'plus':
+            # Move the object up
+            position_update[2] += position_dt
+        elif key == 'minus':
+            # Move the object down
+            position_update[2] -= position_dt
+
+        self.move(position_update)
+
+    def move(self, position_update):
+        self.position += position_update
+        # translate the visualization
+        self.visualization.translate(position_update)
 
 
 class Sphere(Stimuli):
 
     def __init__(self, radius):
-        super().__init__()
         self.radius = radius
         self.color = '#62fff8'
+        super().__init__()
 
-    def get_visualization(self):
+    def create_visualization(self):
         # Return pyvista sphere
         sphere = pv.Sphere(
             radius=self.radius, center=self.position,
@@ -46,11 +80,11 @@ class Sphere(Stimuli):
         )
         return sphere
 
-    def calculate_force(self, point: np.ndarray) -> float:
+    def calculate_pressure(self, point: np.ndarray) -> float:
         """
-        Calculate the force exerted by the stimulus on a point in space.
+        Calculate the pressure exerted by the stimulus on a point in space.
         :param point: A 3D point in space.
-        :return: A float value representing the force.
+        :return: A float value representing the pressure.
         """
         distance = np.linalg.norm(self.position - point)
         # Check if the point is within the boundary of the shape of the stimulus
@@ -71,21 +105,23 @@ class Cylinder(Stimuli):
     """
 
     def __init__(self, radius, height):
-        super().__init__()
         self.radius = radius
         self.height = height
         self.color = 'e874ff'
+        super().__init__()
 
-    def get_visualization(self):
+    def create_visualization(self):
         # Return pyvista cylinder
         direction = np.array([0, 0, 1])
         cylinder = pv.Cylinder(
             radius=self.radius, height=self.height, center=self.position,
             resolution=50, direction=direction
         )
+        # translate the cylinder so that the flat face is facing the mesh
+
         return cylinder
 
-    def calculate_force(self, point: np.ndarray) -> float:
+    def calculate_pressure(self, point: np.ndarray) -> float:
         # Calculate 2D distance in the x-y plane
         distance = np.linalg.norm(self.position[:2] - point[:2])
 
@@ -100,14 +136,14 @@ class Cylinder(Stimuli):
 class Cuboid(Stimuli):
 
     def __init__(self, width, length, height):
-        super().__init__()
-
         self.width = width
         self.length = length
         self.height = height
         self.color = '#FF00FF'
 
-    def get_visualization(self):
+        super().__init__()
+
+    def create_visualization(self):
         # Return pyvista cuboid
         cube = pv.Cube(
             center=self.position,
@@ -115,7 +151,7 @@ class Cuboid(Stimuli):
         )
         return cube
 
-    def calculate_force(self, point: np.ndarray) -> float:
+    def calculate_pressure(self, point: np.ndarray) -> float:
 
         # Get the absolute distance between the point and the center of the cuboid
         x, y, z = abs(self.position - point)

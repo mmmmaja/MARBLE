@@ -8,12 +8,12 @@ from AI.stimulis import *
 from AI.stress_script import StressRelaxation
 import io
 import sys
-from AI._force import *
+from AI._pressure import *
 
 
 # Set to True to enable the terminal output,
 # otherwise the output will be redirected to the log file (maybe it is faster this way)
-TERMINAL_OUTPUT = False
+TERMINAL_OUTPUT = True
 
 # I need to hold the reference to the timer class and destroy it
 # when the simulation of the relaxation process is over
@@ -27,9 +27,10 @@ class NoRotateStyle(vtk.vtkInteractorStyleTrackballCamera):
     Triggered in Activation mode
     """
 
-    def __init__(self, parent=None, gui=None, fenics=None, *args, **kwargs):
+    def __init__(self, parent=None, gui=None, fenics=None, stimuli=None, *args, **kwargs):
         self.gui = gui
         self.fenics = fenics
+        self.stimuli = stimuli
 
         # Mouse pressed flag for mesh activation
         self.mouse_pressed = False
@@ -44,8 +45,19 @@ class NoRotateStyle(vtk.vtkInteractorStyleTrackballCamera):
         self.AddObserver("RightButtonPressEvent", self.right_button_press_event)
         self.AddObserver("LeftButtonReleaseEvent", self.left_button_release_event)
         self.AddObserver("MouseMoveEvent", self.mouse_move_event)
+        self.AddObserver("KeyPressEvent", self.key_event)
+        self.AddObserver("CharEvent", self.key_event)
 
         super().__init__(*args, **kwargs)
+
+    def key_event(self, obj, event):
+        # This event will change the position of the stimuli
+
+        # Get the key that was pressed
+        key = self.GetInteractor().GetKeySym()
+        self.stimuli.move_with_key(key)
+        # Update the visualization
+        self.gui.draw_stimuli()
 
     def left_button_press_event(self, obj, event):
         self.mouse_pressed = True
@@ -85,7 +97,7 @@ class NoRotateStyle(vtk.vtkInteractorStyleTrackballCamera):
 
         # If the cell exists
         if cell_id != -1:
-            force_handler = MeshIntersectionForce(cell_id, self.picker, self.gui.FORCE)
+            force_handler = MeshIntersectionPressure(cell_id, self.picker, self.gui.FORCE)
             # Apply the force to the mesh
             apply_force(self.fenics, self.gui, force_handler, relaxation=False)
 
@@ -122,7 +134,7 @@ def apply_force(fenics, gui, force_handler, relaxation=True):
 
 
 def apply_stimuli(fenics, gui, stimuli):
-    force_handler = StimuliForce(stimuli, gui.FORCE)
+    force_handler = StimuliPressure(stimuli, gui.FORCE)
     # Apply the force to the mesh
     apply_force(fenics, gui, force_handler, relaxation=False)
 
@@ -136,17 +148,13 @@ class Main:
         self.gui = GUI(mesh_boost.current_vtk, rank_material, stimuli)
         self.add_interactive_events()
 
-        # Apply the stimuli
-        apply_stimuli(self.fenics, self.gui, self.stimuli)
-        self.gui.plotter.remove_actor(self.gui.stimuli_actor)
-
     def add_interactive_events(self):
         # Enable cell picking
         self.gui.plotter.enable_cell_picking(
             # if cell is not none, apply force to the cell
             callback=lambda cell:
             apply_force(
-                self.fenics, self.gui, CellSpecificForce(cell.points, self.gui.FORCE), relaxation=True,
+                self.fenics, self.gui, CellSpecificPressure(cell.points, self.gui.FORCE), relaxation=True,
             ) if cell is not None else None,
             font_size=10, point_size=30, line_width=5,
             color='white', style='wireframe', through=False
@@ -154,11 +162,11 @@ class Main:
 
         # Add the event on the press of the space bar, apply the force
         self.gui.plotter.add_key_event('space', lambda: apply_force(
-            self.fenics, self.gui, VolumeForce(self.gui.FORCE), relaxation=True,
+            self.fenics, self.gui, VolumePressure(self.gui.FORCE), relaxation=True,
         ))
 
         # If the enter button is pressed, the interactive mode is toggled
-        self.gui.plotter.add_key_event('m', self.toggle_interactive)
+        self.gui.plotter.add_key_event('Control_L', self.toggle_interactive)
         self.gui.plotter.show()
 
     def toggle_interactive(self):
@@ -171,7 +179,8 @@ class Main:
             self.gui.add_mode_text("Activation")
             self.gui.plotter.interactor.SetInteractorStyle(NoRotateStyle(
                 gui=self.gui,
-                fenics=self.fenics
+                fenics=self.fenics,
+                stimuli=self.stimuli
             ))
 
 

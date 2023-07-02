@@ -22,31 +22,32 @@ The ForceHandler class is a parent class for all the forces.
 """
 
 
-class ForceHandler:
+class PressureHandler:
 
     @abstractmethod
-    def get_force(self, vertex_coordinates: np.ndarray) -> float:
+    def get_pressure(self, vertex_coordinates: np.ndarray) -> float:
         """
         TODO override in subclasses
         :param vertex_coordinates: A 3D coordinates of the vertex in the mesh
-        :return: A float value representing the force acting on the vertex
-        TODO experiment with vector [x, y, z] force
+        :return: A float value representing the pressure acting on the vertex
+
+        Inverse square law
         """
 
 
-class VolumeForce(ForceHandler):
+class VolumePressure(PressureHandler):
 
-    def __init__(self, force):
+    def __init__(self, pressure_strength):
         """
         Stable force that is applied to the whole mesh
-        :param force: float value representing the force strength
+        :param pressure_strength: float value representing the strength of the pressure applied
         """
-        self.force = force
+        self.pressure_strength = pressure_strength
         super().__init__()
 
-    def get_force(self, vertex_coordinates: np.ndarray) -> float:
-        # Force is the same for all the vertices
-        return self.force
+    def get_pressure(self, vertex_coordinates: np.ndarray) -> float:
+        # Pressure is the same for all the vertices
+        return self.pressure_strength
 
 
 def is_inside(vertex, vertex_coordinates):
@@ -73,37 +74,37 @@ def is_inside(vertex, vertex_coordinates):
         return False
 
 
-class StimuliForce(ForceHandler):
+class StimuliPressure(PressureHandler):
 
-    def __init__(self, stimuli, force_strength):
+    def __init__(self, stimuli, pressure_strength):
         """
         Force that is applied to the mesh with a stimulus
         :param stimuli: Stimuli object that has its own pressure function specified
-        :param force_strength: float value representing the force strength
+        :param pressure_strength: float value representing the strength of the pressure applied
         """
         super().__init__()
         self.stimuli = stimuli
-        self.force_strength = force_strength
+        self.pressure_strength = pressure_strength
 
-    def get_force(self, vertex_coordinates: np.ndarray) -> float:
+    def get_pressure(self, vertex_coordinates: np.ndarray) -> float:
         # Scale the force with the force strength
-        force = self.stimuli.calculate_force(vertex_coordinates) * self.force_strength
+        force = self.stimuli.calculate_pressure(vertex_coordinates) * self.pressure_strength
         return force
 
 
-class MeshIntersectionForce(ForceHandler):
+class MeshIntersectionPressure(PressureHandler):
 
-    def __init__(self, cell_id, picker, force):
+    def __init__(self, cell_id, picker, pressure_strength):
         """
         Force that is applied to a specific cell in the mesh
         :param cell_id: ID of the cell in the mesh that was picked
         :param picker: vtkCellPicker object that was used to pick the cell
-        :param force: float value representing the force strength
+        :param pressure_strength: float value representing the strength of the pressure applied
         """
         super().__init__()
         self.cell_id = cell_id
         self.picker = picker
-        self.force = force
+        self.pressure_strength = pressure_strength
 
         self.affected_points = self.get_affected_points()
 
@@ -123,20 +124,20 @@ class MeshIntersectionForce(ForceHandler):
         points = [point for point in points if point[2] != 0]
         return points
 
-    def get_force(self, vertex_coordinates: np.ndarray) -> float:
+    def get_pressure(self, vertex_coordinates: np.ndarray) -> float:
         if is_inside(vertex_coordinates, self.affected_points):
-            return self.force
+            return self.pressure_strength
         return 0.0
 
 
-class CellSpecificForce(ForceHandler):
+class CellSpecificPressure(PressureHandler):
 
-    def __init__(self, affected_points, force):
+    def __init__(self, affected_points, pressure_strength):
         super().__init__()
         self.affected_points = affected_points
-        self.force = force
+        self.pressure_strength = pressure_strength
 
-    def get_force(self, vertex_coordinates: np.ndarray) -> float:
+    def get_pressure(self, vertex_coordinates: np.ndarray) -> float:
         if is_inside(vertex_coordinates, self.affected_points):
-            return self.force
+            return self.pressure_strength
         return 0.0

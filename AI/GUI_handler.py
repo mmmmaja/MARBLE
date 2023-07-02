@@ -13,7 +13,7 @@ class GUI:
         # Define the plotter (pyvistaqt)
         self.plotter = pvqt.BackgroundPlotter()
 
-        self.FORCE = 0.92
+        self.FORCE = 0.02
         self.force_dt = 0.01
 
         # Define all the actors present in the scene
@@ -28,6 +28,7 @@ class GUI:
         self.draw_stimuli()
         self.add_material_text()
         self.add_mode_text('Interactive')
+        self.add_axes()
 
         self.add_force_events()
         self.add_force_indicator()
@@ -72,10 +73,10 @@ class GUI:
 
     def draw_stimuli(self):
         if self.stimuli_actor is not None:
-            self.plotter.remove_actor(self.stimuli_actor)
+            self.plotter.update()
 
         self.stimuli_actor = self.plotter.add_mesh(
-            self.stimuli.get_visualization(),
+            self.stimuli.create_visualization(),
             color=self.stimuli.color,
             name='stimuli',
             show_edges=False,
@@ -103,6 +104,12 @@ class GUI:
             text, position='lower_right', font_size=8, color='white', shadow=True
         )
 
+    def add_axes(self):
+        self.plotter.add_axes(
+            line_width=3, viewport=(0, 0.1, 0.2, 0.3),
+            x_color='#14ccff', y_color='#FF00FF', z_color='#98ff9a'
+        )
+
     def increase_force(self):
         self.FORCE = round(min(self.FORCE + self.force_dt, 5.0), 2)
         self.add_force_indicator()
@@ -118,10 +125,3 @@ class GUI:
 
         # Add key event on the left arrow press
         self.plotter.add_key_event('Left', self.decrease_force)
-
-    def on_mouse_scroll(self, *args):
-        # Detect scroll direction and change the force accordingly.
-        if args[0].GetEventPosition()[1] > args[1]:
-            self.increase_force()
-        else:
-            self.decrease_force()

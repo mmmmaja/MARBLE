@@ -156,7 +156,7 @@ class FEA:
         for i in range(num_nodes):
             # Get the force applied
             sensor_position = self.mesh.SENSOR_ARRAY[i].position
-            force = self.stimuli.get_force(sensor_position)
+            force = self.stimuli.get_pressure(sensor_position)
             forces[i] = force
 
         # Create a force matrix of size num_nodes * 3 (# DOF)
