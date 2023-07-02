@@ -11,6 +11,8 @@ from copy import deepcopy
 # Thickness of the mesh
 THICKNESS = 1.53
 
+Z_LIMIT = 0.2
+
 
 def convert_to_vtk(path):
     """
@@ -39,6 +41,10 @@ class MeshBoost:
         self.current_vtk = self.initial_vtk.copy()
 
         self.Area = self.get_area()
+
+    def get_maximum_displacement(self):
+        # Get the maximum displacement of the mesh
+        return np.max(self.current_vtk.points[:, 2])
 
     @abstractmethod
     def create_mesh(self) -> sfepy.discrete.fem.mesh.Mesh:
@@ -71,12 +77,15 @@ class MeshBoost:
         return top, bottom
 
     def override_mesh(self, u):
+
         # Override the vtk version of the mesh
         # Copy the initial mesh
         self.current_vtk.points = self.initial_vtk.points.copy() + u
         # Check for negative z values
         # If present assign zero
-        # self.current_vtk.points[:, 2] = np.where(self.current_vtk.points[:, 2] < 0, 0, self.current_vtk.points[:, 2])
+        self.current_vtk.points[:, 2] = np.where(
+            self.current_vtk.points[:, 2] < Z_LIMIT, Z_LIMIT, self.current_vtk.points[:, 2]
+        )
 
     def update_mesh(self, u):
         # Update the vtk version of the mesh
@@ -86,8 +95,9 @@ class MeshBoost:
 
         # Check for negative z values
         # If present assign zero
-        # self.current_vtk.points[:, 2] = np.where(self.current_vtk.points[:, 2] < 0, 0, self.current_vtk.points[:, 2])
-
+        self.current_vtk.points[:, 2] = np.where(
+            self.current_vtk.points[:, 2] < Z_LIMIT, Z_LIMIT, self.current_vtk.points[:, 2]
+        )
         # 2) Update the sfepy version of the mesh
         # Save this mesh as a .vtk file
         """

@@ -30,6 +30,12 @@ class Stimuli:
         :return: A float value representing the pressure between 0 and 1 (so that it can be scaled later)
         """
 
+    @abstractmethod
+    def get_area(self) -> float:
+        """
+        :return: The area of the stimulus (face acting on the mesh)
+        """
+
     def move_with_key(self, key):
         # Move the stimulus with the arrow keys
         position_dt = 0.15
@@ -87,6 +93,9 @@ class Sphere(Stimuli):
         )
         return sphere
 
+    def get_area(self):
+        return None
+
     def calculate_pressure(self, point: np.ndarray) -> float:
         """
         Calculate the pressure exerted by the stimulus on a point in space.
@@ -138,6 +147,9 @@ class Cylinder(Stimuli):
         else:
             return 0.0
 
+    def get_area(self):
+        return np.pi * self.radius ** 2
+
 
 class Cuboid(Stimuli):
 
@@ -169,3 +181,6 @@ class Cuboid(Stimuli):
             # return min([1 / x, 1 / y, 1 / z]) if x > 0 and y > 0 and z > 0 else 1.0
         else:
             return 0.0
+
+    def get_area(self):
+        return self.width * self.length

@@ -13,7 +13,7 @@ class GUI:
         # Define the plotter (pyvistaqt)
         self.plotter = pvqt.BackgroundPlotter()
 
-        self.FORCE = 10.02
+        self.FORCE = 0.02
         self.force_dt = 0.01
 
         # Define all the actors present in the scene

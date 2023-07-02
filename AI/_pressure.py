@@ -38,18 +38,17 @@ class PressureHandler:
 
 class VolumePressure(PressureHandler):
 
-    def __init__(self, pressure_strength, mesh):
+    def __init__(self, pressure_strength):
         """
         Stable force that is applied to the whole mesh
         :param pressure_strength: float value representing the strength of the pressure applied
         """
         self.pressure_strength = pressure_strength
-        self.mesh = mesh
         super().__init__()
 
     def get_pressure(self, vertex_coordinates: np.ndarray) -> float:
         # Pressure is the same for all the vertices
-        return self.pressure_strength / self.mesh.get_area()
+        return self.pressure_strength
 
 
 def is_inside(vertex, vertex_coordinates):
