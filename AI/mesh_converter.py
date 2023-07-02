@@ -38,11 +38,20 @@ class MeshBoost:
         # Mind be changed later
         self.current_vtk = self.initial_vtk.copy()
 
+        self.Area = self.get_area()
+
     @abstractmethod
     def create_mesh(self) -> sfepy.discrete.fem.mesh.Mesh:
         """
         TODO override in subclasses
         :return: The mesh object in Meshio format
+        """
+
+    @abstractmethod
+    def get_area(self) -> float:
+        """
+        TODO override in subclasses
+        :return: The area of the mesh front part of the mesh
         """
 
     def get_regions(self, domain):
@@ -203,3 +212,67 @@ class GridMesh(MeshBoost):
         bottom = domain.create_region(name='Bottom', select=expr_extruded, kind='facet')
 
         return top, bottom
+
+    def get_area(self) -> float:
+        """
+        Get the area of the mesh
+        :return: area of the mesh
+        """
+        return self.width * self.height
+
+
+class ArmMesh(MeshBoost):
+
+    def __init__(self, obj_path='meshes/model_kfadrat.obj'):
+        self.obj_path = obj_path
+        super().__init__()
+
+    def create_mesh(self):
+        """
+        Extruding the mesh along a direction perpendicular to the faces
+        :return:
+        """
+
+        display_obj_file(self.obj_path)
+
+        # Load the input mesh
+        mesh = pv.read(self.obj_path)
+
+        # Compute normals
+        normals = mesh.face_normals
+
+        vertices, cells = [], []
+
+        # For each face in the input mesh, create a hexahedral cell in the output mesh
+        for i in range(mesh.n_cells):
+
+            # Get the point indices for this face
+            face_points = mesh.get_cell(i).points
+
+            # Get the normal of this face
+            normal = normals[i]
+
+            # Get the corresponding points in the offset mesh
+            offset_points = face_points + normal * THICKNESS
+
+            # Add the vertices to the list of vertices
+            vertices.extend(face_points)
+            vertices.extend(offset_points)
+
+            cells.append([i + (len(vertices) - 8) for i in range(8)])
+
+        mesh = meshio.Mesh(points=vertices, cells={"hexahedron": cells})
+        meshio.write(PATH, mesh)
+
+        # Convert the meshio mesh to sfepy mesh
+        # display the mesh in pyvista
+        mesh = pv.read(self.path)
+        mesh.plot(show_edges=True, show_grid=True, cpos='xy')
+
+        return Mesh.from_file(PATH)
+
+
+def display_obj_file(path):
+    reader = pyvista.get_reader(path)
+    mesh = reader.read()
+    mesh.plot(cpos='yz', show_scalar_bar=False)

@@ -1,3 +1,4 @@
+import time
 from abc import abstractmethod
 import pyvista as pv
 import numpy as np
@@ -6,7 +7,7 @@ import numpy as np
 class Stimuli:
 
     def __init__(self):
-        self.position = np.array([18.0, 18.0, 10.3])
+        self.position = np.array([18.0, 18.0, 6.3])
         self.color = '#17d8db'
         self.visualization = self.create_visualization()
 
@@ -55,9 +56,15 @@ class Stimuli:
             # Move the object down
             position_update[2] -= position_dt
 
-        self.move(position_update)
+        if np.linalg.norm(position_update) > 0:
+            # Only move if there is a change in position
+            self.move(position_update)
+            return True
+        else:
+            return False
 
     def move(self, position_update):
+
         self.position += position_update
         # translate the visualization
         self.visualization.translate(position_update)
@@ -98,7 +105,6 @@ class Sphere(Stimuli):
 
 
 class Cylinder(Stimuli):
-
     """
     Flat face of the cylinder is facing the mesh
     Z axis is the height of the cylinder

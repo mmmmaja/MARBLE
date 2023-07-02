@@ -55,9 +55,10 @@ class NoRotateStyle(vtk.vtkInteractorStyleTrackballCamera):
 
         # Get the key that was pressed
         key = self.GetInteractor().GetKeySym()
-        self.stimuli.move_with_key(key)
-        # Update the visualization
-        self.gui.draw_stimuli()
+        if self.stimuli.move_with_key(key):
+            # Update the visualization
+            apply_stimuli(self.fenics, self.gui, self.stimuli)
+            self.gui.draw_stimuli()
 
     def left_button_press_event(self, obj, event):
         self.mouse_pressed = True
@@ -134,7 +135,7 @@ def apply_force(fenics, gui, force_handler, relaxation=True):
 
 
 def apply_stimuli(fenics, gui, stimuli):
-    force_handler = StimuliPressure(stimuli, gui.FORCE)
+    force_handler = StimuliPressure(stimuli, gui.FORCE, fenics.rank_material)
     # Apply the force to the mesh
     apply_force(fenics, gui, force_handler, relaxation=False)
 
@@ -190,13 +191,16 @@ if not TERMINAL_OUTPUT:
     sys.stdout = text_trap
 
 app = QApplication(sys.argv)
+
 _mesh_boost = GridMesh(30, 30, z_function=flat, layers=3)
-# _stimuli = Sphere(radius=5.0)
-_stimuli = Cylinder(radius=5.0, height=1.0)
+# _mesh_boost = ArmMesh()
+
+# _stimuli = Sphere(radius=2.0)
+_stimuli = Cylinder(radius=2.0, height=1.0)
 # _stimuli = Cuboid(7.0, 4.0, 2.0)
 
 
-Main(_mesh_boost, _stimuli, rubber)
+Main(_mesh_boost, _stimuli, silicon)
 app.exec_()
 
 

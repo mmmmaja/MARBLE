@@ -1,3 +1,4 @@
+import time
 from abc import abstractmethod
 import numpy as np
 
@@ -37,17 +38,18 @@ class PressureHandler:
 
 class VolumePressure(PressureHandler):
 
-    def __init__(self, pressure_strength):
+    def __init__(self, pressure_strength, mesh):
         """
         Stable force that is applied to the whole mesh
         :param pressure_strength: float value representing the strength of the pressure applied
         """
         self.pressure_strength = pressure_strength
+        self.mesh = mesh
         super().__init__()
 
     def get_pressure(self, vertex_coordinates: np.ndarray) -> float:
         # Pressure is the same for all the vertices
-        return self.pressure_strength
+        return self.pressure_strength / self.mesh.get_area()
 
 
 def is_inside(vertex, vertex_coordinates):
@@ -76,7 +78,7 @@ def is_inside(vertex, vertex_coordinates):
 
 class StimuliPressure(PressureHandler):
 
-    def __init__(self, stimuli, pressure_strength):
+    def __init__(self, stimuli, pressure_strength, material):
         """
         Force that is applied to the mesh with a stimulus
         :param stimuli: Stimuli object that has its own pressure function specified
@@ -85,11 +87,13 @@ class StimuliPressure(PressureHandler):
         super().__init__()
         self.stimuli = stimuli
         self.pressure_strength = pressure_strength
+        self.material = material
 
     def get_pressure(self, vertex_coordinates: np.ndarray) -> float:
         # Scale the force with the force strength
-        force = self.stimuli.calculate_pressure(vertex_coordinates) * self.pressure_strength
-        return force
+        pressure = self.stimuli.calculate_pressure(vertex_coordinates) * self.pressure_strength
+
+        return pressure
 
 
 class MeshIntersectionPressure(PressureHandler):

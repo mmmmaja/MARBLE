@@ -13,7 +13,7 @@ class GUI:
         # Define the plotter (pyvistaqt)
         self.plotter = pvqt.BackgroundPlotter()
 
-        self.FORCE = 0.02
+        self.FORCE = 10.02
         self.force_dt = 0.01
 
         # Define all the actors present in the scene
@@ -55,7 +55,8 @@ class GUI:
         Adds the mesh in the .vtk format to the plotter
         """
         if self.mesh_actor is not None:
-            self.plotter.remove_actor(self.mesh_actor)
+            self.plotter.update()
+            # self.plotter.remove_actor(self.mesh_actor)
 
         visual_properties = self.mesh_material.visual_properties
         self.mesh_actor = self.plotter.add_mesh(
@@ -107,7 +108,8 @@ class GUI:
     def add_axes(self):
         self.plotter.add_axes(
             line_width=3, viewport=(0, 0.1, 0.2, 0.3),
-            x_color='#14ccff', y_color='#FF00FF', z_color='#98ff9a'
+            x_color='08a9ff', y_color='#FF00FF',
+            z_color='#00ff8d'
         )
 
     def increase_force(self):
