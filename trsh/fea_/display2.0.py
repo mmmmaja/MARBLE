@@ -189,7 +189,7 @@ class DisplayHandler:
     def activate_stimuli(self, pos):
         scene_pos = get_3D_coordinates(pos)
         # print(pos, '->', scene_pos)
-        self.fea.stimuli.set_position(scene_pos)
+        self.fea.stimuli.recompute_position(scene_pos, )
         # self.fea.apply_pressure()
         self.fea.show_pressure()
 

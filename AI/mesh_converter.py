@@ -9,9 +9,7 @@ from sfepy.discrete.fem import Mesh
 from copy import deepcopy
 
 # Thickness of the mesh
-THICKNESS = 1.53
-
-Z_LIMIT = 0.2
+THICKNESS = 0.53
 
 
 def convert_to_vtk(path):
@@ -23,6 +21,9 @@ def convert_to_vtk(path):
 
 
 class MeshBoost:
+
+    # Limit in the deformation of the mesh in the z direction
+    Z_DEFORMATION_LIMIT = 2e-2
 
     # This is a parent class for all the meshes in the project
 
@@ -40,8 +41,6 @@ class MeshBoost:
         # Mind be changed later
         self.current_vtk = self.initial_vtk.copy()
 
-        self.Area = self.get_area()
-
     def get_maximum_displacement(self):
         # Get the maximum displacement of the mesh
         return np.max(self.current_vtk.points[:, 2])
@@ -51,13 +50,6 @@ class MeshBoost:
         """
         TODO override in subclasses
         :return: The mesh object in Meshio format
-        """
-
-    @abstractmethod
-    def get_area(self) -> float:
-        """
-        TODO override in subclasses
-        :return: The area of the mesh front part of the mesh
         """
 
     def get_regions(self, domain):
@@ -84,7 +76,8 @@ class MeshBoost:
         # Check for negative z values
         # If present assign zero
         self.current_vtk.points[:, 2] = np.where(
-            self.current_vtk.points[:, 2] < Z_LIMIT, Z_LIMIT, self.current_vtk.points[:, 2]
+            self.current_vtk.points[:, 2] < self.Z_DEFORMATION_LIMIT,
+            self.Z_DEFORMATION_LIMIT, self.current_vtk.points[:, 2]
         )
 
     def update_mesh(self, u):
@@ -96,17 +89,9 @@ class MeshBoost:
         # Check for negative z values
         # If present assign zero
         self.current_vtk.points[:, 2] = np.where(
-            self.current_vtk.points[:, 2] < Z_LIMIT, Z_LIMIT, self.current_vtk.points[:, 2]
+            self.current_vtk.points[:, 2] < self.Z_DEFORMATION_LIMIT,
+            self.Z_DEFORMATION_LIMIT, self.current_vtk.points[:, 2]
         )
-        # 2) Update the sfepy version of the mesh
-        # Save this mesh as a .vtk file
-        """
-        FIXME
-            raise RuntimeError('elements cannot be oriented! (%s)' % key)
-        RuntimeError: elements cannot be oriented! (3_8)
-        # """
-        # self.current_vtk.save(PATH)
-        # self.sfepy_mesh = Mesh.from_file(PATH)
 
     def get_vertex_ids_from_coords(self, cell_coords):
         """
@@ -248,28 +233,57 @@ class ArmMesh(MeshBoost):
         # Load the input mesh
         mesh = pv.read(self.obj_path)
 
-        # Compute normals
+        # Compute normals for each face
         normals = mesh.face_normals
 
-        vertices, cells = [], []
+        # Create a dictionary to handle shared vertices
+        # base vertex coordinates  : [extruded vertex coordinates, extruded vertex id]
+        vertices_dict = {}
 
-        # For each face in the input mesh, create a hexahedral cell in the output mesh
+        # For each face in the input mesh find the extruded face coordinates
         for i in range(mesh.n_cells):
 
-            # Get the point indices for this face
-            face_points = mesh.get_cell(i).points
+            # Get the point coordinates for this face
+            face_coords = mesh.get_cell(i).points
 
-            # Get the normal of this face
-            normal = normals[i]
+            # Loop over the vertices of the base (non-extruded) face
+            for k in range(4):
 
-            # Get the corresponding points in the offset mesh
-            offset_points = face_points + normal * THICKNESS
+                # Create a unique identifier for each vertex:
+                # - a tuple of the vertex's coordinates
+                identifier = tuple(np.round(face_coords[k], 4))
 
-            # Add the vertices to the list of vertices
-            vertices.extend(face_points)
-            vertices.extend(offset_points)
+                if identifier in vertices_dict:
+                    pass
+                else:
+                    extruded_coords = tuple(np.round(face_coords[k] + normals[i] * THICKNESS, 4))
+                    vertices_dict[identifier] = extruded_coords
 
-            cells.append([i + (len(vertices) - 8) for i in range(8)])
+        # Make another pass to form the connections and create the cells
+
+        # Create the vertices and cells for the output mesh (vtk format)
+        vertices, cells = [], []
+        # For each face in the input mesh, create a hexahedral cell in the output mesh
+        for i in range(mesh.n_cells):
+            face_coords = mesh.get_cell(i).points
+
+            # The cell is defined by eight points: four points on the base face
+            # and their corresponding extruded points
+            cell_base, cell_extruded = [], []
+            for k in range(4):
+                identifier = tuple(np.round(face_coords[k], 4))
+
+                vertices.append(identifier)
+                cell_base.append(vertices.index(identifier))  # base point
+
+                extruded_point = vertices_dict[identifier]
+                vertices.append(extruded_point)
+                cell_extruded.append(vertices.index(extruded_point))  # extruded point
+
+            # Combine the front and back faces to form the cell
+            cell = cell_base[::-1] + cell_extruded[::-1]
+            cells.append(cell)
+            print(cell)
 
         mesh = meshio.Mesh(points=vertices, cells={"hexahedron": cells})
         meshio.write(PATH, mesh)

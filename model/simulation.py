@@ -67,7 +67,7 @@ class ForgeRecording:
             self.stimuli.position[1] + local_displacement,
             0]
 
-        self.stimuli.set_position(position)
+        self.stimuli.recompute_position(position, )
 
 
 def read_data(file_path):

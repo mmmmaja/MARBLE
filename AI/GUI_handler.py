@@ -13,8 +13,10 @@ class GUI:
         # Define the plotter (pyvistaqt)
         self.plotter = pvqt.BackgroundPlotter()
 
-        self.FORCE = 0.02
-        self.force_dt = 0.01
+        # Define the pressure
+        self.PRESSURE = 0.02
+        # Change in the pressure when on the event
+        self.pressure_dt = 0.01
 
         # Define all the actors present in the scene
         self.mesh_actor = None
@@ -31,7 +33,7 @@ class GUI:
         self.add_axes()
 
         self.add_force_events()
-        self.add_force_indicator()
+        self.add_pressure_indicator()
 
         # Update the plotter and show it
         self.plotter.update()
@@ -93,14 +95,14 @@ class GUI:
             self.plotter.remove_actor(self.mode_text_actor)
         # Add the new text
         self.mode_text_actor = self.plotter.add_text(
-            text, position='upper_right', font_size=8, color='white', shadow=True
+            text, position='upper_right', font_size=10, color='white', shadow=True
         )
 
-    def add_force_indicator(self):
+    def add_pressure_indicator(self):
         if self.force_indicator_actor is not None:
             self.plotter.remove_actor(self.force_indicator_actor)
 
-        text = f'Force: {self.FORCE} N'
+        text = f'Pressure: {self.PRESSURE} N'
         self.force_indicator_actor = self.plotter.add_text(
             text, position='lower_right', font_size=8, color='white', shadow=True
         )
@@ -113,12 +115,12 @@ class GUI:
         )
 
     def increase_force(self):
-        self.FORCE = round(min(self.FORCE + self.force_dt, 5.0), 2)
-        self.add_force_indicator()
+        self.PRESSURE = round(min(self.PRESSURE + self.pressure_dt, 5.0), 2)
+        self.add_pressure_indicator()
 
     def decrease_force(self):
-        self.FORCE = round(max(self.FORCE - self.force_dt, 0.0), 2)
-        self.add_force_indicator()
+        self.PRESSURE = round(max(self.PRESSURE - self.pressure_dt, 0.0), 2)
+        self.add_pressure_indicator()
 
     def add_force_events(self):
 

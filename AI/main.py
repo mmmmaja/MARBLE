@@ -45,20 +45,8 @@ class NoRotateStyle(vtk.vtkInteractorStyleTrackballCamera):
         self.AddObserver("RightButtonPressEvent", self.right_button_press_event)
         self.AddObserver("LeftButtonReleaseEvent", self.left_button_release_event)
         self.AddObserver("MouseMoveEvent", self.mouse_move_event)
-        self.AddObserver("KeyPressEvent", self.key_event)
-        self.AddObserver("CharEvent", self.key_event)
 
         super().__init__(*args, **kwargs)
-
-    def key_event(self, obj, event):
-        # This event will change the position of the stimuli
-
-        # Get the key that was pressed
-        key = self.GetInteractor().GetKeySym()
-        if self.stimuli.move_with_key(key):
-            # Update the visualization
-            apply_stimuli(self.fenics, self.gui, self.stimuli)
-            self.gui.draw_stimuli()
 
     def left_button_press_event(self, obj, event):
         self.mouse_pressed = True
@@ -76,7 +64,6 @@ class NoRotateStyle(vtk.vtkInteractorStyleTrackballCamera):
 
     def mouse_move_event(self, obj, event):
         """
-        TODO adjust to stimuli
         Function that is triggered when the mouse is moved.
         If self.mouse_pressed is True, it updates the position of the stimuli.
         """
@@ -98,30 +85,10 @@ class NoRotateStyle(vtk.vtkInteractorStyleTrackballCamera):
 
         # If the cell exists
         if cell_id != -1:
-            # It will return the ids of the 8 points that make up the hexahedron
-            cell_points_ids = self.picker.GetActor().GetMapper().GetInput().GetCell(cell_id).GetPointIds()
-
-            # The points list will contain the coordinates of the points that belong to the cell
-            points = []
-            for i in range(cell_points_ids.GetNumberOfIds()):
-                point_id = cell_points_ids.GetId(i)
-                # Map the point id to the coordinates of the mesh cells
-                points.append(self.picker.GetActor().GetMapper().GetInput().GetPoint(point_id))
-
-            # Remove the bottom layer of points (Points with z coordinate == 0)
-            points = [point for point in points if point[2] != 0]
-            if len(points) == 0:
-                return
-
-            # Get the average of the points
-            average_point = np.mean(points, axis=0)
-
-            # Update the position of the stimuli to the clicked cell
-            self.stimuli.position = average_point
-            
-            force_handler = StimuliPressure(self.stimuli, self.gui.FORCE, self.fenics.rank_material)
-            # Apply the force to the mesh
-            apply_force(self.fenics, self.gui, force_handler, relaxation=False)
+            if self.stimuli.recompute_position(self.picker, cell_id):
+                force_handler = StimuliPressure(self.stimuli, self.gui.PRESSURE, self.fenics.rank_material)
+                # Apply the force to the mesh
+                apply_force(self.fenics, self.gui, force_handler, relaxation=False)
 
 
 def apply_force(fenics, gui, force_handler, relaxation=True):
@@ -150,13 +117,13 @@ def apply_force(fenics, gui, force_handler, relaxation=True):
             stress_relaxation_ref.stop()
 
         stress_relaxation_ref = StressRelaxation(
-            gui, fenics.mesh_boost, fenics.rank_material, u0=u, F0=gui.FORCE
+            gui, fenics.mesh_boost, fenics.rank_material, u0=u, F0=gui.PRESSURE
         )
         stress_relaxation_ref.initiate()
 
 
 def apply_stimuli(fenics, gui, stimuli):
-    force_handler = StimuliPressure(stimuli, gui.FORCE, fenics.rank_material)
+    force_handler = StimuliPressure(stimuli, gui.PRESSURE, fenics.rank_material)
     # Apply the force to the mesh
     apply_force(fenics, gui, force_handler, relaxation=False)
 
@@ -176,7 +143,7 @@ class Main:
             # if cell is not none, apply force to the cell
             callback=lambda cell:
             apply_force(
-                self.fenics, self.gui, CellSpecificPressure(cell.points, self.gui.FORCE), relaxation=True,
+                self.fenics, self.gui, CellSpecificPressure(cell.points, self.gui.PRESSURE), relaxation=True,
             ) if cell is not None else None,
             font_size=10, point_size=30, line_width=5,
             color='white', style='wireframe', through=False
@@ -184,7 +151,7 @@ class Main:
 
         # Add the event on the press of the space bar, apply the force
         self.gui.plotter.add_key_event('space', lambda: apply_force(
-            self.fenics, self.gui, VolumePressure(self.gui.FORCE), relaxation=True,
+            self.fenics, self.gui, VolumePressure(self.gui.PRESSURE), relaxation=True,
         ))
 
         # If the enter button is pressed, the interactive mode is toggled
@@ -213,12 +180,12 @@ if not TERMINAL_OUTPUT:
 
 app = QApplication(sys.argv)
 
-_mesh_boost = GridMesh(30, 30, z_function=flat, layers=3)
-# _mesh_boost = ArmMesh()
+# _mesh_boost = GridMesh(30, 30, z_function=flat, layers=3)
+_mesh_boost = ArmMesh()
 
-# _stimuli = Sphere(radius=2.0)
+_stimuli = Sphere(radius=2.0)
 # _stimuli = Cylinder(radius=2.0, height=1.0)
-_stimuli = Cuboid(7.0, 4.0, 2.0)
+# _stimuli = Cuboid(7.0, 4.0, 2.0)
 
 
 Main(_mesh_boost, _stimuli, rubber)

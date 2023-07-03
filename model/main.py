@@ -208,7 +208,7 @@ class Display:
                     pos = np.array(pygame.mouse.get_pos())
                     if pos[0] < FRAME_WIDTH // 2 - UNIT:
                         stimuli_position = (np.concatenate([pos, np.array([0])]) - OFFSET) / UNIT
-                        self.stimuli.set_position(stimuli_position)
+                        self.stimuli.recompute_position(stimuli_position, )
 
                         # Add a new circle to the list when the mouse is clicked
                         self.presses.append(self.stimuli.get_shape())

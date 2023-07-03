@@ -7,7 +7,7 @@ import numpy as np
 class Stimuli:
 
     def __init__(self):
-        self.position = np.array([18.0, 18.0, 6.3])
+        self.position = np.array([-2.2, -2.2, 4.4])
         self.color = '#17d8db'
         self.visualization = self.create_visualization()
 
@@ -30,50 +30,25 @@ class Stimuli:
         :return: A float value representing the pressure between 0 and 1 (so that it can be scaled later)
         """
 
-    @abstractmethod
-    def get_area(self) -> float:
-        """
-        :return: The area of the stimulus (face acting on the mesh)
-        """
+    def recompute_position(self, picker, cell_id):
+        # It will return the ids of the 8 points that make up the hexahedron
+        cell_points_ids = picker.GetActor().GetMapper().GetInput().GetCell(cell_id).GetPointIds()
 
-    def move_with_key(self, key):
-        # Move the stimulus with the arrow keys
-        position_dt = 0.15
-        position_update = np.array([0.0, 0.0, 0.0])
+        # The points list will contain the coordinates of the points that belong to the cell
+        points = []
+        for i in range(cell_points_ids.GetNumberOfIds()):
+            point_id = cell_points_ids.GetId(i)
+            # Map the point id to the coordinates of the mesh cells
+            points.append(picker.GetActor().GetMapper().GetInput().GetPoint(point_id))
 
-        if key == 'w':
-            # Move the object forward
-            position_update[1] += position_dt
-        elif key == 's':
-            # Move the object backward
-            position_update[1] -= position_dt
-        elif key == 'a':
-            # Move the object left
-            position_update[0] -= position_dt
-        elif key == 'd':
-            # Move the object right
-            position_update[0] += position_dt
-
-        # Add the events for moving along z axis
-        elif key == 'plus':
-            # Move the object up
-            position_update[2] += position_dt
-        elif key == 'minus':
-            # Move the object down
-            position_update[2] -= position_dt
-
-        if np.linalg.norm(position_update) > 0:
-            # Only move if there is a change in position
-            self.move(position_update)
-            return True
-        else:
+        # Remove the bottom layer of points (Points with z coordinate == 0)
+        points = [point for point in points if point[2] != 0]
+        if len(points) == 0:
             return False
 
-    def move(self, position_update):
-
-        self.position += position_update
-        # translate the visualization
-        self.visualization.translate(position_update)
+        # Get the average of the points
+        self.position = np.mean(points, axis=0)
+        return True
 
 
 class Sphere(Stimuli):
@@ -92,9 +67,6 @@ class Sphere(Stimuli):
             theta_resolution=10, phi_resolution=10
         )
         return sphere
-
-    def get_area(self):
-        return None
 
     def calculate_pressure(self, point: np.ndarray) -> float:
         """
@@ -147,9 +119,6 @@ class Cylinder(Stimuli):
         else:
             return 0.0
 
-    def get_area(self):
-        return np.pi * self.radius ** 2
-
 
 class Cuboid(Stimuli):
 
@@ -177,10 +146,5 @@ class Cuboid(Stimuli):
         # Check if the point is within the boundary of the shape of the stimulus
         if x <= self.width / 2 and y <= self.length / 2 and z <= self.height / 2:
             return 1.0
-            # Force is the inverse of the minimum distance to the faces of the cuboid.
-            # return min([1 / x, 1 / y, 1 / z]) if x > 0 and y > 0 and z > 0 else 1.0
         else:
             return 0.0
-
-    def get_area(self):
-        return self.width * self.length
