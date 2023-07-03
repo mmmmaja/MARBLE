@@ -1,5 +1,6 @@
 from abc import abstractmethod
 import numpy as np
+from AI.stress_script import StressRelaxation
 
 """
 This script contains the classes that represent the forces acting on the mesh.
@@ -148,3 +149,56 @@ class CellSpecificPressure(PressureHandler):
 """
 Handle applying the pressure to the mesh
 """
+
+# I need to hold the reference to the timer class and destroy it
+# when the simulation of the relaxation process is over
+stress_relaxation_ref = None
+
+
+def apply_volume_pressure(fenics, gui, relaxation=True):
+    force_handler = VolumePressure(gui.PRESSURE)
+    apply_pressure(fenics, gui, force_handler, relaxation)
+
+
+def apply_stimuli_pressure(fenics, gui, stimuli, picker, cell_id, relaxation=False):
+    if stimuli.recompute_position(picker, cell_id):
+        force_handler = StimuliPressure(stimuli, gui.PRESSURE, fenics.rank_material)
+        apply_pressure(fenics, gui, force_handler, relaxation)
+
+
+def apply_cell_specific_pressure(fenics, gui, cell, relaxation=True):
+    if not cell:
+        return
+    force_handler = CellSpecificPressure(cell.points, gui.PRESSURE)
+    apply_pressure(fenics, gui, force_handler, relaxation)
+
+
+def apply_pressure(fenics, gui, force_handler, relaxation):
+    """
+    :param fenics: FENICS class
+    :param gui: GUI class
+    :param force_handler: ForceHandler class instance
+    :param relaxation: boolean that indicates if the stress relaxation process should be started
+    Function that applies a vertex specific force or volume (stable) force across the whole mesh
+    """
+    global stress_relaxation_ref
+
+    # Calculate the displacement
+    u = fenics.apply_pressure(force_handler)
+
+    # UPDATE plot and meshes
+    fenics.mesh_boost.update_mesh(u)
+    gui.draw_mesh(fenics.mesh_boost.current_vtk)
+    gui.draw_sensors()
+    gui.plotter.update()
+
+    if relaxation:
+        # Start the stress relaxation process
+        # Stop existing relaxation process
+        if stress_relaxation_ref is not None:
+            stress_relaxation_ref.stop()
+
+        stress_relaxation_ref = StressRelaxation(
+            gui, fenics.mesh_boost, fenics.rank_material, u0=u, F0=gui.PRESSURE
+        )
+        stress_relaxation_ref.initiate()

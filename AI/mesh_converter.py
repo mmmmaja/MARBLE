@@ -1,5 +1,6 @@
 import sys
 import sfepy
+from AI._sensors import SensorArm, SensorGrid
 from AI.mesh_helper import *
 from abc import abstractmethod
 import numpy as np
@@ -9,7 +10,7 @@ from sfepy.discrete.fem import Mesh
 from copy import deepcopy
 
 # Thickness of the mesh
-THICKNESS = 0.53
+THICKNESS = 1.73
 
 
 def convert_to_vtk(path):
@@ -245,7 +246,7 @@ class ArmMesh(MeshBoost):
                 if identifier in vertices_dict:
                     pass
                 else:
-                    extruded_coords = tuple(np.round(face_coords[k] + normals[i] * THICKNESS, 4))
+                    extruded_coords = tuple(np.round(face_coords[k] - normals[i] * THICKNESS, 4))
                     vertices_dict[identifier] = extruded_coords
 
         # Make another pass to form the connections and create the cells
@@ -284,19 +285,18 @@ class ArmMesh(MeshBoost):
 
         return Mesh.from_file(PATH)
 
-    # def get_regions(self, domain):
-    #
-    #     expr_base = 'vertex ' + ', '.join([str(i) for i in self.top_region_ids])
-    #     top = domain.create_region(name='Top', select=expr_base, kind='facet')
-    #
-    #     # Create a bottom region (Where the boundary conditions apply so that the positions are fixed)
-    #     # Define the cells by their Ids and use vertex <id>[, <id>, ...]
-    #     expr_extruded = 'vertex ' + ', '.join([str(i) for i in self.bottom_region_ids])
-    #     bottom = domain.create_region(name='Bottom', select=expr_extruded, kind='facet')
-    #
-    #     return top, bottom
 
+    def get_regions(self, domain):
 
+        expr_base = 'vertex ' + ', '.join([str(i) for i in self.top_region_ids])
+        top = domain.create_region(name='Top', select=expr_base, kind='facet')
+
+        # Create a bottom region (Where the boundary conditions apply so that the positions are fixed)
+        # Define the cells by their Ids and use vertex <id>[, <id>, ...]
+        expr_extruded = 'vertex ' + ', '.join([str(i) for i in self.bottom_region_ids])
+        bottom = domain.create_region(name='Bottom', select=expr_extruded, kind='facet')
+
+        return top, bottom
 
 
 def display_obj_file(path):

@@ -3,12 +3,12 @@ import pyvistaqt as pvqt  # For updating plots real time
 
 class GUI:
 
-    def __init__(self, vtk_mesh, mesh_material, stimuli):
+    def __init__(self, vtk_mesh, mesh_material, stimuli, sensors):
 
         # Rank material for rendering the mesh
         self.mesh_material = mesh_material
-
         self.stimuli = stimuli
+        self.sensors = sensors
 
         # Define the plotter (pyvistaqt)
         self.plotter = pvqt.BackgroundPlotter()
@@ -21,6 +21,7 @@ class GUI:
         # Define all the actors present in the scene
         self.mesh_actor = None
         self.stimuli_actor = None
+        self.sensor_actor = None
         self.material_text_actor = None
         self.mode_text_actor = None
         self.force_indicator_actor = None
@@ -28,6 +29,7 @@ class GUI:
         # Add all the actors to the scene
         self.draw_mesh(vtk_mesh)
         self.draw_stimuli()
+        self.draw_sensors()
         self.add_material_text()
         self.add_mode_text('Interactive')
         self.add_axes()
@@ -58,7 +60,6 @@ class GUI:
         """
         if self.mesh_actor is not None:
             self.plotter.update()
-            # self.plotter.remove_actor(self.mesh_actor)
 
         visual_properties = self.mesh_material.visual_properties
         self.mesh_actor = self.plotter.add_mesh(
@@ -87,6 +88,18 @@ class GUI:
             specular=0.8,
             metallic=0.95,
             roughness=0.0,
+        )
+
+    def draw_sensors(self):
+        if self.sensor_actor is not None:
+            self.plotter.update()
+
+        # Add the point cloud to the plotter
+        self.sensor_actor = self.plotter.add_points(
+            self.sensors.get_visualization(),
+            render_points_as_spheres=True,
+            color='#dfe9ff',
+            point_size=6
         )
 
     def add_mode_text(self, text):

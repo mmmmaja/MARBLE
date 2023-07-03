@@ -116,7 +116,7 @@ class FENICS:
 
         return force_term
 
-    def apply_force(self, force_handler):
+    def apply_pressure(self, force_handler):
         """
         Elasticity problem solved with FEniCS.
 
