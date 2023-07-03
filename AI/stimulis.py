@@ -1,4 +1,3 @@
-import time
 from abc import abstractmethod
 import pyvista as pv
 import numpy as np

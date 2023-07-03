@@ -1,4 +1,3 @@
-import time
 from abc import abstractmethod
 import numpy as np
 
@@ -144,3 +143,8 @@ class CellSpecificPressure(PressureHandler):
         if is_inside(vertex_coordinates, self.affected_points):
             return self.pressure_strength
         return 0.0
+
+
+"""
+Handle applying the pressure to the mesh
+"""

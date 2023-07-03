@@ -41,10 +41,6 @@ class MeshBoost:
         # Mind be changed later
         self.current_vtk = self.initial_vtk.copy()
 
-    def get_maximum_displacement(self):
-        # Get the maximum displacement of the mesh
-        return np.max(self.current_vtk.points[:, 2])
-
     @abstractmethod
     def create_mesh(self) -> sfepy.discrete.fem.mesh.Mesh:
         """
@@ -208,18 +204,13 @@ class GridMesh(MeshBoost):
 
         return top, bottom
 
-    def get_area(self) -> float:
-        """
-        Get the area of the mesh
-        :return: area of the mesh
-        """
-        return self.width * self.height
-
 
 class ArmMesh(MeshBoost):
 
     def __init__(self, obj_path='meshes/model_kfadrat.obj'):
         self.obj_path = obj_path
+        # Add the indices of the vertices to create the regions for the solver later
+        self.top_region_ids, self.bottom_region_ids = [], []
         super().__init__()
 
     def create_mesh(self):
@@ -227,8 +218,6 @@ class ArmMesh(MeshBoost):
         Extruding the mesh along a direction perpendicular to the faces
         :return:
         """
-
-        display_obj_file(self.obj_path)
 
         # Load the input mesh
         mesh = pv.read(self.obj_path)
@@ -273,27 +262,41 @@ class ArmMesh(MeshBoost):
             for k in range(4):
                 identifier = tuple(np.round(face_coords[k], 4))
 
+                # Handle the base vertices
                 vertices.append(identifier)
-                cell_base.append(vertices.index(identifier))  # base point
+                vertex_id = vertices.index(identifier)
+                cell_base.append(vertex_id)  # base point
+                self.bottom_region_ids.append(vertex_id)
 
+                # Handle the extruded vertices
                 extruded_point = vertices_dict[identifier]
                 vertices.append(extruded_point)
-                cell_extruded.append(vertices.index(extruded_point))  # extruded point
+                vertex_id = vertices.index(extruded_point)
+                cell_extruded.append(vertex_id)  # extruded point
+                self.top_region_ids.append(vertex_id)
 
             # Combine the front and back faces to form the cell
             cell = cell_base[::-1] + cell_extruded[::-1]
             cells.append(cell)
-            print(cell)
 
         mesh = meshio.Mesh(points=vertices, cells={"hexahedron": cells})
         meshio.write(PATH, mesh)
 
-        # Convert the meshio mesh to sfepy mesh
-        # display the mesh in pyvista
-        mesh = pv.read(self.path)
-        mesh.plot(show_edges=True, show_grid=True, cpos='xy')
-
         return Mesh.from_file(PATH)
+
+    # def get_regions(self, domain):
+    #
+    #     expr_base = 'vertex ' + ', '.join([str(i) for i in self.top_region_ids])
+    #     top = domain.create_region(name='Top', select=expr_base, kind='facet')
+    #
+    #     # Create a bottom region (Where the boundary conditions apply so that the positions are fixed)
+    #     # Define the cells by their Ids and use vertex <id>[, <id>, ...]
+    #     expr_extruded = 'vertex ' + ', '.join([str(i) for i in self.bottom_region_ids])
+    #     bottom = domain.create_region(name='Bottom', select=expr_extruded, kind='facet')
+    #
+    #     return top, bottom
+
+
 
 
 def display_obj_file(path):

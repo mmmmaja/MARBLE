@@ -88,10 +88,10 @@ class NoRotateStyle(vtk.vtkInteractorStyleTrackballCamera):
             if self.stimuli.recompute_position(self.picker, cell_id):
                 force_handler = StimuliPressure(self.stimuli, self.gui.PRESSURE, self.fenics.rank_material)
                 # Apply the force to the mesh
-                apply_force(self.fenics, self.gui, force_handler, relaxation=False)
+                apply_pressure(self.fenics, self.gui, force_handler, relaxation=False)
 
 
-def apply_force(fenics, gui, force_handler, relaxation=True):
+def apply_pressure(fenics, gui, force_handler, relaxation=True):
     """
     :param fenics: FENICS class
     :param gui: GUI class
@@ -102,7 +102,7 @@ def apply_force(fenics, gui, force_handler, relaxation=True):
     global stress_relaxation_ref
 
     # Calculate the displacement
-    u = fenics.apply_force(force_handler)
+    u = fenics.apply_pressure(force_handler)
 
     # UPDATE plot and meshes
     fenics.mesh_boost.update_mesh(u)
@@ -125,7 +125,7 @@ def apply_force(fenics, gui, force_handler, relaxation=True):
 def apply_stimuli(fenics, gui, stimuli):
     force_handler = StimuliPressure(stimuli, gui.PRESSURE, fenics.rank_material)
     # Apply the force to the mesh
-    apply_force(fenics, gui, force_handler, relaxation=False)
+    apply_pressure(fenics, gui, force_handler, relaxation=False)
 
 
 class Main:
@@ -142,7 +142,7 @@ class Main:
         self.gui.plotter.enable_cell_picking(
             # if cell is not none, apply force to the cell
             callback=lambda cell:
-            apply_force(
+            apply_pressure(
                 self.fenics, self.gui, CellSpecificPressure(cell.points, self.gui.PRESSURE), relaxation=True,
             ) if cell is not None else None,
             font_size=10, point_size=30, line_width=5,
@@ -150,7 +150,7 @@ class Main:
         )
 
         # Add the event on the press of the space bar, apply the force
-        self.gui.plotter.add_key_event('space', lambda: apply_force(
+        self.gui.plotter.add_key_event('space', lambda: apply_pressure(
             self.fenics, self.gui, VolumePressure(self.gui.PRESSURE), relaxation=True,
         ))
 
@@ -180,10 +180,10 @@ if not TERMINAL_OUTPUT:
 
 app = QApplication(sys.argv)
 
-# _mesh_boost = GridMesh(30, 30, z_function=flat, layers=3)
-_mesh_boost = ArmMesh()
+_mesh_boost = GridMesh(30, 30, z_function=flat, layers=3)
+# _mesh_boost = ArmMesh()
 
-_stimuli = Sphere(radius=2.0)
+_stimuli = Sphere(radius=1.5)
 # _stimuli = Cylinder(radius=2.0, height=1.0)
 # _stimuli = Cuboid(7.0, 4.0, 2.0)
 
@@ -193,10 +193,7 @@ app.exec_()
 
 
 """
-TODO interpolation -> less resolution
-Do not remove the actor but update it
-
-TODO different stimuli activation
-relaxation in a normal activation
+TODO
 ROBOTIC ARM
+Stress relaxation process
 """
