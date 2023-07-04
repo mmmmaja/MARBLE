@@ -63,7 +63,7 @@ class Sphere(Stimuli):
             radius=self.radius, center=self.position,
             # theta resolution is the number of points in the longitude direction.
             # phi resolution is the number of points in the latitude direction.
-            theta_resolution=10, phi_resolution=10
+            theta_resolution=20, phi_resolution=20
         )
         return sphere
 
@@ -101,7 +101,7 @@ class Cylinder(Stimuli):
         direction = np.array([0, 0, 1])
         cylinder = pv.Cylinder(
             radius=self.radius, height=self.height, center=self.position,
-            resolution=50, direction=direction
+            resolution=70, direction=direction
         )
         # translate the cylinder so that the flat face is facing the mesh
 

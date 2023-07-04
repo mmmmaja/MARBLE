@@ -1,20 +1,15 @@
 import random
 
 _colors = [
-    '#ad1a95',
-    '#FF00FF',
     'e874ff',
     '#e2a4ff',
-    '#689dff',
-    '#14ccff',
-    '#17d8db',
-    '#62fff8',
-    '#98ff9a',
+    '#39ddff',
+    '#63ffe1',
     '#ff9a9a'
 ]
 
 
-def get_edge_color(surface_color):
+def get_lighter_color(surface_color):
     """
     Returns a lighter version of the color
     :param surface_color: color of the surface
@@ -24,7 +19,7 @@ def get_edge_color(surface_color):
     surface_color = surface_color.lstrip('#')
     surface_color = tuple(int(surface_color[i:i + 2], 16) for i in (0, 2, 4))
     # Get the lighter version of the color
-    surface_color = tuple([int((x + 255) / 2) for x in surface_color])
+    surface_color = tuple([min(255, x + 60) for x in surface_color])
     return surface_color
 
 
@@ -64,7 +59,7 @@ class Rank_Material:
                 'specular': 0.1,
                 'metallic': 0.02,
                 'roughness': 0.5,
-                'edge_color': get_edge_color('#14ccff'),
+                'edge_color': get_lighter_color('#14ccff'),
             }
         else:
             self.visual_properties = visual_properties
@@ -91,9 +86,9 @@ class Rank_Material:
 
 
 silicon_color = random.choice(_colors)
-rubber_color = '08a9ff'
-steel_color = 'C0C0C0'
-foam_color = '#ffc291'
+rubber_color = '2dc2ff'
+steel_color = '787d91'
+foam_color = '#ffb15a'
 
 # Create a database of materials
 
@@ -106,7 +101,7 @@ silicon = Rank_Material(
         'specular': 0.1,
         'metallic': 0.02,
         'roughness': 0.5,
-        'edge_color': get_edge_color(silicon_color),
+        'edge_color': get_lighter_color(silicon_color),
     }
 )
 
@@ -119,7 +114,7 @@ rubber = Rank_Material(
         'specular': 0.00,
         'metallic': 0.0,
         'roughness': 0.95,
-        'edge_color': get_edge_color(rubber_color),
+        'edge_color': get_lighter_color(rubber_color),
     }
 )
 
@@ -132,7 +127,7 @@ steel = Rank_Material(
         'specular': 0.9,
         'metallic': 1.0,
         'roughness': 0.01,
-        'edge_color': get_edge_color(steel_color),
+        'edge_color': get_lighter_color(steel_color),
     }
 )
 
@@ -145,24 +140,6 @@ polyurethane_foam = Rank_Material(
         'specular': 0.0,
         'metallic': 0.0,
         'roughness': 1.0,
-        'edge_color': get_edge_color(foam_color),
+        'edge_color': get_lighter_color(foam_color),
     }
 )
-# F(t) = F0 * exp(-t/tau)
-
-"""
-For later:
-Here are some typical values for the damping coefficient of various materials:
-
-Rubber: η = 1e5 - 1e8 Pa*s
-Polyurethane Foam: η = 1e5 - 1e8 Pa*s
-Steel: η = 1e3 - 1e6 Pa*s
-Silicon: η = 1e6 - 1e9 Pa*s
-
-τ = η / E
-Where:
-
-τ is the relaxation time,
-η is the viscoelastic damping coefficient (or viscosity in the SLS model),
-E is the elastic modulus (Young's modulus).
-"""

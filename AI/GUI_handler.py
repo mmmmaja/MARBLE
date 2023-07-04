@@ -1,6 +1,6 @@
 import pyvistaqt as pvqt  # For updating plots real time
 from PyQt5.QtWidgets import QAction  # For the custom button
-
+from AI.material_handler import get_lighter_color
 from AI.recording_manager import Recording
 
 
@@ -38,6 +38,10 @@ class GUI:
         # Recording object from recording_manager.py
         self.recording = None
 
+        self.text_color = '5f6468'
+        self.background_color = 'b3b9be'
+        self.plotter.set_background(self.background_color)
+
         # Add all the actors to the scene
         self.draw_mesh()
         self.draw_stimuli()
@@ -62,7 +66,7 @@ class GUI:
         text += '\nv: ' + str(self.mesh_material.poisson_ratio)
 
         self.material_text_actor = self.plotter.add_text(
-            text, position='lower_left', font_size=8, color='white', shadow=True
+            text, position='lower_left', font_size=8, color=self.text_color
         )
 
     def draw_mesh(self):
@@ -96,13 +100,19 @@ class GUI:
         )
 
     def draw_sensors(self):
-        # Add the point cloud to the plotter
-        self.sensor_actor = self.plotter.add_points(
+        dark_color = self.mesh_material.visual_properties['color']
+        self.sensor_actor = self.plotter.add_mesh(
             self.sensors.visualization,
+            color=get_lighter_color(dark_color),
+            name='sensor_points',
+            show_edges=False,
+            smooth_shading=True,
+            specular=0.8,
+            metallic=0.99,
+            roughness=0.0,
             render_points_as_spheres=True,
-            color='#dfe9ff',
-            point_size=6,
-            name='sensor_points'
+            opacity=0.8,
+            point_size=8,
         )
 
     def add_mode_text(self, text):
@@ -111,7 +121,7 @@ class GUI:
             self.plotter.remove_actor(self.mode_text_actor)
         # Add the new text
         self.mode_text_actor = self.plotter.add_text(
-            text, position='upper_right', font_size=10, color='white', shadow=True
+            text, position='upper_right', font_size=10, color=self.text_color
         )
 
     def add_pressure_indicator(self):
@@ -120,7 +130,7 @@ class GUI:
 
         text = f'Pressure: {self.PRESSURE} N'
         self.force_indicator_actor = self.plotter.add_text(
-            text, position='lower_right', font_size=8, color='white', shadow=True
+            text, position='lower_right', font_size=8, color=self.text_color,
         )
 
     def add_axes(self):

@@ -139,18 +139,17 @@ app = QApplication(sys.argv)
 _mesh_boost = ArmMesh()
 _sensors = SensorArm(_mesh_boost)
 
-_stimuli = Sphere(radius=0.1)
+_stimuli = Sphere(radius=2.1)
 # _stimuli = Cylinder(radius=3.0, height=1.0)
 # _stimuli = Cuboid(6.0, 4.0, 2.0)
 
 
-Main(_mesh_boost, _stimuli, _sensors, rubber)
+Main(_mesh_boost, _stimuli, _sensors, silicon)
 app.exec_()
 
 
 """
-TODO
-ROBOTIC ARM
+TODO:
 Stress relaxation process
 Apply pressure to sensors
 """

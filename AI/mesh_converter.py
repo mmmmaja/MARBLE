@@ -244,9 +244,7 @@ class ArmMesh(MeshBoost):
                 # - a tuple of the vertex's coordinates
                 identifier = tuple(np.round(face_coords[k], 4))
 
-                if identifier in vertices_dict:
-                    pass
-                else:
+                if identifier not in vertices_dict:
                     extruded_coords = tuple(np.round(face_coords[k] - normals[i] * THICKNESS, 4))
                     vertices_dict[identifier] = extruded_coords
 
@@ -265,17 +263,24 @@ class ArmMesh(MeshBoost):
                 identifier = tuple(np.round(face_coords[k], 4))
 
                 # Handle the base vertices
-                vertices.append(identifier)
-                vertex_id = vertices.index(identifier)
+                # Check if the vertex is already in the list of vertices
+                if identifier not in vertices:
+                    vertices.append(identifier)
+                    vertex_id = vertices.index(identifier)
+                else:
+                    vertex_id = vertices.index(identifier)
                 cell_base.append(vertex_id)  # base point
-                self.bottom_region_ids.append(vertex_id)
+                self.top_region_ids.append(vertex_id)
 
                 # Handle the extruded vertices
                 extruded_point = vertices_dict[identifier]
-                vertices.append(extruded_point)
-                vertex_id = vertices.index(extruded_point)
+                if extruded_point not in vertices:
+                    vertices.append(extruded_point)
+                    vertex_id = vertices.index(extruded_point)
+                else:
+                    vertex_id = vertices.index(extruded_point)
                 cell_extruded.append(vertex_id)  # extruded point
-                self.top_region_ids.append(vertex_id)
+                self.bottom_region_ids.append(vertex_id)
 
             # Combine the front and back faces to form the cell
             cell = cell_base[::-1] + cell_extruded[::-1]
@@ -286,17 +291,17 @@ class ArmMesh(MeshBoost):
 
         return Mesh.from_file(PATH)
 
-    # def get_regions(self, domain):
-    #
-    #     expr_base = 'vertex ' + ', '.join([str(i) for i in self.top_region_ids])
-    #     top = domain.create_region(name='Top', select=expr_base, kind='facet')
-    #
-    #     # Create a bottom region (Where the boundary conditions apply so that the positions are fixed)
-    #     # Define the cells by their Ids and use vertex <id>[, <id>, ...]
-    #     expr_extruded = 'vertex ' + ', '.join([str(i) for i in self.bottom_region_ids])
-    #     bottom = domain.create_region(name='Bottom', select=expr_extruded, kind='facet')
-    #
-    #     return top, bottom
+    def get_regions(self, domain):
+
+        expr_base = 'vertex ' + ', '.join([str(i) for i in self.top_region_ids])
+        top = domain.create_region(name='Top', select=expr_base, kind='facet')
+
+        # Create a bottom region (Where the boundary conditions apply so that the positions are fixed)
+        # Define the cells by their Ids and use vertex <id>[, <id>, ...]
+        expr_extruded = 'vertex ' + ', '.join([str(i) for i in self.bottom_region_ids])
+        bottom = domain.create_region(name='Bottom', select=expr_extruded, kind='facet')
+
+        return top, bottom
 
 
 def display_obj_file(path):
