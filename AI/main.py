@@ -90,7 +90,7 @@ class Main:
         self.sensors = sensors
         self.fenics = FENICS(mesh_boost, rank_material)
 
-        self.gui = GUI(mesh_boost.current_vtk, rank_material, stimuli, sensors)
+        self.gui = GUI(mesh_boost, rank_material, stimuli, sensors)
         self.add_interactive_events()
 
     def add_interactive_events(self):

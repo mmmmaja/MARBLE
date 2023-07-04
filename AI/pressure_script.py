@@ -188,8 +188,9 @@ def apply_pressure(fenics, gui, force_handler, relaxation):
 
     # UPDATE plot and meshes
     fenics.mesh_boost.update_mesh(u)
-    gui.draw_mesh(fenics.mesh_boost.current_vtk)
     gui.sensors.update_visualization()
+
+    gui.draw_mesh()
     gui.draw_sensors()
     gui.plotter.update()
 

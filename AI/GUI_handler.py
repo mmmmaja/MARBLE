@@ -1,13 +1,17 @@
 import pyvistaqt as pvqt  # For updating plots real time
+from PyQt5.QtWidgets import QPushButton, QAction  # For the custom button
 
 
 class GUI:
 
-    def __init__(self, vtk_mesh, mesh_material, stimuli, sensors):
+    def __init__(self, mesh_boost, mesh_material, stimuli, sensors):
 
+        self.mesh_boost = mesh_boost
         # Rank material for rendering the mesh
         self.mesh_material = mesh_material
+        # Stimuli object just for reference for the user
         self.stimuli = stimuli
+        # List of sensors that record pressure
         self.sensors = sensors
 
         # Define the plotter (pyvistaqt)
@@ -16,7 +20,7 @@ class GUI:
         # Define the pressure
         self.PRESSURE = 0.02
         # Change in the pressure when on the event
-        self.pressure_dt = 0.01
+        self.pressure_dt = 0.05
 
         # Define all the actors present in the scene
         self.mesh_actor = None
@@ -26,14 +30,21 @@ class GUI:
         self.mode_text_actor = None
         self.force_indicator_actor = None
 
+        # Define the actions
+        self.record_action = None
+        self.stop_record_action = None
+        self.is_recording = False
+
         # Add all the actors to the scene
-        self.draw_mesh(vtk_mesh)
+        self.draw_mesh()
         self.draw_stimuli()
         self.draw_sensors()
         self.add_material_text()
         self.add_mode_text('Interactive')
         self.add_axes()
+        self.add_recording_actions()
 
+        # Add the interactive events to the plotter
         self.add_force_events()
         self.add_pressure_indicator()
 
@@ -51,19 +62,13 @@ class GUI:
             text, position='lower_left', font_size=8, color='white', shadow=True
         )
 
-    def draw_mesh(self, vtk_mesh):
+    def draw_mesh(self):
         """
-        :param vtk_mesh: mesh in .vtk format (instance of mesh_boost)
-
-        Took it out of the Main to create a separate timer class
         Adds the mesh in the .vtk format to the plotter
         """
-        if self.mesh_actor is not None:
-            self.plotter.update()
-
         visual_properties = self.mesh_material.visual_properties
         self.mesh_actor = self.plotter.add_mesh(
-            vtk_mesh,
+            self.mesh_boost.current_vtk,
             show_edges=False,
             smooth_shading=True,
             show_scalar_bar=False,
@@ -76,9 +81,6 @@ class GUI:
         )
 
     def draw_stimuli(self):
-        if self.stimuli_actor is not None:
-            self.plotter.update()
-
         self.stimuli_actor = self.plotter.add_mesh(
             self.stimuli.create_visualization(),
             color=self.stimuli.color,
@@ -91,15 +93,13 @@ class GUI:
         )
 
     def draw_sensors(self):
-        if self.sensor_actor is not None:
-            self.plotter.update()
-
         # Add the point cloud to the plotter
         self.sensor_actor = self.plotter.add_points(
             self.sensors.visualization,
             render_points_as_spheres=True,
             color='#dfe9ff',
-            point_size=6
+            point_size=6,
+            name='sensor_points'
         )
 
     def add_mode_text(self, text):
@@ -142,3 +142,27 @@ class GUI:
 
         # Add key event on the left arrow press
         self.plotter.add_key_event('Left', self.decrease_force)
+
+    def add_recording_actions(self):
+        self.record_action = QAction('Record', self.plotter.main_menu)
+        self.record_action.triggered.connect(self.start_recording)
+        self.plotter.main_menu.addAction(self.record_action)
+
+        self.stop_record_action = QAction('Stop Recording', self.plotter.main_menu)
+        self.stop_record_action.triggered.connect(self.stop_recording)
+        self.stop_record_action.setVisible(False)  # initially hidden
+        self.plotter.main_menu.addAction(self.stop_record_action)
+
+    def start_recording(self):
+        print("Recording Started...")
+        self.is_recording = True
+        self.update_recording_actions()
+
+    def stop_recording(self):
+        print("Recording Stopped...")
+        self.is_recording = False
+        self.update_recording_actions()
+
+    def update_recording_actions(self):
+        self.record_action.setVisible(not self.is_recording)
+        self.stop_record_action.setVisible(self.is_recording)
