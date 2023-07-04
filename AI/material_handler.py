@@ -1,7 +1,6 @@
 import random
 
 _colors = [
-    'e874ff',
     '#e2a4ff',
     '#39ddff',
     '#63ffe1',
@@ -88,7 +87,7 @@ class Rank_Material:
 silicon_color = random.choice(_colors)
 rubber_color = '2dc2ff'
 steel_color = '787d91'
-foam_color = '#ffb15a'
+foam_color = '#a2a6f7'
 
 # Create a database of materials
 

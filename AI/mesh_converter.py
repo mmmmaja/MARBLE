@@ -9,9 +9,6 @@ import pyvista as pv
 from sfepy.discrete.fem import Mesh
 from copy import deepcopy
 
-# Thickness of the mesh
-THICKNESS = 0.73
-
 
 def convert_to_vtk(path):
     """
@@ -108,6 +105,9 @@ class MeshBoost:
 
 class GridMesh(MeshBoost):
 
+    # Thickness of the mesh
+    THICKNESS = 2.73
+
     def __init__(self, width, height, z_function=flat, layers=2):
         """
         Defines the mesh as a grid of vertices
@@ -139,7 +139,7 @@ class GridMesh(MeshBoost):
                 ])
                 for k in range(1, self.layers):
                     all_layers[k].append([
-                        i, j, (self.layers - k - 1) * THICKNESS
+                        i, j, (self.layers - k - 1) * self.THICKNESS
                     ])
 
         # ADJUST THE TOP LAYER (where the deformations will be applied)
@@ -151,7 +151,7 @@ class GridMesh(MeshBoost):
         top_layer[:, 2] = np.maximum(top_layer[:, 2] - np.amin(top_layer[:, 2]), 0)
 
         # Add the thickness to the top vertices
-        top_layer[:, 2] += (self.layers - 1) * THICKNESS
+        top_layer[:, 2] += (self.layers - 1) * self.THICKNESS
 
         # Convert the adjusted numpy array back to list and assign it back to all_layers[0]
         all_layers[0] = top_layer.tolist()
@@ -207,6 +207,8 @@ class GridMesh(MeshBoost):
 
 
 class ArmMesh(MeshBoost):
+    # Thickness of the mesh
+    THICKNESS = 0.95
 
     OBJ_PATH = 'meshes/model_kfadrat.obj'
 
@@ -245,7 +247,7 @@ class ArmMesh(MeshBoost):
                 identifier = tuple(np.round(face_coords[k], 4))
 
                 if identifier not in vertices_dict:
-                    extruded_coords = tuple(np.round(face_coords[k] - normals[i] * THICKNESS, 4))
+                    extruded_coords = tuple(np.round(face_coords[k] - normals[i] * self.THICKNESS, 4))
                     vertices_dict[identifier] = extruded_coords
 
         # Make another pass to form the connections and create the cells

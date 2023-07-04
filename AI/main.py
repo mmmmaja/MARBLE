@@ -144,7 +144,7 @@ _stimuli = Sphere(radius=2.1)
 # _stimuli = Cuboid(6.0, 4.0, 2.0)
 
 
-Main(_mesh_boost, _stimuli, _sensors, silicon)
+Main(_mesh_boost, _stimuli, _sensors, rubber)
 app.exec_()
 
 

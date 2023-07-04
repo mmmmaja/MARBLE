@@ -3,6 +3,18 @@ import numpy as np
 from AI.stress_script import StressRelaxation
 
 """
+Pressure: 
+Pressure is the force applied perpendicular to the surface of an object 
+per unit area over which that force is distributed. 
+Pressure is simply force distributed over an area. 
+
+The pressure is the force divided by the surface area of the shape where it contacts the mesh.
+
+It's typically measured in Pascals (Pa), w
+here 1 Pa equals a force of 1 Newton per square meter.
+"""
+
+"""
 This script contains the classes that represent the forces acting on the mesh.
 there are different types of forces that can be applied to the mesh.
 

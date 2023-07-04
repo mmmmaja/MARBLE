@@ -38,8 +38,8 @@ class GUI:
         # Recording object from recording_manager.py
         self.recording = None
 
-        self.text_color = '5f6468'
-        self.background_color = 'b3b9be'
+        self.text_color = 'eaf5ff'
+        self.background_color = '282a36'
         self.plotter.set_background(self.background_color)
 
         # Add all the actors to the scene

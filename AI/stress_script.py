@@ -2,18 +2,11 @@ from PyQt5.QtWidgets import QApplication
 from AI.mesh_converter import *
 from PyQt5.QtCore import QTimer
 
-FORCE_LIMIT = 1e-2
-
 
 class StressRelaxation:
     """
     Standard Linear Solid (SLS) model for stress relaxation
     Viscosity -  the material's resistance to flow or change shape
-
-    τ = η / E
-        τ is the relaxation time
-        η is the viscoelastic damping coefficient (or viscosity in the SLS model)
-        E is the elastic modulus (Young's modulus)
 
     TODO read more here:
     https://en.wikipedia.org/wiki/Viscoelasticity
@@ -22,22 +15,24 @@ class StressRelaxation:
     Generalized Maxwell model
     """
 
+    # The force limit to stop the relaxation process
+    FORCE_LIMIT = 1e-2
+
     def __init__(self, gui, mesh_boost, rank_material, u0, F0):
         # Time step: how many milliseconds between each update
-        # When having 40 ms program is not freezing, all smaller values freeze the program
         self.dt = 20  # ms
         # Current time of the stress relaxation simulation
         self.t = 0
-        self.PRESS_TIME = 2 * 1000  # n seconds in ms
+        # The time in milliseconds to wait before starting the relaxation process
+        self.PRESS_TIME = 1 * 1000  # n seconds in ms
 
         self.gui = gui
-        # The solver
         self.mesh_boost = mesh_boost
         self.rank_material = rank_material
 
         # The maximum displacement of the body
         self.u0 = u0
-        # The initial force applied to the body
+        # The initial pressure applied to the body
         self.F0 = F0
 
         self.relaxation_timer = None
@@ -48,7 +43,6 @@ class StressRelaxation:
         self.relaxation_timer = QTimer()
         self.relaxation_timer.timeout.connect(self.timer_loop)
 
-        print("Start waiting process")
         # Timer for initial n seconds wait
         self.wait_timer = QTimer()
         self.wait_timer.setSingleShot(True)  # Ensure the timer only triggers once
@@ -56,7 +50,6 @@ class StressRelaxation:
         self.wait_timer.start(self.PRESS_TIME)  # Wait for the given interval (simulate the press)
 
     def start_relaxation(self):
-        print("Start relaxation process")
         # This function will be called after the wait timer is finished
         # Start the relaxation process here
         self.relaxation_timer.start(self.dt)  # period of dt milliseconds
@@ -95,8 +88,7 @@ class StressRelaxation:
         self.t += self.dt
 
         # Disable the timer when the magnitude of u is close to 0
-        if np.linalg.norm(u) < FORCE_LIMIT:
-            print("Stop relaxation process")
+        if np.linalg.norm(u) < self.FORCE_LIMIT:
             self.relaxation_timer.stop()
 
     def stop(self):
@@ -106,7 +98,6 @@ class StressRelaxation:
         """
         if self.relaxation_timer is not None:
             if self.relaxation_timer.isActive():
-                print("Stop relaxation process")
                 self.relaxation_timer.stop()
                 self.relaxation_timer.deleteLater()
                 self.relaxation_timer = None
