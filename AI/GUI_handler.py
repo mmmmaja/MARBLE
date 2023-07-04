@@ -1,5 +1,7 @@
 import pyvistaqt as pvqt  # For updating plots real time
-from PyQt5.QtWidgets import QPushButton, QAction  # For the custom button
+from PyQt5.QtWidgets import QAction  # For the custom button
+
+from AI.recording_manager import Recording
 
 
 class GUI:
@@ -33,7 +35,8 @@ class GUI:
         # Define the actions
         self.record_action = None
         self.stop_record_action = None
-        self.is_recording = False
+        # Recording object from recording_manager.py
+        self.recording = None
 
         # Add all the actors to the scene
         self.draw_mesh()
@@ -154,15 +157,19 @@ class GUI:
         self.plotter.main_menu.addAction(self.stop_record_action)
 
     def start_recording(self):
-        print("Recording Started...")
-        self.is_recording = True
+        self.recording = Recording(self.sensors, file_name='test.csv')
+        self.recording.start()
         self.update_recording_actions()
 
     def stop_recording(self):
-        print("Recording Stopped...")
-        self.is_recording = False
+        self.recording.stop()
+        self.recording = None
         self.update_recording_actions()
 
     def update_recording_actions(self):
-        self.record_action.setVisible(not self.is_recording)
-        self.stop_record_action.setVisible(self.is_recording)
+        if self.recording:
+            self.record_action.setVisible(False)
+            self.stop_record_action.setVisible(True)
+        else:
+            self.record_action.setVisible(True)
+            self.stop_record_action.setVisible(False)

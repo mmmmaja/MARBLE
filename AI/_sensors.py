@@ -8,7 +8,7 @@ class SensorParent:
 
     def __init__(self, mesh_boost):
         self.mesh_boost = mesh_boost
-        self.sensors = self.create()
+        self.sensor_list = self.create()
         self.visualization = self.create_visualization()
 
     @abstractmethod
@@ -23,7 +23,7 @@ class SensorParent:
 
     def create_visualization(self):
         # get the visualization of the points
-        sensor_indices = [sensor.index for sensor in self.sensors]
+        sensor_indices = [sensor.index for sensor in self.sensor_list]
         coords = self.mesh_boost.current_vtk.points[sensor_indices]
         # Create an unstructured grid with the points
         grid = pyvista.PolyData(coords)
@@ -31,7 +31,7 @@ class SensorParent:
 
     def update_visualization(self):
         # get the visualization of the points
-        sensor_indices = [sensor.index for sensor in self.sensors]
+        sensor_indices = [sensor.index for sensor in self.sensor_list]
         coords = self.mesh_boost.current_vtk.points[sensor_indices]
         # Create an unstructured grid with the points
         self.visualization.points = coords
@@ -92,13 +92,7 @@ class Sensor:
     def __init__(self, name, index):
         self.name = name
         self.index = index
-        self.value = 0.0
+        self.pressure = 0.0
 
-    def update(self, value):
-        self.value = value
-
-    def get_value(self):
-        return self.value
-
-    def get_name(self):
-        return self.name
+    def get_position(self, vtk_mesh):
+        return vtk_mesh.points[self.index]
