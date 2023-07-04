@@ -10,7 +10,7 @@ from sfepy.discrete.fem import Mesh
 from copy import deepcopy
 
 # Thickness of the mesh
-THICKNESS = 1.73
+THICKNESS = 0.73
 
 
 def convert_to_vtk(path):
@@ -208,8 +208,9 @@ class GridMesh(MeshBoost):
 
 class ArmMesh(MeshBoost):
 
-    def __init__(self, obj_path='meshes/model_kfadrat.obj'):
-        self.obj_path = obj_path
+    OBJ_PATH = 'meshes/model_kfadrat.obj'
+
+    def __init__(self):
         # Add the indices of the vertices to create the regions for the solver later
         self.top_region_ids, self.bottom_region_ids = [], []
         super().__init__()
@@ -221,7 +222,7 @@ class ArmMesh(MeshBoost):
         """
 
         # Load the input mesh
-        mesh = pv.read(self.obj_path)
+        mesh = pv.read(self.OBJ_PATH)
 
         # Compute normals for each face
         normals = mesh.face_normals
@@ -285,18 +286,17 @@ class ArmMesh(MeshBoost):
 
         return Mesh.from_file(PATH)
 
-
-    def get_regions(self, domain):
-
-        expr_base = 'vertex ' + ', '.join([str(i) for i in self.top_region_ids])
-        top = domain.create_region(name='Top', select=expr_base, kind='facet')
-
-        # Create a bottom region (Where the boundary conditions apply so that the positions are fixed)
-        # Define the cells by their Ids and use vertex <id>[, <id>, ...]
-        expr_extruded = 'vertex ' + ', '.join([str(i) for i in self.bottom_region_ids])
-        bottom = domain.create_region(name='Bottom', select=expr_extruded, kind='facet')
-
-        return top, bottom
+    # def get_regions(self, domain):
+    #
+    #     expr_base = 'vertex ' + ', '.join([str(i) for i in self.top_region_ids])
+    #     top = domain.create_region(name='Top', select=expr_base, kind='facet')
+    #
+    #     # Create a bottom region (Where the boundary conditions apply so that the positions are fixed)
+    #     # Define the cells by their Ids and use vertex <id>[, <id>, ...]
+    #     expr_extruded = 'vertex ' + ', '.join([str(i) for i in self.bottom_region_ids])
+    #     bottom = domain.create_region(name='Bottom', select=expr_extruded, kind='facet')
+    #
+    #     return top, bottom
 
 
 def display_obj_file(path):

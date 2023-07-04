@@ -84,6 +84,9 @@ class FENICS:
         # The domain of the mesh (allows defining regions or subdomains)
         self.DOMAIN = FEDomain(name='domain', mesh=self.mesh_boost.sfepy_mesh)
 
+        # Print number of vertices in the mesh
+        print('Number of vertices: ', self.DOMAIN.shape.n_nod)
+
         # Omega is the entire domain of the mesh
         self.omega = self.DOMAIN.create_region(name='Omega', select='all')
 
@@ -136,6 +139,11 @@ class FENICS:
         field = Field.from_args(
             name='field', dtype=np.float64, shape='vector', region=self.omega, approx_order=1
         )
+
+        # Get number of vertices in the omega region
+        # Num of vertices = 2110
+        n_vertices = self.omega.vertices.shape[0]
+        print('Number of vertices: ', n_vertices)
 
         # 3) Define the field variables
         # 'u' is the displacement field of the mesh (3D)
