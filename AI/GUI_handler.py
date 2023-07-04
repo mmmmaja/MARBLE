@@ -96,7 +96,7 @@ class GUI:
 
         # Add the point cloud to the plotter
         self.sensor_actor = self.plotter.add_points(
-            self.sensors.get_visualization(),
+            self.sensors.visualization,
             render_points_as_spheres=True,
             color='#dfe9ff',
             point_size=6

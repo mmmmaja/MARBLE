@@ -84,6 +84,8 @@ class StressRelaxation:
         # OVERRIDE the GUI
         self.mesh_boost.override_mesh(u)
         self.gui.draw_mesh(self.mesh_boost.current_vtk)
+        self.gui.sensors.update_visualization()
+        self.gui.draw_sensors()
         self.gui.plotter.update()
 
         QApplication.processEvents()
