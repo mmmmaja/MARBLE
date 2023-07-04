@@ -7,7 +7,9 @@ class GUI:
 
         # Rank material for rendering the mesh
         self.mesh_material = mesh_material
+        # Stimuli object just for reference for the user
         self.stimuli = stimuli
+        # List of sensors that will deform with the mesh
         self.sensors = sensors
 
         # Define the plotter (pyvistaqt)
@@ -16,7 +18,7 @@ class GUI:
         # Define the pressure
         self.PRESSURE = 0.02
         # Change in the pressure when on the event
-        self.pressure_dt = 0.01
+        self.pressure_dt = 0.05
 
         # Define all the actors present in the scene
         self.mesh_actor = None
@@ -34,15 +36,17 @@ class GUI:
         self.add_mode_text('Interactive')
         self.add_axes()
 
+        # Add the interactive events
         self.add_force_events()
         self.add_pressure_indicator()
+        self.add_sensor_events()
 
         # Update the plotter and show it
         self.plotter.update()
         self.plotter.show()
 
     def add_material_text(self):
-        # Add the material name to the plotter
+        # Add the material name and properties to the plotter
         text = self.mesh_material.name
         text += '\nE: ' + str(self.mesh_material.young_modulus)
         text += '\nv: ' + str(self.mesh_material.poisson_ratio)
@@ -54,13 +58,14 @@ class GUI:
     def draw_mesh(self, vtk_mesh):
         """
         :param vtk_mesh: mesh in .vtk format (instance of mesh_boost)
+        (UnstructuredGrid)
 
-        Took it out of the Main to create a separate timer class
         Adds the mesh in the .vtk format to the plotter
         """
         if self.mesh_actor is not None:
             self.plotter.update()
 
+        # Get the material properties
         visual_properties = self.mesh_material.visual_properties
         self.mesh_actor = self.plotter.add_mesh(
             vtk_mesh,
@@ -71,11 +76,13 @@ class GUI:
             color=visual_properties['color'],
             specular=visual_properties['specular'],
             metallic=visual_properties['metallic'],
-            roughness=visual_properties['roughness'],
-            name='initial_mesh'
+            roughness=visual_properties['roughness']
         )
 
     def draw_stimuli(self):
+        """
+        Adds the stimuli to the plotter
+        """
         if self.stimuli_actor is not None:
             self.plotter.update()
 
@@ -86,8 +93,8 @@ class GUI:
             show_edges=False,
             smooth_shading=True,
             specular=0.8,
-            metallic=0.95,
-            roughness=0.0,
+            metallic=0.35,
+            roughness=0.4,
         )
 
     def draw_sensors(self):
@@ -96,7 +103,7 @@ class GUI:
 
         # Add the point cloud to the plotter
         self.sensor_actor = self.plotter.add_points(
-            self.sensors.get_visualization(),
+            self.sensors.visualization,
             render_points_as_spheres=True,
             color='#dfe9ff',
             point_size=6
@@ -142,3 +149,12 @@ class GUI:
 
         # Add key event on the left arrow press
         self.plotter.add_key_event('Left', self.decrease_force)
+
+    def add_sensor_events(self):
+        # Add key event on the right arrow press
+        self.plotter.add_key_event('s', lambda: print('s'))
+
+    def update(self, mesh_vtk):
+        self.draw_mesh(mesh_vtk)
+        self.sensors.update_visualization()
+        self.plotter.update()
