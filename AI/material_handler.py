@@ -108,7 +108,7 @@ silicon = Rank_Material(
 rubber = Rank_Material(
     name='Rubber',
     young_modulus=0.05, poisson_ratio=0.19,
-    time_constant=10 * 100.0,
+    time_constant=100,
     visual_properties={
         'color': rubber_color,
         'specular': 0.00,

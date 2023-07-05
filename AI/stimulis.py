@@ -49,13 +49,6 @@ class Stimuli:
         self.position = np.mean(points, axis=0)
         return True
 
-    @abstractmethod
-    def get_affected_mesh_indices(self, vtk_mesh):
-        """
-        TODO override in subclasses
-        :return: the indices of the mesh that are affected by the stimulus with its current position
-        """
-
 
 class Sphere(Stimuli):
 
@@ -89,23 +82,6 @@ class Sphere(Stimuli):
             return 1.0 / distance
         else:
             return 0.0
-
-    def get_affected_mesh_indices(self, vtk_mesh):
-        """
-        :param vtk_mesh:
-        :return: The indices of the mesh where the stimuli is touching
-        """
-        # Get the coordinates of the mesh
-        mesh_coordinates = vtk_mesh.points
-
-        # Calculate the distance between the center of the sphere and each point in the mesh
-        distances = np.linalg.norm(mesh_coordinates - self.position, axis=1)
-
-        # Get the indices of the points that are within the boundary of the sphere
-        indices = np.where(distances <= self.radius)
-
-        # Return the coordinates of the points that are within the boundary of the sphere
-        return indices
 
 
 class Cylinder(Stimuli):

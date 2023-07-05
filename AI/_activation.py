@@ -17,7 +17,7 @@ class ActivationClass(vtk.vtkInteractorStyleTrackballCamera):
         self.stimuli = stimuli
 
         # Initialize the relaxation process
-        self.relaxation = StressRelaxation(self.gui, fenics.mesh_boost, fenics.rank_material)
+        self.stimuli_handler = None
 
         # Mouse pressed flag for mesh activation
         self.mouse_pressed = False
@@ -37,11 +37,15 @@ class ActivationClass(vtk.vtkInteractorStyleTrackballCamera):
 
     def left_button_press_event(self, obj, event):
         self.mouse_pressed = True
+        self.stimuli_handler = StimuliHandler(
+            self.stimuli, self.fenics.mesh_boost, self.gui, self.fenics.rank_material
+        )
 
     def left_button_release_event(self, obj, event):
         self.mouse_pressed = False
-        # Start the relaxation THREAD
-        self.relaxation.initiate()
+        print("Relaxation started")
+        self.stimuli_handler.stop()
+        self.stimuli_handler = None
 
     def middle_button_press_event(self, obj, event):
         # Disable the middle button events
@@ -61,9 +65,6 @@ class ActivationClass(vtk.vtkInteractorStyleTrackballCamera):
             x, y = self.GetInteractor().GetEventPosition()
             self.pick_cell(x, y)
 
-            t = 1.0  # What is t????
-            self.relaxation.relax_iteration(t)
-
     def pick_cell(self, x, y):
         """
         Function that picks the cell that was clicked and applies a force to it.
@@ -77,4 +78,4 @@ class ActivationClass(vtk.vtkInteractorStyleTrackballCamera):
 
         # If the cell exists
         if cell_id != -1:
-            apply_stimuli_pressure(self.fenics, self.gui, self.stimuli, self.picker, cell_id)
+            self.stimuli_handler.apply_pressure(self.fenics, self.gui, self.picker, cell_id)

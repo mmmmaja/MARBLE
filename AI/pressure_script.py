@@ -1,5 +1,9 @@
+import sys
+import time
 from abc import abstractmethod
 import numpy as np
+from scipy import linalg
+
 from AI.relaxation_script import StressRelaxation
 
 """
@@ -158,13 +162,78 @@ class CellSpecificPressure(PressureHandler):
         return 0.0
 
 
-"""
-Handle applying the pressure to the mesh
-"""
-
 # I need to hold the reference to the timer class and destroy it
 # when the simulation of the relaxation process is over
 stress_relaxation_ref = None
+
+
+class StimuliHandler:
+
+    def __init__(self, stimuli, mesh_boost, gui, material):
+        self.stimuli = stimuli
+        self.mesh_boost = mesh_boost
+        self.gui = gui
+        self.material = material
+
+        # Create a time matrix that will hold the time of the last stimulus applied to the vertex
+        # Fill it with Nan values
+        self.time_matrix = np.full((self.mesh_boost.current_vtk.points.shape[0], 1), np.nan)
+        self.relaxation = self.create_relaxation()
+
+    def create_relaxation(self):
+        global stress_relaxation_ref
+        relaxation = stress_relaxation_ref = StressRelaxation(self.gui, self.mesh_boost, self.material)
+        return relaxation
+
+    def apply_pressure(self, fenics, gui, picker, cell_id):
+        if self.stimuli.recompute_position(picker, cell_id):
+            force_handler = StimuliPressure(self.stimuli, gui.PRESSURE, fenics.rank_material)
+            u = apply_pressure(fenics, gui, force_handler, relaxation=False)
+
+            self.recompute_time_matrix(u)
+            self.apply_relaxation()
+
+    def recompute_time_matrix(self, u):
+        for i in range(self.time_matrix.shape[0]):
+            if linalg.norm(u[i]) > 1e-2:
+                # Get the current time
+                self.time_matrix[i] = time.time()
+
+    def get_time_matrix_dt(self):
+        # Get the current time
+        current_time = time.time()
+        # Get the time difference between the current time and the time matrix
+        time_matrix_dt = current_time - self.time_matrix
+        return time_matrix_dt
+
+    def compute_relaxation(self):
+        total_relaxation = np.zeros_like(self.mesh_boost.current_vtk.points)
+        for i in range(self.time_matrix.shape[0]):
+            t = self.time_matrix[i]
+            if not np.isnan(t):
+                dt = time.time() - t  # Time passed in seconds
+                if dt > 0.5:
+                    u = self.mesh_boost.current_vtk.points[i] - self.mesh_boost.initial_vtk.points[i]
+                    relaxation = np.exp(-int(dt * 1000) / self.material.time_constant) * u
+                    total_relaxation[i] = relaxation
+
+        return total_relaxation
+
+    def apply_relaxation(self):
+        relaxation = self.compute_relaxation()
+        # Get the change in the position of the mesh
+        self.mesh_boost.current_vtk.points = self.mesh_boost.current_vtk.points.copy() - relaxation
+
+    def stop(self):
+        if stress_relaxation_ref is not None:
+            stress_relaxation_ref.stop()
+
+        self.relaxation.initiate(wait=False)
+
+
+"""
+Handle applying the pressure to the mesh
+"""
 
 
 def apply_volume_pressure(fenics, gui, relaxation=True):
@@ -215,4 +284,6 @@ def apply_pressure(fenics, gui, force_handler, relaxation):
         stress_relaxation_ref = StressRelaxation(
             gui, fenics.mesh_boost, fenics.rank_material
         )
-        stress_relaxation_ref.initiate()
+        stress_relaxation_ref.initiate(wait=True)
+
+    return u
