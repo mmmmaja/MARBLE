@@ -133,11 +133,11 @@ if not TERMINAL_OUTPUT:
 
 app = QApplication(sys.argv)
 
-# _mesh_boost = GridMesh(30, 30, z_function=flat, layers=3)
-# _sensors = SensorGrid(10, 10, _mesh_boost)
+_mesh_boost = GridMesh(30, 30, z_function=flat, layers=3)
+_sensors = SensorGrid(10, 10, _mesh_boost)
 
-_mesh_boost = ArmMesh()
-_sensors = SensorArm(_mesh_boost)
+# _mesh_boost = ArmMesh()
+# _sensors = SensorArm(_mesh_boost)
 
 _stimuli = Sphere(radius=2.1)
 # _stimuli = Cylinder(radius=3.0, height=1.0)
@@ -152,4 +152,5 @@ app.exec_()
 TODO:
 Stress relaxation process
 Apply pressure to sensors
+Add README
 """

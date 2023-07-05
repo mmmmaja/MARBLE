@@ -107,3 +107,39 @@ class StressRelaxation:
                 self.wait_timer.stop()
                 self.wait_timer.deleteLater()
                 self.wait_timer = None
+
+
+class StressRelaxation_v2:
+
+    def __init__(self, mesh_boost, rank_material):
+        self.mesh_boost = mesh_boost
+        self.rank_material = rank_material
+        self.time = 0
+
+    def get_displacements_matrix(self):
+        # Check for last displacements with the stimuli -
+        # don't apply relaxation there
+
+        total_displacements = self.mesh_boost.initial_vtk.points - self.mesh_boost.current_vtk.points
+        total_relaxation = np.zeros(total_displacements.shape)
+        # Iterate through all the vertices
+        for i in range(total_displacements.shape[0]):
+            displacement = total_displacements[i]
+            relaxation = self.get_relaxation_displacement(displacement, self.time)
+            total_relaxation[i] = relaxation
+        self.mesh_boost.current_vtk.points += total_relaxation
+
+    def get_relaxation_displacement(self, current_displacement, time):
+        return current_displacement * self.relaxation_function(time)
+
+    def relaxation_function(self, time):
+        """
+        Exponential decay function for relaxation
+        R(t) = e^(-t/τ)
+
+        Multiply the current displacement of the vertex by the relaxation function to get the new displacement
+
+        :param time: time in ms
+        :return: values between 0 and 1, representing the proportion of stress remaining in the material
+        """
+        return math.exp(-time / self.rank_material.time_constant)
