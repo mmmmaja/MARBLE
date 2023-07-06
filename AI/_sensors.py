@@ -1,14 +1,19 @@
+import csv
 from abc import abstractmethod
 import numpy as np
 import pyvista
 
 """
-This file contains the classes for the sensors. 
+This file contains the classes for the sensor arrays. 
+We can create different sensor configurations for the mesh.
 The sensors are used to measure the pressure at a certain point in the mesh.
 """
 
 
 class SensorParent:
+
+    # Minimal distance from the edges of the mesh
+    offset = 1.4
 
     def __init__(self, mesh_boost):
         """
@@ -64,6 +69,22 @@ class SensorParent:
         # Update the visualization
         self.visualization.points = coords
 
+    def valid_distance(self, new_sensor, sensor_list, min_distance):
+        """
+        Check if the distance between the new sensor and all other sensors is bigger than min_distance
+        :param new_sensor: The new sensor to be added to the list of valid
+        :param sensor_list: List of all the sensors
+        :param min_distance: The minimum distance between two sensors in the mesh
+        :return: True if the distance is valid, False otherwise
+        """
+
+        for j in range(len(sensor_list)):
+            j_sensor_coors = sensor_list[j].get_position(self.mesh_boost.current_vtk)
+            distance = np.linalg.norm(j_sensor_coors - new_sensor.get_position(self.mesh_boost.current_vtk))
+            if distance < min_distance:
+                return False
+        return True
+
 
 class SensorGrid(SensorParent):
 
@@ -80,13 +101,11 @@ class SensorGrid(SensorParent):
         super().__init__(mesh_boost)
 
     def create_sensors(self):
+
         # Get the furthers points of the mesh
         bounds = self.mesh_boost.current_vtk.GetPoints().GetBounds()
-
-        # Distance from the edge of the mesh
-        offset = 1.4
-        x_min, x_max = bounds[0] + offset, bounds[1] - offset
-        y_min, y_max = bounds[2] + offset, bounds[3] - offset
+        x_min, x_max = bounds[0] + self.offset, bounds[1] - self.offset
+        y_min, y_max = bounds[2] + self.offset, bounds[3] - self.offset
 
         # Calculate the range of the mesh
         x_range, y_range = x_max - x_min, y_max - y_min
@@ -105,11 +124,141 @@ class SensorGrid(SensorParent):
         return sensors
 
 
+class RandomSensors(SensorParent):
+
+    def __init__(self, n_sensors, mesh_boost):
+        """
+        :param n_sensors: number of sensors in the list
+        :param mesh_boost: The mesh object
+        """
+        self.n_sensors = n_sensors
+        super().__init__(mesh_boost)
+
+    def create_sensors(self):
+
+        # Define minimal distance between two sensors
+        min_distance = 0.5
+
+        # Get the furthers points of the mesh
+        bounds = self.mesh_boost.current_vtk.GetPoints().GetBounds()
+        x_min, x_max = bounds[0] + self.offset, bounds[1] - self.offset
+        y_min, y_max = bounds[2] + self.offset, bounds[3] - self.offset
+
+        # Calculate the range of the mesh
+        x_range, y_range = x_max - x_min, y_max - y_min
+
+        # Indicates the number of iterations
+        i = 0
+        # Create list of sensors with random positions
+        sensors = []
+        while len(sensors) < self.n_sensors:
+            # Create random position
+            x = np.random.uniform(0, 1) * x_range + x_min
+            y = np.random.uniform(0, 1) * y_range + y_min
+            z = bounds[5]
+            sensor_index = self.map_vertex_ids(np.array([x, y, z]))
+            new_sensor = Sensor(name=f'{len(sensors)}', index=sensor_index)
+            if self.valid_distance(new_sensor, sensors, min_distance):
+                sensors.append(new_sensor)
+            i += 1
+            if i > 2000:
+                break
+
+        return sensors
+
+
+class SensorPatchesFromFile(SensorParent):
+
+    def __init__(self, file_path, mesh_boost, n_patches=1):
+        """
+        Create sensors from a csv file
+        :param file_path: path to the csv file with a sensor patch
+        :param mesh_boost: The mesh object
+        :param n_patches: number of patches to create (The patch from the file will be repeated n_patches times)
+        """
+
+        self.file_path = file_path
+        self.n_patches = n_patches
+        super().__init__(mesh_boost)
+
+    def create_sensors(self):
+        # Read the csv file
+        """
+        The csv file should have the following format:
+        | x1 | y1 | -> sensor 1 coordinates
+        | x2 | y2 | -> (..)
+        | x3 | y3 |
+        :return: list of sensors
+        """
+        # Open the file and read the initial coordinates of the sensors
+        initial_coords = []
+        with open(self.file_path) as csv_file:
+            csv_reader = csv.reader(csv_file, delimiter=';')
+            for row in csv_reader:
+                # | x | y | position of the sensor
+                initial_coords.append(np.array([
+                    float(row[0]), float(row[1])
+                ]))
+
+        print(f'File {self.file_path} has been read')
+
+        # Compute the ranges of the coordinates in the file
+        x_min_file = min([coords[0] for coords in initial_coords])
+        x_max_file = max([coords[0] for coords in initial_coords])
+        x_range_file = x_max_file - x_min_file
+
+        y_min_file = min([coords[1] for coords in initial_coords])
+        y_max_file = max([coords[1] for coords in initial_coords])
+        y_range_file = y_max_file - y_min_file
+
+        # Add new patches of sensors to the list
+
+        # Compute the translation of the initial patch in the 2D space
+        max_range = max(x_range_file, y_range_file)
+        # Vector by which the sensors will be translated in the 2D space
+        translation = np.array([max_range, max_range])
+
+        # Extend the list by adding new patches of sensors
+        extended_coords = initial_coords.copy()
+        for i in range(1, self.n_patches):
+            for j in range(len(initial_coords)):
+                sensor = initial_coords[j].copy()
+                sensor += translation * i
+                extended_coords.append(sensor)
+
+        # Get the bounds of the mesh the sensors are going to be placed on
+        bounds = self.mesh_boost.current_vtk.GetPoints().GetBounds()
+        x_min, x_max = bounds[0] + self.offset, bounds[1] - self.offset
+        y_min, y_max = bounds[2] + self.offset, bounds[3] - self.offset
+        # Calculate the range of the mesh
+        x_range, y_range = x_max - x_min, y_max - y_min
+
+        # Recalculate the ranges of the coordinates in the file once again when new sensors are added (extended_coords)
+        x_min_file = min([coords[0] for coords in extended_coords])
+        x_max_file = max([coords[0] for coords in extended_coords])
+        x_range_file = x_max_file - x_min_file
+
+        y_min_file = min([coords[1] for coords in extended_coords])
+        y_max_file = max([coords[1] for coords in extended_coords])
+        y_range_file = y_max_file - y_min_file
+
+        # Scale the sensors positions to the mesh
+        sensors = []
+        for i in range(len(extended_coords)):
+            x_scaled = (extended_coords[i][0] - x_min_file) / x_range_file * x_range + x_min
+            y_scaled = (extended_coords[i][1] - y_min_file) / y_range_file * y_range + y_min
+            z = bounds[5]
+            sensor_index = self.map_vertex_ids(np.array([x_scaled, y_scaled, z]))
+            sensors.append(Sensor(name=f'{i}', index=sensor_index))
+
+        return sensors
+
+
 class SensorArm(SensorParent):
 
     def __init__(self, mesh_boost):
         """
-        Used for arm meshes
+        Used for arm mesh
         The sensors are placed on the arm and are saved in a .obj file
         :param mesh_boost: The mesh object
         """
@@ -141,3 +290,61 @@ class Sensor:
 
     def get_position(self, vtk_mesh):
         return vtk_mesh.points[self.index]
+
+
+"""
+Patch Creator functions to write csv files with different shape of patches
+"""
+
+
+def circle(n_points, n_loops, radius):
+    """
+    Creates a circle patch with the given parameters
+    :param n_points: Number of points in each loop
+    :param n_loops: Number of loops of the circle
+    :param radius: Radius of the furthest loop
+    """
+
+    with open('patches/circle.csv', 'w', newline='') as file:
+        writer = csv.writer(file, delimiter=';')
+        min_radius = 0.1
+        radius_range = radius - min_radius
+        for j in range(n_loops):
+            radius = min_radius + radius_range * j / n_loops
+            for i in range(n_points):
+                angle = 2 * np.pi * i / n_points
+                x = radius * np.cos(angle)
+                y = radius * np.sin(angle)
+                writer.writerow([x, y])
+
+
+def spiral(n_points):
+    """
+    Creates a spiral patch with the given parameters
+    :param n_points: Number of points in the spiral
+    """
+
+    with open('patches/spiral.csv', 'w', newline='') as file:
+        writer = csv.writer(file, delimiter=';')
+        for i in range(n_points):
+            angle = 0.1 * i
+            radius = angle
+            x = radius * np.cos(angle)
+            y = radius * np.sin(angle)
+            writer.writerow([x, y])
+
+
+def star(n_points, n_arms):
+    """
+    Creates a star patch with the given parameters
+    :param n_points: Total number of points in the star
+    :param n_arms: Number of arms of the star
+    """
+    with open('patches/star.csv', 'w', newline='') as file:
+        writer = csv.writer(file, delimiter=';')
+        for i in range(n_points):
+            angle = 2 * np.pi * i / n_points
+            radius = np.abs(np.sin(n_arms * angle))
+            x = radius * np.cos(angle)
+            y = radius * np.sin(angle)
+            writer.writerow([x, y])

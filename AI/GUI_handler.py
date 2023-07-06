@@ -4,10 +4,17 @@ from AI.material_handler import get_lighter_color
 from AI.recording_manager import Recording
 
 
+"""
+Script that handles the GUI of the application
+Pyvistaqt plotting is used
+"""
+
+
 class GUI:
 
     def __init__(self, mesh_boost, mesh_material, stimuli, sensors):
 
+        # Mesh object that has all the information about the mesh
         self.mesh_boost = mesh_boost
         # Rank material for rendering the mesh
         self.mesh_material = mesh_material
@@ -88,6 +95,7 @@ class GUI:
         )
 
     def draw_stimuli(self):
+        # Draw the stimuli object in the plotter
         self.stimuli_actor = self.plotter.add_mesh(
             self.stimuli.create_visualization(),
             color=self.stimuli.color,
@@ -100,10 +108,11 @@ class GUI:
         )
 
     def draw_sensors(self):
+        # Draw the sensor points in the plotter
         dark_color = self.mesh_material.visual_properties['color']
         self.sensor_actor = self.plotter.add_mesh(
             self.sensors.visualization,
-            color=get_lighter_color(dark_color),
+            color='white',
             name='sensor_points',
             show_edges=False,
             smooth_shading=True,
@@ -116,6 +125,7 @@ class GUI:
         )
 
     def add_mode_text(self, text):
+        # Indicates which mode the user is in (Activation or Interactive)
         # Remove the text
         if self.mode_text_actor is not None:
             self.plotter.remove_actor(self.mode_text_actor)
@@ -125,6 +135,7 @@ class GUI:
         )
 
     def add_pressure_indicator(self):
+        # Add the information about the pressure that is being applied
         if self.force_indicator_actor is not None:
             self.plotter.remove_actor(self.force_indicator_actor)
 

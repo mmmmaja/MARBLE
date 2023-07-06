@@ -1,4 +1,6 @@
 import sys
+
+import pyvista
 import sfepy
 from AI._sensors import SensorArm, SensorGrid
 from AI.mesh_helper import *
@@ -25,9 +27,9 @@ class MeshBoost:
 
     # This is a parent class for all the meshes in the project
 
-    def __init__(self, path=PATH):
+    def __init__(self):
         # Path to the .mesh file
-        self.path = path
+        self.path = 'meshes/mesh.mesh'
 
         # The mesh object in Sfepy format for calculations
         # The minimum and maximum z values of the top layer of the mesh
@@ -175,9 +177,9 @@ class GridMesh(MeshBoost):
 
         # Create hexahedron mesh in the meshio format
         mesh = meshio.Mesh(points=vertices, cells={"hexahedron": cells})
-        meshio.write(PATH, mesh)
+        meshio.write(self.path, mesh)
         # Convert the meshio mesh to sfepy mesh
-        return Mesh.from_file(PATH)
+        return Mesh.from_file(self.path)
 
     def get_regions(self, domain):
         """
@@ -289,9 +291,8 @@ class ArmMesh(MeshBoost):
             cells.append(cell)
 
         mesh = meshio.Mesh(points=vertices, cells={"hexahedron": cells})
-        meshio.write(PATH, mesh)
-
-        return Mesh.from_file(PATH)
+        meshio.write(self.path, mesh)
+        return Mesh.from_file(self.path)
 
     def get_regions(self, domain):
 

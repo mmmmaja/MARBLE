@@ -1,19 +1,23 @@
 import math
 import random
 
+
 _colors = [
     '#e2a4ff',
     '#39ddff',
     '#63ffe1',
     '#ff9a9a'
 ]
+silicon_color = random.choice(_colors)
+rubber_color = '2dc2ff'
+steel_color = '787d91'
+foam_color = '#a2a6f7'
 
 
 def get_lighter_color(surface_color):
     """
-    Returns a lighter version of the color
     :param surface_color: color of the surface
-    :return: lighter color
+    :return: a lighter version of the color
     """
     # convert to rgb
     surface_color = surface_color.lstrip('#')
@@ -27,7 +31,6 @@ class Rank_Material:
 
     def __init__(self, name, young_modulus, poisson_ratio, time_constant, visual_properties=None):
         """
-
         :param young_modulus: [Gpa] (E)
              Property of the material that tells us how easily it can stretch and deform
              and is defined as the ratio of tensile stress (σ) to tensile strain (ε)
@@ -48,6 +51,7 @@ class Rank_Material:
             The time constant is the time it takes for the material to reach 63.2% of its final value.
             Harder materials generally have shorter relaxation times than softer ones.
         """
+
         self.name = name
         self.young_modulus = young_modulus
         self.poisson_ratio = poisson_ratio
@@ -84,11 +88,6 @@ class Rank_Material:
             'alpha': 0.00  # thermal expansion coefficient
         }
 
-
-silicon_color = random.choice(_colors)
-rubber_color = '2dc2ff'
-steel_color = '787d91'
-foam_color = '#a2a6f7'
 
 # Create a database of materials
 

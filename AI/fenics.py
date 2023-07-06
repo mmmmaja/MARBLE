@@ -9,11 +9,15 @@ from sfepy.solvers.nls import Newton
 from AI.mesh_converter import *
 
 
+"""
+In this file the solver for the Sfepy library is defined.
+"""
+
+
 def create_force_function(force_handler):
     """
-    Convert the list of (vertex_coordinates, force_value) pairs into a dictionary
-    :param force_handler: a ForceHandler object
-    :return:
+    :param force_handler: a ForceHandler object that specifies a force at each point of the mesh
+    :return: force function to create the material with the force term
     """
 
     def force_fun(ts, coors, mode=None, **kwargs):
@@ -32,7 +36,7 @@ def create_force_function(force_handler):
                 is a string that tells the function what it should return.
                 When mode is 'qp', it means that the function is being asked to return its values at the quadrature points.
             :param kwargs:
-            :return:
+            :return: force function to create the material with the force term
             """
         if mode == 'qp':  # querying values at quadrature points
             values = np.zeros((coors.shape[0], 1, 1), dtype=np.float64)
@@ -63,14 +67,14 @@ class FENICS:
 
     def __init__(self, mesh, rank_material):
 
-        # Meshio format is valid for SFepy library
+        # Boundary conditions will be specified later
         self.boundary_conditions = None
+        # Object with all the mesh properties
         self.mesh_boost = mesh
         # Material with physical properties
         self.rank_material = rank_material
 
-        self.DOMAIN, self.omega, self.material = None, None, None
-        self.integral = None
+        self.DOMAIN, self.omega, self.material, self.integral = None, None, None, None
 
         # The top and bottom regions of the mesh
         self.top, self.bottom = None, None
@@ -81,13 +85,13 @@ class FENICS:
         """
         Set up the problem's variables, equations, materials and solvers
         """
+
         # The domain of the mesh (allows defining regions or subdomains)
         self.DOMAIN = FEDomain(name='domain', mesh=self.mesh_boost.sfepy_mesh)
 
         # Omega is the entire domain of the mesh
         self.omega = self.DOMAIN.create_region(name='Omega', select='all')
 
-        # Define the materials
         # Create the material for the mesh
         self.material = Material(name='m', values=self.rank_material.get_properties())
 
@@ -97,34 +101,32 @@ class FENICS:
 
     def get_force_term(self, force_handler, v):
         """
-        :param force_handler: a ForceHandler object
+        :param force_handler: a ForceHandler object that specifies a force at each point of the mesh
         :param v: The test variable
-        :return: The force terms associated with the given regions
+        :return: The force term associated with the given regions of the mesh
 
-        Check out the documentation for the Term class here:
+        The documentation for the Term class:
         https://sfepy.org/doc-devel/terms_overview.html
         """
 
+        # Get the force function acting on the mesh
         force_fun = create_force_function(force_handler)
-        # Register the function with your materials
+        # Register the function
         f = Material(name='f', function=force_fun)
-        # Now you can define the term using the force function:
+        # Define the force term for the equation
         force_term = Term.new(
             'dw_surface_ltr(f.val, v)',
             integral=self.integral, region=self.top, v=v, f=f
         )
-
         return force_term
 
     def apply_pressure(self, force_handler):
         """
-        Elasticity problem solved with FEniCS.
-
         Inspired by:
         https://github.com/sfepy/sfepy/blob/master/doc/tutorial.rst
         https://github.com/sfepy/sfepy/issues/740
 
-        :param force_handler: a ForceHandler object
+        :param force_handler: a ForceHandler object that specifies a force at each point of the mesh
         :return: displacement u of the mesh for each vertex in x, y, z direction
         """
 
@@ -150,17 +152,15 @@ class FENICS:
             name='dw_lin_elastic_iso(m.lam, m.mu, v, u)',
             integral=self.integral, region=self.omega, m=self.material, v=v, u=u
         )
-
         # Get the specific force terms
         force_term = self.get_force_term(force_handler, v)
 
-        # Create equations
+        # 5) Create equations
         equations = [Equation('balance', elasticity_term + force_term)]
-
         # Initialize the equations object
         equations = Equations(equations)
 
-        # 9) Define the problem
+        # 6) Define the problem
         PROBLEM = Problem(name='elasticity', equations=equations, domain=self.DOMAIN)
 
         # Add the boundary conditions to the problem and add the solver
@@ -168,7 +168,7 @@ class FENICS:
         PROBLEM.set_bcs(ebcs=Conditions([boundary_conditions]))
         PROBLEM.set_solver(get_solver())
 
-        # 10) Solve the problem
+        # 7) Solve the problem
         variables = PROBLEM.solve()
 
         dim = 3

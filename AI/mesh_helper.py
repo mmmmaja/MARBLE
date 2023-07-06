@@ -1,32 +1,25 @@
 import math
-import pyvista
+import random
+
+"""
+This file has helper functions for the mesh generation.
+The functions are used to generate the height of the mesh at a given point.
+"""
 
 
-PATH = 'meshes/mesh.vtk'
-
-
-def display_mesh(mesh_path=PATH):
+def flat(i, j, width, height):
     """
-    Displays the mesh with .vtk extension
-    :param mesh_path: path to the mesh
+    :param i: current x position
+    :param j: current y position
+    :param width: width of the mesh
+    :param height: height of the mesh
+    :return: the height of the mesh at a given point (i, j)
     """
 
-    # Check if the mesh is a path or a meshio mesh
-    try:
-        mesh = pyvista.read(mesh_path)
-    except FileNotFoundError:
-        print("Mesh not found")
-        return
-
-    mesh.plot(
-        show_edges=True,
-        color='deepskyblue',
-        show_scalar_bar=False,
-    )
+    return 0.0
 
 
 def concave(i, j, width, height):
-    # Make the convexity dependent on the width and height of the mesh
     # The bump is in the middle of the mesh
     bump_factor = 0.05
     centre = [width / 2, height / 2]
@@ -36,13 +29,8 @@ def concave(i, j, width, height):
     return z
 
 
-def flat(i, j, width, height):
-    return 0.0
-
-
 def convex(i, j, width, height):
-    # Make the convexity dependent on the width and height of the mesh
-    # The bump is in the middle of the mesh
+    # The concavity is in the middle of the mesh
     bump_factor = 0.05
     centre = [width / 2, height / 2]
     x = i - centre[0]
@@ -52,9 +40,41 @@ def convex(i, j, width, height):
 
 
 def wave(i, j, width, height):
-    # Make the wave independent on the width and height of the mesh
-    bump_factor = 0.55
-    x = i
-    y = j
-    z = bump_factor * math.sin(x) * math.sin(y)
+    # Specify how much the wave should be scaled
+    wave_factor = 0.75
+    z = wave_factor * math.sin(i) * math.sin(j)
     return z
+
+
+def cylinder(i, j, width, height):
+    # Simulate the heightmap of a cylinder
+
+    # Cylinder parameters
+    radius = min(width, height) / 2
+    center = [width / 2, height / 2]
+
+    # Distance from center
+    x = i - center[0]
+    y = j - center[1]
+    dist = math.sqrt(x ** 2 + y ** 2)
+
+    # Calculate height
+    if dist <= radius:
+        z = math.sqrt(radius ** 2 - dist ** 2)
+    else:
+        z = 0
+
+    return z
+
+
+def random_noise(i, j, width, height):
+    # Create terrain with random variations
+
+    # Random noise parameters
+    max_height = 2.0
+
+    # Generate height
+    z = random.uniform(0, max_height)
+
+    return z
+

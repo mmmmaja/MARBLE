@@ -172,7 +172,7 @@ def apply_volume_pressure(fenics, gui, relaxation=True):
     apply_pressure(fenics, gui, force_handler, relaxation)
 
 
-def apply_stimuli_pressure(fenics, gui, stimuli, picker, cell_id, relaxation=False):
+def apply_stimuli_pressure(fenics, gui, stimuli, picker, cell_id, relaxation=True):
     if stimuli.recompute_position(picker, cell_id):
         force_handler = StimuliPressure(stimuli, gui.PRESSURE, fenics.rank_material)
         apply_pressure(fenics, gui, force_handler, relaxation)
@@ -215,4 +215,4 @@ def apply_pressure(fenics, gui, force_handler, relaxation):
         stress_relaxation_ref = StressRelaxation(
             gui, fenics.mesh_boost, fenics.rank_material
         )
-        stress_relaxation_ref.initiate()
+        stress_relaxation_ref.initiate(wait=True)

@@ -1,6 +1,7 @@
 import vtk
 from PyQt5.QtWidgets import QApplication
 from AI.GUI_handler import GUI
+from AI._sensors import RandomSensors, SensorPatchesFromFile
 from AI.fenics import *
 from AI.mesh_converter import *
 from AI.material_handler import *
@@ -31,7 +32,7 @@ class Main:
         self.gui.plotter.enable_cell_picking(
             # if cell is not none, apply force to the cell
             callback=lambda cell: apply_cell_specific_pressure(self.fenics, self.gui, cell),
-            font_size=10, point_size=30, line_width=5,
+            font_size=10, point_size=30, line_width=2,
             color='white', style='wireframe', through=False
         )
 
@@ -67,15 +68,17 @@ if not TERMINAL_OUTPUT:
 app = QApplication(sys.argv)
 
 _mesh_boost = GridMesh(30, 30, z_function=flat, layers=3)
-_sensors = SensorGrid(10, 10, _mesh_boost)
+# _sensors = SensorGrid(12, 12, _mesh_boost)
+# _sensors = RandomSensors(20, _mesh_boost)
 
 # _mesh_boost = ArmMesh()
 # _sensors = SensorArm(_mesh_boost)
+_sensors = SensorPatchesFromFile("patches/circle.csv", _mesh_boost, n_patches=4)
 
-_stimuli = Sphere(radius=2.1)
 # _stimuli = Cylinder(radius=3.0, height=1.0)
 # _stimuli = Cuboid(6.0, 4.0, 2.0)
 
+_stimuli = Sphere(radius=0.1)
 
 Main(_mesh_boost, _stimuli, _sensors, rubber)
 app.exec_()
@@ -86,4 +89,5 @@ TODO:
 Stress relaxation process
 Apply pressure to sensors
 Add README
+Add random mesh grid
 """

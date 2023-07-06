@@ -20,19 +20,31 @@ class StressRelaxation:
         self.dt = 20  # ms
         # Current time of the stress relaxation simulation
         self.t = 0
-        # The time in milliseconds to wait before starting the relaxation process
-        self.PRESS_TIME = 1 * 1000  # n seconds in ms
 
         self.gui = gui
         self.mesh_boost = mesh_boost
         self.rank_material = rank_material
 
         self.relaxation_timer = None
+        self.wait_timer = None
 
-    def initiate(self):
+    def initiate(self, wait=False):
         # Timer for relaxation process, but don't start yet
         self.relaxation_timer = QTimer()
         self.relaxation_timer.timeout.connect(self.thread_iteration)
+
+        if wait:
+            # The time in milliseconds to wait before starting the relaxation process
+            wait_time = 1000
+            # Timer for waiting before starting the relaxation process
+            self.wait_timer = QTimer()
+            self.wait_timer.timeout.connect(self.start_relaxation)
+            self.wait_timer.setSingleShot(True)
+            self.wait_timer.start(wait_time)
+        else:
+            self.start_relaxation()
+
+    def start_relaxation(self):
         self.relaxation_timer.start(self.dt)  # period of dt milliseconds
 
     def exponential_decay(self, t):

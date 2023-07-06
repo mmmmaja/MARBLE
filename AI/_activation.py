@@ -1,6 +1,5 @@
 import vtk
 from AI.pressure_script import *
-from AI.relaxation_script import StressRelaxation
 
 
 class ActivationClass(vtk.vtkInteractorStyleTrackballCamera):
@@ -15,9 +14,6 @@ class ActivationClass(vtk.vtkInteractorStyleTrackballCamera):
         self.gui = gui
         self.fenics = fenics
         self.stimuli = stimuli
-
-        # Initialize the relaxation process
-        self.relaxation = StressRelaxation(self.gui, fenics.mesh_boost, fenics.rank_material)
 
         # Mouse pressed flag for mesh activation
         self.mouse_pressed = False
@@ -40,8 +36,6 @@ class ActivationClass(vtk.vtkInteractorStyleTrackballCamera):
 
     def left_button_release_event(self, obj, event):
         self.mouse_pressed = False
-        # Start the relaxation THREAD
-        self.relaxation.initiate()
 
     def middle_button_press_event(self, obj, event):
         # Disable the middle button events
@@ -60,9 +54,6 @@ class ActivationClass(vtk.vtkInteractorStyleTrackballCamera):
             # Get the mouse coordinates and pick the cell
             x, y = self.GetInteractor().GetEventPosition()
             self.pick_cell(x, y)
-
-            t = 1.0  # What is t????
-            self.relaxation.relax_iteration(t)
 
     def pick_cell(self, x, y):
         """
