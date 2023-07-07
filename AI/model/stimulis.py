@@ -78,8 +78,8 @@ class Sphere(Stimuli):
         if distance <= self.radius:
             if distance == 0:  # Avoid division by zero
                 return 1.0
-            # force is the inverse of the distance to the sphere's center
-            return 1.0 / distance
+            # INVERSE SQUARE LAW
+            return 1 / (distance ** 2)
         else:
             return 0.0
 

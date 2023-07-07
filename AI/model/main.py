@@ -1,15 +1,17 @@
 import vtk
 from PyQt5.QtWidgets import QApplication
-from AI.GUI_handler import GUI
-from AI._sensors import RandomSensors, SensorPatchesFromFile
-from AI.fenics import *
-from AI.mesh_converter import *
-from AI.material_handler import *
-from AI.stimulis import *
+
+from AI.model import pressure_script
+from AI.model.GUI_handler import GUI
+from AI.model._sensors import SensorPatchesFromFile
+from AI.model.fenics import *
+from AI.model.mesh_converter import *
+from AI.model.material_handler import *
+from AI.model.stimulis import *
 import io
 import sys
-from AI.pressure_script import *
-from AI._activation import ActivationClass
+from AI.model.pressure_script import *
+from AI.model._activation import ActivationClass
 
 
 # Set to True to enable the terminal output,
@@ -73,12 +75,16 @@ _mesh_boost = GridMesh(30, 30, z_function=flat, layers=3)
 
 # _mesh_boost = ArmMesh()
 # _sensors = SensorArm(_mesh_boost)
-_sensors = SensorPatchesFromFile("patches/circle.csv", _mesh_boost, n_patches=4)
+_sensors = SensorPatchesFromFile("../patches/circle.csv", _mesh_boost, n_patches=4)
 
 # _stimuli = Cylinder(radius=3.0, height=1.0)
 # _stimuli = Cuboid(6.0, 4.0, 2.0)
 
-_stimuli = Sphere(radius=0.1)
+_stimuli = Sphere(radius=2.1)
+
+
+# force_handler = pressure_script.StimuliPressure(_stimuli, 10, rubber)
+# FENICS(_mesh_boost, rubber).apply_pressure(force_handler)
 
 Main(_mesh_boost, _stimuli, _sensors, rubber)
 app.exec_()
@@ -90,4 +96,5 @@ Stress relaxation process
 Apply pressure to sensors
 Add README
 Add random mesh grid
+Add maximum displacement (look at the fucking foam at 8N)
 """

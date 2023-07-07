@@ -1,15 +1,11 @@
-import sys
-
 import pyvista
 import sfepy
-from AI._sensors import SensorArm, SensorGrid
-from AI.mesh_helper import *
+from AI.model.mesh_helper import *
 from abc import abstractmethod
 import numpy as np
 import meshio
 import pyvista as pv
 from sfepy.discrete.fem import Mesh
-from copy import deepcopy
 
 
 def convert_to_vtk(path):
@@ -29,7 +25,7 @@ class MeshBoost:
 
     def __init__(self):
         # Path to the .mesh file
-        self.path = 'meshes/mesh.mesh'
+        self.path = '../meshes/mesh.mesh'
 
         # The mesh object in Sfepy format for calculations
         # The minimum and maximum z values of the top layer of the mesh
@@ -212,7 +208,7 @@ class ArmMesh(MeshBoost):
     # Thickness of the mesh
     THICKNESS = 0.95
 
-    OBJ_PATH = 'meshes/model_kfadrat.obj'
+    OBJ_PATH = '../meshes/model_kfadrat.obj'
 
     def __init__(self):
         # Add the indices of the vertices to create the regions for the solver later

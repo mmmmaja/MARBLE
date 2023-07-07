@@ -1,6 +1,6 @@
 from abc import abstractmethod
 import numpy as np
-from AI.relaxation_script import StressRelaxation
+from AI.model.relaxation_script import StressRelaxation
 
 """
 Pressure: 

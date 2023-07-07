@@ -5,7 +5,7 @@ from PyQt5.QtCore import QTimer
 
 class Recording:
 
-    FOLDER_PATH = 'recordings'
+    FOLDER_PATH = '../recordings'
 
     def __init__(self, sensors, dt=500, file_name=None):
         self.sensors = sensors
@@ -22,7 +22,7 @@ class Recording:
         self.timer.start(self.dt)  # period of dt milliseconds
 
     def record(self):
-        self.sensor_data.append([sensor.pressure for sensor in self.sensors.sensor_list])
+        self.sensor_data.append([sensor.stress for sensor in self.sensors.sensor_list])
 
     def stop(self):
         print("Recording Stopped...")

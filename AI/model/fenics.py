@@ -6,11 +6,74 @@ from sfepy.terms import Term
 from sfepy.discrete.conditions import Conditions, EssentialBC
 from sfepy.solvers.ls import ScipyDirect, ScipyIterative
 from sfepy.solvers.nls import Newton
-from AI.mesh_converter import *
+from AI.model.mesh_converter import *
+from sfepy.base.base import Struct
+
+
+def stress_strain(pb, state):
+    """
+    This function is called after the problem is solved.
+    Calculate and output strain and stress for given displacements.
+
+    :param pb: The Problem instance which was solved.
+    :param state: The state variable (displacement) obtained by solving the problem.
+    :return:
+    """
+    ev = pb.evaluate
+    strain = ev(
+        'ev_cauchy_strain.3.Omega(u)',
+        mode='el_avg'
+    )
+
+    stress = ev(
+        'ev_cauchy_stress.3.Omega(m.D, u)',
+        mode='el_avg',
+        copy_materials=False
+    )
+
+    cauchy_strain = Struct(
+        name='output_data', mode='cell', data=strain, dofs=None
+    )
+    cauchy_stress = Struct(
+        name='output_data', mode='cell', data=stress, dofs=None
+    )
+
+    print('Strain:')
+    print(cauchy_strain)
+    print('Stress:')
+    print(cauchy_stress)
+
+    """
+    In a three-dimensional space, the stress tensor is represented as a 3x3 matrix, 
+    where each element of the matrix represents a specific directional component of the stress.
+    σ = 
+    [σ_xx, σ_xy, σ_xz]
+    [σ_yx, σ_yy, σ_yz]
+    [σ_zx, σ_zy, σ_zz]
+    """
+    for i, elem_stress in enumerate(stress):
+        print(f"Stress for element {i}: {elem_stress}")
+
+    """
+    Stress and strain values are tensor fields, 
+    But the sensor is not able to capture their detail, it only measures the total force applied to it. 
+    This is why take an average of the stress tensor field and then multiply it by the area to get a force reading, 
+    mimicking the sensor's output.
+    """
+    return cauchy_strain, cauchy_stress
 
 
 """
+Good resource for FEM:  
+https://quantpaleo.earth.indiana.edu/Lectures/Finite%20Element%20Analysis.pdf
+
 In this file the solver for the Sfepy library is defined.
+
+Displacements and reaction forces are the fundamental quantities that are being solved in any FEM computation. 
+Both stresses and strains are calculated as post-processing quantities once a converged solution is obtained 
+for the nodal displacements.
+
+https://www.simscale.com/blog/stress-and-strain/
 """
 
 
@@ -169,7 +232,9 @@ class FENICS:
         PROBLEM.set_solver(get_solver())
 
         # 7) Solve the problem
-        variables = PROBLEM.solve()
+        variables = PROBLEM.solve(
+            post_process_hook_final=stress_strain
+        )
 
         dim = 3
         # Get the displacement field of the mesh in three dimensions (x, y, z)
@@ -182,3 +247,25 @@ class FENICS:
         print('maximum displacement z:', np.abs(u[:, 2]).max())
 
         return u
+
+
+"""
+Regarding the sensors outputs:
+
+The stresses and forces inside the material are derived from the displacements in Fenics. 
+The FEA solves for the displacements that balance the external forces with the internal forces. 
+
+The sensors measure internal forces, so the internal forces are derived from the displacements.
+(!)
+"""
+
+"""
+Strain is a measure of deformation representing the change in size and shape of a material body. 
+(CHANGE IN LENGTH PER UNIT LENGTH)
+"""
+
+"""
+Stress is a measure of the internal forces in a material body. 
+(FORCE PER UNIT AREA)
+So essentially, stress is what sensors would measure.
+"""

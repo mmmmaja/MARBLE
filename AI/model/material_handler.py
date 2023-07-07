@@ -1,6 +1,7 @@
 import math
 import random
 
+from sfepy.mechanics.matcoefs import stiffness_from_youngpoisson, lame_from_youngpoisson
 
 _colors = [
     '#e2a4ff',
@@ -10,7 +11,7 @@ _colors = [
 ]
 silicon_color = random.choice(_colors)
 rubber_color = '2dc2ff'
-steel_color = '787d91'
+steel_color = 'b6bdd4'
 foam_color = '#a2a6f7'
 
 
@@ -77,14 +78,19 @@ class Rank_Material:
         nu = self.poisson_ratio
 
         # Mu is the shear modulus (shows the material's resistance to deformation)
-        mu = E / (2.0 * (1.0 + nu))
+        mu = lame_from_youngpoisson(young=E, poisson=nu)[1]
+
         # Lambda is the Lame parameter (defines the relationship between stress and strain)
-        lam = E * nu / ((1.0 + nu) * (1.0 - 2.0 * nu))
+        lam = lame_from_youngpoisson(young=E, poisson=nu)[0]
+
+        # Create the stiffness matrix D
+        D = stiffness_from_youngpoisson(dim=3, young=E, poisson=nu)
 
         # Return the properties in the correct format for the SfePy solver
         return {
             'lam': lam,
             'mu': mu,
+            'D': D,
             'alpha': 0.00  # thermal expansion coefficient
         }
 

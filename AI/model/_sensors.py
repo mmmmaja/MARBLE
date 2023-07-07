@@ -267,7 +267,7 @@ class SensorArm(SensorParent):
     def create_sensors(self):
         sensors = []
         # Load the input points from the .obj file
-        points = pyvista.read('meshes/sensors.obj').points
+        points = pyvista.read('../meshes/sensors.obj').points
         for i in range(points.shape[0]):
             # Map the points to the closest vertex in the mesh
             sensor_index = self.map_vertex_ids(points[i])
@@ -283,13 +283,22 @@ class Sensor:
         """
         :param name: Unique name of the sensor
         :param index: Index of the sensor in the mesh
+
+        Mimics SingleTact sensor, the area of contact is approximately 8 mm^2
         """
         self.name = name
         self.index = index
-        self.pressure = 0.0
+        self.stress = 0.0
 
     def get_position(self, vtk_mesh):
         return vtk_mesh.points[self.index]
+
+    def get_stress(self):
+        """
+        Stress is a measure of the internal forces in a material body.
+        It's defined as the force per unit area.
+        """
+        return self.stress
 
 
 """
@@ -305,7 +314,7 @@ def circle(n_points, n_loops, radius):
     :param radius: Radius of the furthest loop
     """
 
-    with open('patches/circle.csv', 'w', newline='') as file:
+    with open('../patches/circle.csv', 'w', newline='') as file:
         writer = csv.writer(file, delimiter=';')
         min_radius = 0.1
         radius_range = radius - min_radius
@@ -324,7 +333,7 @@ def spiral(n_points):
     :param n_points: Number of points in the spiral
     """
 
-    with open('patches/spiral.csv', 'w', newline='') as file:
+    with open('../patches/spiral.csv', 'w', newline='') as file:
         writer = csv.writer(file, delimiter=';')
         for i in range(n_points):
             angle = 0.1 * i
@@ -340,7 +349,7 @@ def star(n_points, n_arms):
     :param n_points: Total number of points in the star
     :param n_arms: Number of arms of the star
     """
-    with open('patches/star.csv', 'w', newline='') as file:
+    with open('../patches/star.csv', 'w', newline='') as file:
         writer = csv.writer(file, delimiter=';')
         for i in range(n_points):
             angle = 2 * np.pi * i / n_points

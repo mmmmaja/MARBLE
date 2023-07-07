@@ -1,7 +1,6 @@
 import pyvistaqt as pvqt  # For updating plots real time
 from PyQt5.QtWidgets import QAction  # For the custom button
-from AI.material_handler import get_lighter_color
-from AI.recording_manager import Recording
+from AI.model.recording_manager import Recording
 
 
 """
@@ -83,7 +82,7 @@ class GUI:
         visual_properties = self.mesh_material.visual_properties
         self.mesh_actor = self.plotter.add_mesh(
             self.mesh_boost.current_vtk,
-            show_edges=False,
+            show_edges=True,
             smooth_shading=True,
             show_scalar_bar=False,
             edge_color=visual_properties['edge_color'],
@@ -109,7 +108,6 @@ class GUI:
 
     def draw_sensors(self):
         # Draw the sensor points in the plotter
-        dark_color = self.mesh_material.visual_properties['color']
         self.sensor_actor = self.plotter.add_mesh(
             self.sensors.visualization,
             color='white',

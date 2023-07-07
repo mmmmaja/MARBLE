@@ -1,5 +1,4 @@
-from PyQt5.QtWidgets import QApplication
-from AI.mesh_converter import *
+from AI.model.mesh_converter import *
 from PyQt5.QtCore import QTimer
 
 

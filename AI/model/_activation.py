@@ -1,5 +1,5 @@
 import vtk
-from AI.pressure_script import *
+from AI.model.pressure_script import *
 
 
 class ActivationClass(vtk.vtkInteractorStyleTrackballCamera):
