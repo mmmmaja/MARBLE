@@ -1,4 +1,5 @@
 import csv
+import sys
 from abc import abstractmethod
 import numpy as np
 import pyvista
@@ -80,10 +81,14 @@ class SensorParent:
 
         for j in range(len(sensor_list)):
             j_sensor_coors = sensor_list[j].get_position(self.mesh_boost.current_vtk)
-            distance = np.linalg.norm(j_sensor_coors - new_sensor.get_position(self.mesh_boost.current_vtk))
-            if distance < min_distance:
+            _distance = np.linalg.norm(j_sensor_coors - new_sensor.get_position(self.mesh_boost.current_vtk))
+            if _distance < min_distance:
                 return False
         return True
+
+    def relax(self):
+        for sensor in self.sensor_list:
+            sensor.stress = 0
 
 
 class SensorGrid(SensorParent):
@@ -119,7 +124,7 @@ class SensorGrid(SensorParent):
                 y = y_min + (y_range / (self.n_cols - 1)) * j
                 z = bounds[5]
                 sensor_index = self.map_vertex_ids(np.array([x, y, z]))
-                sensors.append(Sensor(name=f'{i}_{j}', index=sensor_index))
+                sensors.append(Sensor(name=f'{i}_{j}', index=sensor_index, mesh=self.mesh_boost))
 
         return sensors
 
@@ -157,7 +162,7 @@ class RandomSensors(SensorParent):
             y = np.random.uniform(0, 1) * y_range + y_min
             z = bounds[5]
             sensor_index = self.map_vertex_ids(np.array([x, y, z]))
-            new_sensor = Sensor(name=f'{len(sensors)}', index=sensor_index)
+            new_sensor = Sensor(name=f'{len(sensors)}', index=sensor_index, mesh=self.mesh_boost)
             if self.valid_distance(new_sensor, sensors, min_distance):
                 sensors.append(new_sensor)
             i += 1
@@ -249,7 +254,7 @@ class SensorPatchesFromFile(SensorParent):
             y_scaled = (extended_coords[i][1] - y_min_file) / y_range_file * y_range + y_min
             z = bounds[5]
             sensor_index = self.map_vertex_ids(np.array([x_scaled, y_scaled, z]))
-            sensors.append(Sensor(name=f'{i}', index=sensor_index))
+            sensors.append(Sensor(name=f'{i}', index=sensor_index, mesh=self.mesh_boost))
 
         return sensors
 
@@ -272,14 +277,14 @@ class SensorArm(SensorParent):
             # Map the points to the closest vertex in the mesh
             sensor_index = self.map_vertex_ids(points[i])
             # Create the sensor object
-            sensors.append(Sensor(name=f'{i}', index=sensor_index))
+            sensors.append(Sensor(name=f'{i}', index=sensor_index, mesh=self.mesh_boost))
 
         return sensors
 
 
 class Sensor:
 
-    def __init__(self, name, index):
+    def __init__(self, name, index, mesh):
         """
         :param name: Unique name of the sensor
         :param index: Index of the sensor in the mesh
@@ -290,6 +295,9 @@ class Sensor:
         self.index = index
         self.stress = 0.0
 
+        self.initial_position = self.get_position(mesh.current_vtk)
+        self.neighbour_cells = mesh.get_neighbouring_cells(index)
+
     def get_position(self, vtk_mesh):
         return vtk_mesh.points[self.index]
 
@@ -299,6 +307,19 @@ class Sensor:
         It's defined as the force per unit area.
         """
         return self.stress
+
+    def set_readings(self, stress_output):
+        """
+        In a 3D stress tensor,
+        the normal stresses are the diagonal elements, namely σ_xx, σ_yy, and σ_zz.
+        """
+
+        average_reading = 0.0
+        n = len(self.neighbour_cells)
+        for i in range(n):
+            average_reading += stress_output[self.neighbour_cells[i]][2]
+        average_reading /= n
+        self.stress = average_reading
 
 
 """
@@ -357,3 +378,5 @@ def star(n_points, n_arms):
             x = radius * np.cos(angle)
             y = radius * np.sin(angle)
             writer.writerow([x, y])
+
+

@@ -28,6 +28,7 @@ class StressRelaxation:
         self.wait_timer = None
 
     def initiate(self, wait=False):
+
         # Timer for relaxation process, but don't start yet
         self.relaxation_timer = QTimer()
         self.relaxation_timer.timeout.connect(self.thread_iteration)

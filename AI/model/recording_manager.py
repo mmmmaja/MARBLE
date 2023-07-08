@@ -7,7 +7,7 @@ class Recording:
 
     FOLDER_PATH = '../recordings'
 
-    def __init__(self, sensors, dt=500, file_name=None):
+    def __init__(self, sensors, dt=100, file_name=None):
         self.sensors = sensors
         self.dt = dt
         self.file_name = file_name
@@ -39,9 +39,18 @@ class Recording:
         print("Saving data to: " + file_name)
 
         # Save the data to a .csv file
-        # The first line of the file should be the sensor positions (?)
+        # The first line of the file should be the sensor positions
+        sensor_positions = []
+        for i in range(len(self.sensors.sensor_list)):
+            position = self.sensors.sensor_list[i].initial_position
+            sensor_positions.append(
+                str(position[0]) + ' ' + str(position[1])
+            )
         # The rest of the file should be the pressure data
         path = self.FOLDER_PATH + '/' + file_name
         with open(path, 'w', newline='') as file:
             writer = csv.writer(file)
+            writer.writerow(sensor_positions)
             writer.writerows(self.sensor_data)
+
+

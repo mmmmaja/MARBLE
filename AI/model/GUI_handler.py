@@ -82,7 +82,7 @@ class GUI:
         visual_properties = self.mesh_material.visual_properties
         self.mesh_actor = self.plotter.add_mesh(
             self.mesh_boost.current_vtk,
-            show_edges=True,
+            show_edges=False,
             smooth_shading=True,
             show_scalar_bar=False,
             edge_color=visual_properties['edge_color'],
@@ -176,7 +176,7 @@ class GUI:
         self.plotter.main_menu.addAction(self.stop_record_action)
 
     def start_recording(self):
-        self.recording = Recording(self.sensors, file_name='test.csv')
+        self.recording = Recording(self.sensors, file_name='recording.csv')
         self.recording.start()
         self.update_recording_actions()
 

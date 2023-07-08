@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import QApplication
 
 from AI.model import pressure_script
 from AI.model.GUI_handler import GUI
-from AI.model._sensors import SensorPatchesFromFile
+from AI.model._sensors import SensorPatchesFromFile, SensorGrid
 from AI.model.fenics import *
 from AI.model.mesh_converter import *
 from AI.model.material_handler import *
@@ -24,7 +24,7 @@ class Main:
     def __init__(self, mesh_boost, stimuli, sensors, rank_material):
         self.stimuli = stimuli
         self.sensors = sensors
-        self.fenics = FENICS(mesh_boost, rank_material)
+        self.fenics = FENICS(mesh_boost, rank_material, sensors)
 
         self.gui = GUI(mesh_boost, rank_material, stimuli, sensors)
         self.add_interactive_events()
@@ -70,21 +70,21 @@ if not TERMINAL_OUTPUT:
 app = QApplication(sys.argv)
 
 _mesh_boost = GridMesh(30, 30, z_function=flat, layers=3)
-# _sensors = SensorGrid(12, 12, _mesh_boost)
+_sensors = SensorGrid(12, 12, _mesh_boost)
 # _sensors = RandomSensors(20, _mesh_boost)
 
 # _mesh_boost = ArmMesh()
 # _sensors = SensorArm(_mesh_boost)
-_sensors = SensorPatchesFromFile("../patches/circle.csv", _mesh_boost, n_patches=4)
+# _sensors = SensorPatchesFromFile("../patches/circle.csv", _mesh_boost, n_patches=4)
 
 # _stimuli = Cylinder(radius=3.0, height=1.0)
-# _stimuli = Cuboid(6.0, 4.0, 2.0)
-
-_stimuli = Sphere(radius=2.1)
+_stimuli = Cuboid(6.0, 4.0, 2.0)
+# _stimuli = Sphere(radius=2.1)
 
 
 # force_handler = pressure_script.StimuliPressure(_stimuli, 10, rubber)
-# FENICS(_mesh_boost, rubber).apply_pressure(force_handler)
+# FENICS(_mesh_boost, rubber, _sensors).apply_pressure(force_handler)
+
 
 Main(_mesh_boost, _stimuli, _sensors, rubber)
 app.exec_()
@@ -97,4 +97,6 @@ Apply pressure to sensors
 Add README
 Add random mesh grid
 Add maximum displacement (look at the fucking foam at 8N)
+
+when there is no movement set the sensors reading to 0
 """

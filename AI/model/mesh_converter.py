@@ -100,6 +100,12 @@ class MeshBoost:
 
         return vertex_ids
 
+    def get_neighbouring_cells(self, vertex_id):
+        conn = self.sfepy_mesh.get_conn(desc='3_8')
+        # get all cells that share the vertex
+        cells = [i for i, conn in enumerate(conn) if vertex_id in conn]
+        return cells
+
 
 class GridMesh(MeshBoost):
 

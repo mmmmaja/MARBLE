@@ -9,7 +9,7 @@ class ActivationClass(vtk.vtkInteractorStyleTrackballCamera):
     Triggered in Activation mode
     """
 
-    def __init__(self, parent=None, gui=None, fenics=None, stimuli=None, relaxation=None, *args, **kwargs):
+    def __init__(self, parent=None, gui=None, fenics=None, stimuli=None, *args, **kwargs):
 
         self.gui = gui
         self.fenics = fenics
@@ -35,6 +35,7 @@ class ActivationClass(vtk.vtkInteractorStyleTrackballCamera):
         self.mouse_pressed = True
 
     def left_button_release_event(self, obj, event):
+        self.gui.sensors.relax()
         self.mouse_pressed = False
 
     def middle_button_press_event(self, obj, event):

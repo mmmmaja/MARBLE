@@ -7,60 +7,6 @@ from sfepy.discrete.conditions import Conditions, EssentialBC
 from sfepy.solvers.ls import ScipyDirect, ScipyIterative
 from sfepy.solvers.nls import Newton
 from AI.model.mesh_converter import *
-from sfepy.base.base import Struct
-
-
-def stress_strain(pb, state):
-    """
-    This function is called after the problem is solved.
-    Calculate and output strain and stress for given displacements.
-
-    :param pb: The Problem instance which was solved.
-    :param state: The state variable (displacement) obtained by solving the problem.
-    :return:
-    """
-    ev = pb.evaluate
-    strain = ev(
-        'ev_cauchy_strain.3.Omega(u)',
-        mode='el_avg'
-    )
-
-    stress = ev(
-        'ev_cauchy_stress.3.Omega(m.D, u)',
-        mode='el_avg',
-        copy_materials=False
-    )
-
-    cauchy_strain = Struct(
-        name='output_data', mode='cell', data=strain, dofs=None
-    )
-    cauchy_stress = Struct(
-        name='output_data', mode='cell', data=stress, dofs=None
-    )
-
-    print('Strain:')
-    print(cauchy_strain)
-    print('Stress:')
-    print(cauchy_stress)
-
-    """
-    In a three-dimensional space, the stress tensor is represented as a 3x3 matrix, 
-    where each element of the matrix represents a specific directional component of the stress.
-    σ = 
-    [σ_xx, σ_xy, σ_xz]
-    [σ_yx, σ_yy, σ_yz]
-    [σ_zx, σ_zy, σ_zz]
-    """
-    for i, elem_stress in enumerate(stress):
-        print(f"Stress for element {i}: {elem_stress}")
-
-    """
-    Stress and strain values are tensor fields, 
-    But the sensor is not able to capture their detail, it only measures the total force applied to it. 
-    This is why take an average of the stress tensor field and then multiply it by the area to get a force reading, 
-    mimicking the sensor's output.
-    """
-    return cauchy_strain, cauchy_stress
 
 
 """
@@ -119,7 +65,7 @@ def get_solver(iterative=True):
         ls = ScipyIterative({
             'method': 'cgs',  # Conjugate Gradient Squared method
             'i_max': 1000,  # maximum number of iterations
-            'eps_a': 1e-10,  # absolute tolerance
+            'eps_a': 1e-8,  # absolute tolerance
         })
         return Newton({}, lin_solver=ls, status=nls_status)
     else:
@@ -128,7 +74,7 @@ def get_solver(iterative=True):
 
 class FENICS:
 
-    def __init__(self, mesh, rank_material):
+    def __init__(self, mesh, rank_material, sensors):
 
         # Boundary conditions will be specified later
         self.boundary_conditions = None
@@ -136,6 +82,8 @@ class FENICS:
         self.mesh_boost = mesh
         # Material with physical properties
         self.rank_material = rank_material
+        # Sensors to measure the output
+        self.sensors = sensors
 
         self.DOMAIN, self.omega, self.material, self.integral = None, None, None, None
 
@@ -233,7 +181,7 @@ class FENICS:
 
         # 7) Solve the problem
         variables = PROBLEM.solve(
-            post_process_hook_final=stress_strain
+            post_process_hook_final=self.stress_strain
         )
 
         dim = 3
@@ -247,6 +195,49 @@ class FENICS:
         print('maximum displacement z:', np.abs(u[:, 2]).max())
 
         return u
+
+    def stress_strain(self, pb, state):
+        """
+        This function is called after the problem is solved.
+        Calculate and output strain and stress for given displacements.
+
+        :param pb: The Problem instance which was solved.
+        :param state: The state variable (displacement) obtained by solving the problem
+        :return:
+        """
+        ev = pb.evaluate
+        # strain = ev(
+        #     'ev_cauchy_strain.3.Omega(u)',
+        #     mode='el_avg'
+        # )
+
+        stress = ev(
+            'ev_cauchy_stress.3.Omega(m.D, u)',
+            mode='el_avg',
+            copy_materials=False
+        )
+        stress_tensor_np = np.array(stress.data)
+        stress_tensor_np = np.squeeze(stress_tensor_np)
+
+        for sensor in self.sensors.sensor_list:
+            sensor.set_readings(stress_tensor_np)
+
+        """
+        In a three-dimensional space, the stress tensor is represented as a 3x3 matrix, 
+        where each element of the matrix represents a specific directional component of the stress.
+        σ = 
+        [σ_xx, σ_xy, σ_xz]
+        [σ_yx, σ_yy, σ_yz]
+        [σ_zx, σ_zy, σ_zz]
+        """
+
+
+        """
+        Stress and strain values are tensor fields, 
+        But the sensor is not able to capture their detail, it only measures the total force applied to it. 
+        This is why take an average of the stress tensor field and then multiply it by the area to get a force reading, 
+        mimicking the sensor's output.
+        """
 
 
 """
