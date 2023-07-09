@@ -69,4 +69,5 @@ class ActivationClass(vtk.vtkInteractorStyleTrackballCamera):
 
         # If the cell exists
         if cell_id != -1:
+            print("Cell ID: ", cell_id)
             apply_stimuli_pressure(self.fenics, self.gui, self.stimuli, self.picker, cell_id)

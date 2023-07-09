@@ -30,6 +30,13 @@ class Stimuli:
         """
 
     def recompute_position(self, picker, cell_id):
+        """
+        Recompute the position of the stimulus based on the cell that was picked
+        :param picker: pickr object that was used to pick the cell
+        :param cell_id: ID of the cell in the mesh that was picked
+        :return: True if the position was recomputed, False otherwise (the cell was invalid)
+        """
+
         # It will return the ids of the 8 points that make up the hexahedron
         cell_points_ids = picker.GetActor().GetMapper().GetInput().GetCell(cell_id).GetPointIds()
 
@@ -41,12 +48,17 @@ class Stimuli:
             points.append(picker.GetActor().GetMapper().GetInput().GetPoint(point_id))
 
         # Remove the bottom layer of points (Points with z coordinate == 0)
+        # FIXME: this is VERY iffy
         points = [point for point in points if point[2] != 0]
+
+        # If no points are left, the cell is invalid
         if len(points) == 0:
             return False
 
         # Get the average of the points
         self.position = np.mean(points, axis=0)
+        print(f"New position: {self.position}, cell id: {cell_id}, number of points: {len(points)}")
+
         return True
 
 

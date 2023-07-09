@@ -1,9 +1,7 @@
 import vtk
 from PyQt5.QtWidgets import QApplication
-
-from AI.model import pressure_script
 from AI.model.GUI_handler import GUI
-from AI.model._sensors import SensorPatchesFromFile, SensorGrid
+from AI.model._sensors import *
 from AI.model.fenics import *
 from AI.model.mesh_converter import *
 from AI.model.material_handler import *

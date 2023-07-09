@@ -8,6 +8,12 @@ class Recording:
     FOLDER_PATH = '../recordings'
 
     def __init__(self, sensors, dt=100, file_name=None):
+        """
+        :param sensors: Sensors object with list of sensors
+        :param dt: time step in milliseconds
+        :param file_name: Name of the file to save the data to (if None, then the current date and time is used)
+        """
+
         self.sensors = sensors
         self.dt = dt
         self.file_name = file_name
@@ -31,11 +37,20 @@ class Recording:
         self.timer.deleteLater()
 
     def save_data(self):
+        """
+        Save the recorded data to a .csv file
+
+        Form of the csv file:
+            First line: sensor positions  -> x y | x y | x y | ...
+            Rest of the file: sensor data -> z | z | z | ...
+        """
+
         if self.file_name is None:
             # Get current date and time
             file_name = datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + '.csv'
         else:
             file_name = self.file_name
+
         print("Saving data to: " + file_name)
 
         # Save the data to a .csv file

@@ -108,7 +108,7 @@ class FENICS:
 
         # Create an Integral over the domain
         # Integrals specify which numerical scheme to use.
-        self.integral = Integral('i', order=1)
+        self.integral = Integral('i', order=2)
 
     def get_force_term(self, force_handler, v):
         """

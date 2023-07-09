@@ -173,8 +173,11 @@ def apply_volume_pressure(fenics, gui, relaxation=True):
 
 
 def apply_stimuli_pressure(fenics, gui, stimuli, picker, cell_id, relaxation=True):
+    # Recompute the position of the stimuli based on the cell that was picked
     if stimuli.recompute_position(picker, cell_id):
+        # This object will handle assigning the pressure to the vertices
         force_handler = StimuliPressure(stimuli, gui.PRESSURE, fenics.rank_material)
+        # Apply the pressure to the mesh, start the FENICS computation
         apply_pressure(fenics, gui, force_handler, relaxation)
 
 

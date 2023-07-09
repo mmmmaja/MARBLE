@@ -67,10 +67,10 @@ class MeshBoost:
         self.current_vtk.points = self.initial_vtk.points.copy() + u
         # Check for negative z values
         # If present assign zero
-        self.current_vtk.points[:, 2] = np.where(
-            self.current_vtk.points[:, 2] < self.Z_DEFORMATION_LIMIT,
-            self.Z_DEFORMATION_LIMIT, self.current_vtk.points[:, 2]
-        )
+        # self.current_vtk.points[:, 2] = np.where(
+        #     self.current_vtk.points[:, 2] < self.Z_DEFORMATION_LIMIT,
+        #     self.Z_DEFORMATION_LIMIT, self.current_vtk.points[:, 2]
+        # )
 
     def update_mesh(self, u):
         # Update the vtk version of the mesh
@@ -80,10 +80,10 @@ class MeshBoost:
 
         # Check for negative z values
         # If present assign zero
-        self.current_vtk.points[:, 2] = np.where(
-            self.current_vtk.points[:, 2] < self.Z_DEFORMATION_LIMIT,
-            self.Z_DEFORMATION_LIMIT, self.current_vtk.points[:, 2]
-        )
+        # self.current_vtk.points[:, 2] = np.where(
+        #     self.current_vtk.points[:, 2] < self.Z_DEFORMATION_LIMIT,
+        #     self.Z_DEFORMATION_LIMIT, self.current_vtk.points[:, 2]
+        # )
 
     def get_vertex_ids_from_coords(self, cell_coords):
         """
