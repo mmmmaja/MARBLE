@@ -98,5 +98,6 @@ Add README
 Add random mesh grid
 Add maximum displacement (look at the fucking foam at 8N)
 
-when there is no movement set the sensors reading to 0
+Very important!!!
+Check why displacement is 0 when there is contact!!!
 """
