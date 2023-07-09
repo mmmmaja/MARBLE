@@ -22,9 +22,6 @@ class GUI:
         # List of sensors that record pressure
         self.sensors = sensors
 
-        # Define the plotter (pyvistaqt)
-        self.plotter = pvqt.BackgroundPlotter()
-
         # Define the pressure
         self.PRESSURE = 0.02
         # Change in the pressure when on the event
@@ -44,6 +41,8 @@ class GUI:
         # Recording object from recording_manager.py
         self.recording = None
 
+        # Define the plotter (pyvistaqt)
+        self.plotter = pvqt.BackgroundPlotter()
         self.text_color = 'eaf5ff'
         self.background_color = '282a36'
         self.plotter.set_background(self.background_color)

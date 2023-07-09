@@ -90,26 +90,6 @@ class FENICS:
         # The top and bottom regions of the mesh
         self.top, self.bottom = None, None
 
-        self.innit()
-
-    def innit(self):
-        """
-        Set up the problem's variables, equations, materials and solvers
-        """
-
-        # The domain of the mesh (allows defining regions or subdomains)
-        self.DOMAIN = FEDomain(name='domain', mesh=self.mesh_boost.sfepy_mesh)
-
-        # Omega is the entire domain of the mesh
-        self.omega = self.DOMAIN.create_region(name='Omega', select='all')
-
-        # Create the material for the mesh
-        self.material = Material(name='m', values=self.rank_material.get_properties())
-
-        # Create an Integral over the domain
-        # Integrals specify which numerical scheme to use.
-        self.integral = Integral('i', order=2)
-
     def get_force_term(self, force_handler, v):
         """
         :param force_handler: a ForceHandler object that specifies a force at each point of the mesh
@@ -140,6 +120,27 @@ class FENICS:
         :param force_handler: a ForceHandler object that specifies a force at each point of the mesh
         :return: displacement u of the mesh for each vertex in x, y, z direction
         """
+
+        """
+        Set up the problem's variables, equations, materials and solvers
+        """
+        try:
+            # The domain of the mesh (allows defining regions or subdomains)
+            self.DOMAIN = FEDomain(name='domain', mesh=self.mesh_boost.sfepy_mesh)
+        except RuntimeError:
+            # Bad orientation of the mesh error
+            # Return 0 displacement if the mesh is not valid
+            return np.zeros((self.mesh_boost.sfepy_mesh.coors.shape[0], 3))
+
+        # Omega is the entire domain of the mesh
+        self.omega = self.DOMAIN.create_region(name='Omega', select='all')
+
+        # Create the material for the mesh
+        self.material = Material(name='m', values=self.rank_material.get_properties())
+
+        # Create an Integral over the domain
+        # Integrals specify which numerical scheme to use.
+        self.integral = Integral('i', order=1)
 
         # 1) Define the REGIONS of the mesh
         self.top, self.bottom = self.mesh_boost.get_regions(self.DOMAIN)

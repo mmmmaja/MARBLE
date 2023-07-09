@@ -2,7 +2,6 @@ import vtk
 from PyQt5.QtWidgets import QApplication
 from AI.model.GUI_handler import GUI
 from AI.model._sensors import *
-from AI.model.fenics import *
 from AI.model.mesh_converter import *
 from AI.model.material_handler import *
 from AI.model.stimulis import *
@@ -22,7 +21,6 @@ class Main:
     def __init__(self, mesh_boost, stimuli, sensors, rank_material):
         self.stimuli = stimuli
         self.sensors = sensors
-        self.fenics = FENICS(mesh_boost, rank_material, sensors)
 
         self.gui = GUI(mesh_boost, rank_material, stimuli, sensors)
         self.add_interactive_events()
@@ -31,14 +29,14 @@ class Main:
         # Enable cell picking
         self.gui.plotter.enable_cell_picking(
             # if cell is not none, apply force to the cell
-            callback=lambda cell: apply_cell_specific_pressure(self.fenics, self.gui, cell),
+            callback=lambda cell: apply_cell_specific_pressure(self.gui, cell),
             font_size=10, point_size=30, line_width=2,
             color='white', style='wireframe', through=False
         )
 
         # Add the event on the press of the space bar, apply the force
         self.gui.plotter.add_key_event(
-            'space', lambda: apply_volume_pressure(self.fenics, self.gui)
+            'space', lambda: apply_volume_pressure(self.gui)
         )
 
         # If the enter button is pressed, the interactive mode is toggled
@@ -46,7 +44,6 @@ class Main:
         self.gui.plotter.show()
 
     def toggle_interactive(self):
-        print("Interactive mode toggled")
 
         if self.gui.plotter.interactor.GetInteractorStyle().__class__ == ActivationClass:
             self.gui.plotter.interactor.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
@@ -55,8 +52,6 @@ class Main:
             self.gui.add_mode_text("Activation")
             self.gui.plotter.interactor.SetInteractorStyle(ActivationClass(
                 gui=self.gui,
-                fenics=self.fenics,
-                stimuli=self.stimuli
             ))
 
 

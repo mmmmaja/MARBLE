@@ -6,6 +6,7 @@ import numpy as np
 import meshio
 import pyvista as pv
 from sfepy.discrete.fem import Mesh
+from sfepy.discrete import Integral
 
 
 def convert_to_vtk(path):
@@ -65,25 +66,20 @@ class MeshBoost:
         # Override the vtk version of the mesh
         # Copy the initial mesh
         self.current_vtk.points = self.initial_vtk.points.copy() + u
-        # Check for negative z values
-        # If present assign zero
-        # self.current_vtk.points[:, 2] = np.where(
-        #     self.current_vtk.points[:, 2] < self.Z_DEFORMATION_LIMIT,
-        #     self.Z_DEFORMATION_LIMIT, self.current_vtk.points[:, 2]
-        # )
+        # Save the mesh to a file
+        self.current_vtk.save('../meshes/current_mesh.vtk')
+        # Load the mesh as a sfepy mesh
+        self.sfepy_mesh = Mesh.from_file('../meshes/current_mesh.vtk')
 
     def update_mesh(self, u):
         # Update the vtk version of the mesh
         # Add displacement to the mesh points
-        print('vtk: ', self.current_vtk.points.shape, 'u: ', u.shape)
         self.current_vtk.points += u
 
-        # Check for negative z values
-        # If present assign zero
-        # self.current_vtk.points[:, 2] = np.where(
-        #     self.current_vtk.points[:, 2] < self.Z_DEFORMATION_LIMIT,
-        #     self.Z_DEFORMATION_LIMIT, self.current_vtk.points[:, 2]
-        # )
+        # Save the mesh to a file
+        self.current_vtk.save('../meshes/current_mesh.vtk')
+        # Load the mesh as a sfepy mesh
+        self.sfepy_mesh = Mesh.from_file('../meshes/current_mesh.vtk')
 
     def get_vertex_ids_from_coords(self, cell_coords):
         """
@@ -105,6 +101,29 @@ class MeshBoost:
         # get all cells that share the vertex
         cells = [i for i, conn in enumerate(conn) if vertex_id in conn]
         return cells
+
+    def validate_mesh(self):
+        # Create the field of the mesh
+        field = self.sfepy_mesh.field('displacement')
+
+        integral = Integral('i', order=2)
+        region = field.region
+        mapping = field.get_mapping(region, integral)
+
+        # Use this to compute the Jacobian for all quadrature points in all elements.
+        jacobians = mapping.get_jacobian(det=True)
+
+        # Now find the minimum determinant.
+        min_det = np.min(jacobians)
+
+        # You can now check if min_det is negative or too close to zero,
+        # and stop your simulation if it is.
+        if min_det < some_threshold:
+    # Stop simulation.
+
+
+class VTKMesh:
+    pass
 
 
 class GridMesh(MeshBoost):

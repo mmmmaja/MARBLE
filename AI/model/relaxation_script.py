@@ -14,15 +14,13 @@ class StressRelaxation:
     # The force limit to stop the relaxation process
     FORCE_LIMIT = 1e-2
 
-    def __init__(self, gui, mesh_boost, rank_material):
+    def __init__(self, gui):
         # Time step: how many milliseconds between each update
         self.dt = 20  # ms
         # Current time of the stress relaxation simulation
         self.t = 0
 
         self.gui = gui
-        self.mesh_boost = mesh_boost
-        self.rank_material = rank_material
 
         self.relaxation_timer = None
         self.wait_timer = None
@@ -55,7 +53,7 @@ class StressRelaxation:
         :return: the relaxation factor between 0 and 1,
             representing the proportion of stress remaining in the material
         """
-        return np.exp(-t / self.rank_material.time_constant)
+        return np.exp(-t / self.gui.mesh_material.time_constant)
 
     def get_relaxation_displacement(self, u, t):
         """
@@ -66,13 +64,13 @@ class StressRelaxation:
             τ is the relaxation time of the material.
         :return: the current displacement dependant of the time t of the simulation
         """
-        return u * np.exp(-t / self.rank_material.time_constant)
+        return u * np.exp(-t / self.gui.mesh_material.time_constant)
 
     def thread_iteration(self):
         self.relax_iteration(self.t)
 
     def active_iteration(self, t, stimuli):
-        self.relax_iteration(t, stimuli.get_affected_mesh_indices(self.mesh_boost.current_vtk))
+        self.relax_iteration(t, stimuli.get_affected_mesh_indices(self.gui.mesh_boost.current_vtk))
 
     def relax_iteration(self, t, unaffected_points=None):
         """
@@ -85,7 +83,7 @@ class StressRelaxation:
         """
 
         # Get the displacement of the mesh on this iteration
-        u = self.mesh_boost.current_vtk.points - self.mesh_boost.initial_vtk.points
+        u = self.gui.mesh_boost.current_vtk.points - self.gui.mesh_boost.initial_vtk.points
 
         # calculate the displacement
         relaxation = self.get_relaxation_displacement(u, t)
@@ -95,7 +93,7 @@ class StressRelaxation:
             relaxation[unaffected_points] = 0.0
 
         # OVERRIDE the GUI
-        self.mesh_boost.override_mesh(relaxation)
+        self.gui.mesh_boost.override_mesh(relaxation)
         self.gui.sensors.update_visualization()
 
         self.gui.draw_mesh()

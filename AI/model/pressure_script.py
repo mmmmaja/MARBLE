@@ -1,5 +1,7 @@
 from abc import abstractmethod
 import numpy as np
+
+from AI.model.fenics import FENICS
 from AI.model.relaxation_script import StressRelaxation
 
 """
@@ -167,30 +169,29 @@ Handle applying the pressure to the mesh
 stress_relaxation_ref = None
 
 
-def apply_volume_pressure(fenics, gui, relaxation=True):
+def apply_volume_pressure(gui, relaxation=True):
     force_handler = VolumePressure(gui.PRESSURE)
-    apply_pressure(fenics, gui, force_handler, relaxation)
+    apply_pressure(gui, force_handler, relaxation)
 
 
-def apply_stimuli_pressure(fenics, gui, stimuli, picker, cell_id, relaxation=True):
+def apply_stimuli_pressure(gui, stimuli, picker, cell_id, relaxation=True):
     # Recompute the position of the stimuli based on the cell that was picked
     if stimuli.recompute_position(picker, cell_id):
         # This object will handle assigning the pressure to the vertices
-        force_handler = StimuliPressure(stimuli, gui.PRESSURE, fenics.rank_material)
+        force_handler = StimuliPressure(stimuli, gui.PRESSURE, gui.mesh_material)
         # Apply the pressure to the mesh, start the FENICS computation
-        apply_pressure(fenics, gui, force_handler, relaxation)
+        apply_pressure(gui, force_handler, relaxation)
 
 
-def apply_cell_specific_pressure(fenics, gui, cell, relaxation=True):
+def apply_cell_specific_pressure(gui, cell, relaxation=True):
     if not cell:
         return
     force_handler = CellSpecificPressure(cell.points, gui.PRESSURE)
-    apply_pressure(fenics, gui, force_handler, relaxation)
+    apply_pressure(gui, force_handler, relaxation)
 
 
-def apply_pressure(fenics, gui, force_handler, relaxation):
+def apply_pressure(gui, force_handler, relaxation):
     """
-    :param fenics: FENICS class
     :param gui: GUI class
     :param force_handler: ForceHandler class instance
     :param relaxation: boolean that indicates if the stress relaxation process should be started
@@ -198,11 +199,15 @@ def apply_pressure(fenics, gui, force_handler, relaxation):
     """
     global stress_relaxation_ref
 
+    fenics = FENICS(gui.mesh_boost, gui.mesh_material, gui.sensors)
+
     # Calculate the displacement
     u = fenics.apply_pressure(force_handler)
+    if u is None:
+        return
 
     # UPDATE plot and meshes
-    fenics.mesh_boost.update_mesh(u)
+    gui.mesh_boost.update_mesh(u)
     gui.sensors.update_visualization()
 
     gui.draw_mesh()
@@ -215,7 +220,5 @@ def apply_pressure(fenics, gui, force_handler, relaxation):
         if stress_relaxation_ref is not None:
             stress_relaxation_ref.stop()
 
-        stress_relaxation_ref = StressRelaxation(
-            gui, fenics.mesh_boost, fenics.rank_material
-        )
+        stress_relaxation_ref = StressRelaxation(gui)
         stress_relaxation_ref.initiate(wait=True)

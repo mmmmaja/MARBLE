@@ -9,11 +9,9 @@ class ActivationClass(vtk.vtkInteractorStyleTrackballCamera):
     Triggered in Activation mode
     """
 
-    def __init__(self, parent=None, gui=None, fenics=None, stimuli=None, *args, **kwargs):
+    def __init__(self, parent=None, gui=None, *args, **kwargs):
 
         self.gui = gui
-        self.fenics = fenics
-        self.stimuli = stimuli
 
         # Mouse pressed flag for mesh activation
         self.mouse_pressed = False
@@ -70,4 +68,4 @@ class ActivationClass(vtk.vtkInteractorStyleTrackballCamera):
         # If the cell exists
         if cell_id != -1:
             print("Cell ID: ", cell_id)
-            apply_stimuli_pressure(self.fenics, self.gui, self.stimuli, self.picker, cell_id)
+            apply_stimuli_pressure(self.gui, self.gui.stimuli, self.picker, cell_id)
