@@ -1,5 +1,7 @@
 import pyvistaqt as pvqt  # For updating plots real time
 from PyQt5.QtWidgets import QAction  # For the custom button
+
+from AI.model.pressure_script import apply_volume_pressure
 from AI.model.recording_manager import Recording
 
 

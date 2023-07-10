@@ -296,7 +296,7 @@ class Sensor:
         self.stress = 0.0
 
         self.initial_position = self.get_position(mesh.current_vtk)
-        self.neighbour_cells = mesh.get_neighbouring_cells(index)
+        self.neighbour_cells = mesh.sfepy_mesh.get_neighbouring_cells(index)
 
     def get_position(self, vtk_mesh):
         return vtk_mesh.points[self.index]
@@ -312,6 +312,9 @@ class Sensor:
         """
         In a 3D stress tensor,
         the normal stresses are the diagonal elements, namely σ_xx, σ_yy, and σ_zz.
+
+        Take an average of the stress tensor field and then multiply it by the area to get a force reading,
+        mimicking the sensor's output.
         """
 
         average_reading = 0.0

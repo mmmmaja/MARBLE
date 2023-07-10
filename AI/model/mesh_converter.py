@@ -1,12 +1,11 @@
 import pyvista
-import sfepy
 from AI.model.mesh_helper import *
 from abc import abstractmethod
 import numpy as np
 import meshio
 import pyvista as pv
-from sfepy.discrete.fem import Mesh
-from sfepy.discrete import Integral
+from sfepy.discrete.fem import Mesh, FEDomain
+from sfepy.discrete import Integral, Field
 
 
 def convert_to_vtk(path):
@@ -19,67 +18,54 @@ def convert_to_vtk(path):
 
 class MeshBoost:
 
-    # Limit in the deformation of the mesh in the z direction
-    Z_DEFORMATION_LIMIT = 2e-2
-
-    # This is a parent class for all the meshes in the project
+    # This is a parent class for all the meshes in the project (the VTK version of the mesh)
 
     def __init__(self):
         # Path to the .mesh file
         self.path = '../meshes/mesh.mesh'
 
-        # The mesh object in Sfepy format for calculations
-        # The minimum and maximum z values of the top layer of the mesh
-        self.sfepy_mesh = self.create_mesh()
         # The mesh object in .vtk format for visualization
-        self.initial_vtk = convert_to_vtk(self.path)
+        self.initial_vtk, self.top_region_ids, self.bottom_region_ids = self.create_mesh()
 
         # Represents the current displacements of the mesh
         # Mind be changed later
         self.current_vtk = self.initial_vtk.copy()
 
+        # The mesh object in Sfepy format for solvers
+        self.sfepy_mesh = SfepyMesh(self)
+
     @abstractmethod
-    def create_mesh(self) -> sfepy.discrete.fem.mesh.Mesh:
+    def create_mesh(self):
         """
         TODO override in subclasses
         :return: The mesh object in Meshio format
         """
 
-    def get_regions(self, domain):
-
-        # Get the boundaries of the mesh
-        min_x, max_x = domain.get_mesh_bounding_box()[:, 0]
-        min_y, max_y = domain.get_mesh_bounding_box()[:, 1]
-
-        # Create a tolerance for the boundaries
-        tol = 1e-1
-        eps_x, eps_y = tol * (max_x - min_x), tol * (max_y - min_y)
-
-        # Create the regions (they do not really represent top and the bottom regions,
-        # but rather just some fixed points -> this method is meant to be overriden in the child classes anyway)
-        bottom = domain.create_region('bottom', 'vertices in y < %.10f' % (min_y + eps_y), 'facet')
-        top = domain.create_region('top', 'vertices in y > %.10f' % (min_y - eps_y), 'facet')
-        return top, bottom
-
     def override_mesh(self, u):
-
         # Override the vtk version of the mesh
         # Copy the initial mesh
         self.current_vtk.points = self.initial_vtk.points.copy() + u
-        # Save the mesh to a file
-        self.current_vtk.save('../meshes/current_mesh.vtk')
-        # Load the mesh as a sfepy mesh
-        self.sfepy_mesh = Mesh.from_file('../meshes/current_mesh.vtk')
+
+        sfepy_mesh = SfepyMesh(self)
+        if not sfepy_mesh.validate():
+            print("INVALID")
+            self.current_vtk.points -= u
+        else:
+            print("VALID")
+            self.sfepy_mesh = sfepy_mesh
 
     def update_mesh(self, u):
         # Update the vtk version of the mesh
         # Add displacement to the mesh points
         self.current_vtk.points += u
 
-        # Save the mesh to a file
-        self.current_vtk.save('../meshes/current_mesh.vtk')
-        # Load the mesh as a sfepy mesh
-        self.sfepy_mesh = Mesh.from_file('../meshes/current_mesh.vtk')
+        sfepy_mesh = SfepyMesh(self)
+        if not sfepy_mesh.validate():
+            print("INVALID")
+            self.current_vtk.points -= u
+        else:
+            print("VALID")
+            self.sfepy_mesh = sfepy_mesh
 
     def get_vertex_ids_from_coords(self, cell_coords):
         """
@@ -96,34 +82,77 @@ class MeshBoost:
 
         return vertex_ids
 
+
+class SfepyMesh:
+
+    def __init__(self, mesh_boost):
+        self.mesh = self.create(mesh_boost.current_vtk)
+
+        self.top_region_ids = mesh_boost.top_region_ids
+        self.bottom_region_ids = mesh_boost.bottom_region_ids
+
+        self.DOMAIN, self.field, self.omega = None, None, None
+        self.create_sfepy_instances()
+
+    def create(self, vtk_mesh):
+        # Save the mesh to a file
+        vtk_mesh.save('../meshes/current_mesh.vtk')
+        # Load the mesh as a sfepy mesh
+        return Mesh.from_file('../meshes/current_mesh.vtk')
+
+    def validate(self, threshold=0.04):
+
+        # Assume field is your Field instance.
+
+        integral = Integral('i', order=2)
+        region = self.field.region
+        mapping, _ = self.field.get_mapping(region, integral, 'volume')
+
+        #  a negative determinant might indicate that the mesh element is inverted or highly distorted.
+        det_jacobians = mapping.det.flatten()
+        # print the minimum determinant
+        print("AAAAA: ", det_jacobians.min())
+
+        # Check if the mesh is inverted
+        if np.any(det_jacobians < threshold):
+            return False
+        return True
+
+    def create_sfepy_instances(self):
+        # The domain of the mesh (allows defining regions or subdomains)
+        self.DOMAIN = FEDomain(name='domain', mesh=self.mesh)
+
+        # Omega is the entire domain of the mesh
+        self.omega = self.DOMAIN.create_region(name='Omega', select='all')
+
+        self.field = Field.from_args(
+            name='field', dtype=np.float64, shape='vector', region=self.omega, approx_order=1
+        )
+
     def get_neighbouring_cells(self, vertex_id):
-        conn = self.sfepy_mesh.get_conn(desc='3_8')
+        conn = self.mesh.get_conn(desc='3_8')
         # get all cells that share the vertex
         cells = [i for i, conn in enumerate(conn) if vertex_id in conn]
         return cells
 
-    def validate_mesh(self):
-        # Create the field of the mesh
-        field = self.sfepy_mesh.field('displacement')
+    def get_regions(self, domain):
+        """
+        https://sfepy.org/doc-devel/users_guide.html
+        From documentation:
+        Regions serve to select a certain part of the computational domain using topological entities of the FE mesh.
+        They are used to define the boundary conditions, the domains of terms and materials etc.
+        :return: top and bottom regions
+        """
 
-        integral = Integral('i', order=2)
-        region = field.region
-        mapping = field.get_mapping(region, integral)
+        expr_base = 'vertex ' + ', '.join([str(i) for i in self.top_region_ids])
+        top = domain.create_region(name='Top', select=expr_base, kind='facet')
 
-        # Use this to compute the Jacobian for all quadrature points in all elements.
-        jacobians = mapping.get_jacobian(det=True)
+        # Create a bottom region (Where the boundary conditions apply so that the positions are fixed)
+        # Define the cells by their Ids and use vertex <id>[, <id>, ...]
+        expr_extruded = 'vertex ' + ', '.join([str(i) for i in self.bottom_region_ids])
+        bottom = domain.create_region(name='Bottom', select=expr_extruded, kind='facet')
 
-        # Now find the minimum determinant.
-        min_det = np.min(jacobians)
-
-        # You can now check if min_det is negative or too close to zero,
-        # and stop your simulation if it is.
-        if min_det < some_threshold:
-    # Stop simulation.
-
-
-class VTKMesh:
-    pass
+        return top, bottom
 
 
 class GridMesh(MeshBoost):
@@ -196,37 +225,16 @@ class GridMesh(MeshBoost):
                         a_top + n, b_top + n,  c_top + n, d_top + n
                     ])
 
+        # Create a top region (Where the displacements happen)
+        top_region_ids = range(n)
+        # Create a bottom region (Where the boundary conditions apply so that the positions are fixed)
+        bottom_region_ids = range((self.layers - 1) * n, self.layers * n)
+
         # Create hexahedron mesh in the meshio format
         mesh = meshio.Mesh(points=vertices, cells={"hexahedron": cells})
         meshio.write(self.path, mesh)
-        # Convert the meshio mesh to sfepy mesh
-        return Mesh.from_file(self.path)
-
-    def get_regions(self, domain):
-        """
-        https://sfepy.org/doc-devel/users_guide.html
-        From documentation:
-        Regions serve to select a certain part of the computational domain using topological entities of the FE mesh.
-        They are used to define the boundary conditions, the domains of terms and materials etc.
-        :return: top and bottom regions
-        """
-
-        # vertices = np.concatenate([top_vertices, bottom_vertices], axis=0)
-        # Get the number of vertices
-        n = self.sfepy_mesh.n_nod // self.layers
-
-        # Create a top region (Where the displacements happen)
-        top_range = range(n)
-        expr_base = 'vertex ' + ', '.join([str(i) for i in top_range])
-        top = domain.create_region(name='Top', select=expr_base, kind='facet')
-
-        # Create a bottom region (Where the boundary conditions apply so that the positions are fixed)
-        bottom_range = range((self.layers - 1) * n, self.layers * n)
-        # Define the cells by their Ids and use vertex <id>[, <id>, ...]
-        expr_extruded = 'vertex ' + ', '.join([str(i) for i in bottom_range])
-        bottom = domain.create_region(name='Bottom', select=expr_extruded, kind='facet')
-
-        return top, bottom
+        # Read the mesh as a vtk mesh
+        return convert_to_vtk(self.path), top_region_ids, bottom_region_ids
 
 
 class ArmMesh(MeshBoost):
@@ -236,8 +244,6 @@ class ArmMesh(MeshBoost):
     OBJ_PATH = '../meshes/model_kfadrat.obj'
 
     def __init__(self):
-        # Add the indices of the vertices to create the regions for the solver later
-        self.top_region_ids, self.bottom_region_ids = [], []
         super().__init__()
 
     def create_mesh(self):
@@ -255,6 +261,9 @@ class ArmMesh(MeshBoost):
         # Create a dictionary to handle shared vertices
         # base vertex coordinates  : [extruded vertex coordinates, extruded vertex id]
         vertices_dict = {}
+
+        # Save the top and bottom region ids
+        top_region_ids, bottom_region_ids = [], []
 
         # For each face in the input mesh find the extruded face coordinates
         for i in range(mesh.n_cells):
@@ -295,7 +304,7 @@ class ArmMesh(MeshBoost):
                 else:
                     vertex_id = vertices.index(identifier)
                 cell_base.append(vertex_id)  # base point
-                self.top_region_ids.append(vertex_id)
+                top_region_ids.append(vertex_id)
 
                 # Handle the extruded vertices
                 extruded_point = vertices_dict[identifier]
@@ -305,7 +314,7 @@ class ArmMesh(MeshBoost):
                 else:
                     vertex_id = vertices.index(extruded_point)
                 cell_extruded.append(vertex_id)  # extruded point
-                self.bottom_region_ids.append(vertex_id)
+                bottom_region_ids.append(vertex_id)
 
             # Combine the front and back faces to form the cell
             cell = cell_base[::-1] + cell_extruded[::-1]
@@ -313,19 +322,8 @@ class ArmMesh(MeshBoost):
 
         mesh = meshio.Mesh(points=vertices, cells={"hexahedron": cells})
         meshio.write(self.path, mesh)
-        return Mesh.from_file(self.path)
-
-    def get_regions(self, domain):
-
-        expr_base = 'vertex ' + ', '.join([str(i) for i in self.top_region_ids])
-        top = domain.create_region(name='Top', select=expr_base, kind='facet')
-
-        # Create a bottom region (Where the boundary conditions apply so that the positions are fixed)
-        # Define the cells by their Ids and use vertex <id>[, <id>, ...]
-        expr_extruded = 'vertex ' + ', '.join([str(i) for i in self.bottom_region_ids])
-        bottom = domain.create_region(name='Bottom', select=expr_extruded, kind='facet')
-
-        return top, bottom
+        # Read the mesh as a vtk mesh
+        return convert_to_vtk(self.path), top_region_ids, bottom_region_ids
 
 
 def display_obj_file(path):

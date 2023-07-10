@@ -199,7 +199,7 @@ def apply_pressure(gui, force_handler, relaxation):
     """
     global stress_relaxation_ref
 
-    fenics = FENICS(gui.mesh_boost, gui.mesh_material, gui.sensors)
+    fenics = FENICS(gui.mesh_boost.sfepy_mesh, gui.mesh_material, gui.sensors)
 
     # Calculate the displacement
     u = fenics.apply_pressure(force_handler)
