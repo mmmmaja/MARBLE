@@ -96,9 +96,11 @@ class MeshBoost:
         # Check the validity of the mesh
         if not sfepy_mesh.create():
             return None
+
         if sfepy_mesh.validate():
             return sfepy_mesh
         else:
+            print('Mesh is invalid')
             return None
 
     def get_vertex_ids_from_coords(self, cell_coords):

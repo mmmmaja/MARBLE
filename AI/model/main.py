@@ -63,8 +63,8 @@ _sensors = SensorGrid(12, 12, _mesh_boost)
 # _sensors = SensorArm(_mesh_boost)
 # _sensors = SensorPatchesFromFile("../patches/circle.csv", _mesh_boost, n_patches=4)
 
-# _stimuli = Cylinder(radius=3.0, height=1.0)
-_stimuli = Cuboid(6.0, 4.0, 2.0)
+_stimuli = Cylinder(radius=4.0, height=1.0)
+# _stimuli = Cuboid(6.0, 4.0, 2.0)
 # _stimuli = Sphere(radius=2.1)
 
 
@@ -72,7 +72,7 @@ _stimuli = Cuboid(6.0, 4.0, 2.0)
 # FENICS(_mesh_boost, rubber, _sensors).apply_pressure(force_handler)
 
 
-Main(_mesh_boost, _stimuli, _sensors, rubber)
+Main(_mesh_boost, _stimuli, _sensors, silicon)
 app.exec_()
 
 
@@ -86,4 +86,7 @@ Add maximum displacement (look at the fucking foam at 8N)
 
 Very important!!!
 Check why displacement is 0 when there is contact!!!
+
+https://docs.google.com/document/d/1y1DOSzD8cJKVa9my3Vqec7bWuaSYQyegPPBmfde-MQU/edit
+
 """

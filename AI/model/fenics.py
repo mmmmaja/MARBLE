@@ -277,7 +277,7 @@ class SfepyMesh:
             return False
         return True
 
-    def validate(self, threshold=0.04):
+    def validate(self, threshold=0.035):
         """
         Validate the mesh by checking the determinant of the Jacobian matrix at each point of the mesh.
         :param threshold: The threshold for the determinant of the Jacobian matrix
@@ -311,8 +311,10 @@ class SfepyMesh:
 
         # Check if the mesh is inverted
         if min_det < threshold:
+            print('INVALID MESH', min_det)
             return False
         else:
+            print('valid mesh', min_det)
             return True
 
     def get_neighbouring_cells(self, vertex_id):

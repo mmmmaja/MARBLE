@@ -1,7 +1,6 @@
+import numpy as np
 import pyvistaqt as pvqt  # For updating plots real time
 from PyQt5.QtWidgets import QAction  # For the custom button
-
-from AI.model.pressure_script import apply_volume_pressure
 from AI.model.recording_manager import Recording
 
 
@@ -25,7 +24,7 @@ class GUI:
         self.sensors = sensors
 
         # Define the pressure
-        self.PRESSURE = 0.02
+        self.PRESSURE = 0.2
         # Change in the pressure when on the event
         self.pressure_dt = 0.05
 
@@ -55,7 +54,6 @@ class GUI:
         self.draw_sensors()
         self.add_material_text()
         self.add_mode_text('Interactive')
-        self.add_axes()
         self.add_recording_actions()
 
         # Add the interactive events to the plotter
@@ -96,8 +94,22 @@ class GUI:
 
     def draw_stimuli(self):
         # Draw the stimuli object in the plotter
+        stimuli = self.stimuli.create_visualization()
+
+        # Get the minimal x and y coordinates of the mesh
+        min_x = np.min(self.mesh_boost.current_vtk.points[:, 0])
+        min_y = np.min(self.mesh_boost.current_vtk.points[:, 1])
+
+        # Get the length of the stimuli
+        x_range = np.max(stimuli.points[:, 0]) - np.min(stimuli.points[:, 0])
+        y_range = np.max(stimuli.points[:, 1]) - np.min(stimuli.points[:, 1])
+
+        # Translate the stimuli to the bottom left corner of the mesh
+        translation = (min_x - x_range, min_y - y_range, 0)
+        stimuli = stimuli.translate(translation, inplace=False)
+
         self.stimuli_actor = self.plotter.add_mesh(
-            self.stimuli.create_visualization(),
+            stimuli,
             color=self.stimuli.color,
             name='stimuli',
             show_edges=False,
@@ -141,13 +153,6 @@ class GUI:
         text = f'Pressure: {self.PRESSURE} N'
         self.force_indicator_actor = self.plotter.add_text(
             text, position='lower_right', font_size=8, color=self.text_color,
-        )
-
-    def add_axes(self):
-        self.plotter.add_axes(
-            line_width=3, viewport=(0, 0.1, 0.2, 0.3),
-            x_color='08a9ff', y_color='#FF00FF',
-            z_color='#00ff8d'
         )
 
     def increase_force(self):

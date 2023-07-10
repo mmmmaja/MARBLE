@@ -72,7 +72,7 @@ class Sphere(Stimuli):
     def create_visualization(self):
         # Return pyvista sphere
         sphere = pv.Sphere(
-            radius=self.radius, center=self.position,
+            radius=self.radius,
             # theta resolution is the number of points in the longitude direction.
             # phi resolution is the number of points in the latitude direction.
             theta_resolution=20, phi_resolution=20
@@ -112,7 +112,7 @@ class Cylinder(Stimuli):
         # Return pyvista cylinder
         direction = np.array([0, 0, 1])
         cylinder = pv.Cylinder(
-            radius=self.radius, height=self.height, center=self.position,
+            radius=self.radius, height=self.height,
             resolution=70, direction=direction
         )
         # translate the cylinder so that the flat face is facing the mesh
@@ -144,7 +144,6 @@ class Cuboid(Stimuli):
     def create_visualization(self):
         # Return pyvista cuboid
         cube = pv.Cube(
-            center=self.position,
             x_length=self.width, y_length=self.length, z_length=self.height
         )
         return cube
