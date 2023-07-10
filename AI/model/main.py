@@ -26,13 +26,6 @@ class Main:
         self.add_interactive_events()
 
     def add_interactive_events(self):
-        # Enable cell picking
-        self.gui.plotter.enable_cell_picking(
-            # if cell is not none, apply force to the cell
-            callback=lambda cell: apply_cell_specific_pressure(self.gui, cell),
-            font_size=10, point_size=30, line_width=2,
-            color='white', style='wireframe', through=False
-        )
 
         # Add the event on the press of the space bar, apply the force
         self.gui.plotter.add_key_event(

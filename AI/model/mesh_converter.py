@@ -1,11 +1,10 @@
 import pyvista
+from AI.model.fenics import SfepyMesh
 from AI.model.mesh_helper import *
 from abc import abstractmethod
 import numpy as np
 import meshio
 import pyvista as pv
-from sfepy.discrete.fem import Mesh, FEDomain
-from sfepy.discrete import Integral, Field
 
 
 def convert_to_vtk(path):
@@ -19,53 +18,88 @@ def convert_to_vtk(path):
 class MeshBoost:
 
     # This is a parent class for all the meshes in the project (the VTK version of the mesh)
+    # All meshes consist of hexahedrons (cells) and vertices
 
     def __init__(self):
         # Path to the .mesh file
         self.path = '../meshes/mesh.mesh'
 
-        # The mesh object in .vtk format for visualization
+        # The initial mesh object in VTK format
         self.initial_vtk, self.top_region_ids, self.bottom_region_ids = self.create_mesh()
 
         # Represents the current displacements of the mesh
-        # Mind be changed later
         self.current_vtk = self.initial_vtk.copy()
 
         # The mesh object in Sfepy format for solvers
-        self.sfepy_mesh = SfepyMesh(self)
+        self.sfepy_mesh = self.create_sfepy_mesh()
 
     @abstractmethod
     def create_mesh(self):
         """
         TODO override in subclasses
-        :return: The mesh object in Meshio format
+        :return: The mesh object in VTK format
         """
 
     def override_mesh(self, u):
+        """
+        Override the vtk version of the mesh with a new one.
+        :param u: The displacements of the mesh to be added to the initial mesh
+
+        If the displacement distorts the mesh too much, the override is not performed.
+        """
+
+        # Create the copy of the old mesh
+        mesh_copy = self.current_vtk.copy()
         # Override the vtk version of the mesh
-        # Copy the initial mesh
         self.current_vtk.points = self.initial_vtk.points.copy() + u
 
-        sfepy_mesh = SfepyMesh(self)
-        if not sfepy_mesh.validate():
-            print("INVALID")
-            self.current_vtk.points -= u
+        # Create the sfepy version of the mesh for the solver
+        sfepy_mesh = self.create_sfepy_mesh()
+
+        if not sfepy_mesh:
+            # If the mesh was invalid, restore the old mesh
+            self.current_vtk = mesh_copy
         else:
-            print("VALID")
+            # Otherwise, override the sfepy version of the mesh
             self.sfepy_mesh = sfepy_mesh
 
     def update_mesh(self, u):
+        """
+        Update the vtk version of the mesh with a new one.
+        :param u: The displacements of the mesh to be added to the current mesh
+
+        If the displacement distorts the mesh too much, the update is not performed.
+        """
+
+        # Create the copy of the old mesh
+        mesh_copy = self.current_vtk.copy()
         # Update the vtk version of the mesh
-        # Add displacement to the mesh points
-        self.current_vtk.points += u
+        self.current_vtk.points = self.current_vtk.points.copy() + u
+
+        # Create the sfepy version of the mesh for the solver
+        sfepy_mesh = self.create_sfepy_mesh()
+
+        if not sfepy_mesh:
+            # If the mesh was invalid, restore the old mesh
+            self.current_vtk = mesh_copy
+        else:
+            # Otherwise, override the sfepy version of the mesh
+            self.sfepy_mesh = sfepy_mesh
+
+    def create_sfepy_mesh(self):
+        """
+        Create a mesh in Sfepy format. The mesh is created from the current vtk mesh.
+        """
 
         sfepy_mesh = SfepyMesh(self)
-        if not sfepy_mesh.validate():
-            print("INVALID")
-            self.current_vtk.points -= u
+
+        # Check the validity of the mesh
+        if not sfepy_mesh.create():
+            return None
+        if sfepy_mesh.validate():
+            return sfepy_mesh
         else:
-            print("VALID")
-            self.sfepy_mesh = sfepy_mesh
+            return None
 
     def get_vertex_ids_from_coords(self, cell_coords):
         """
@@ -83,78 +117,6 @@ class MeshBoost:
         return vertex_ids
 
 
-class SfepyMesh:
-
-    def __init__(self, mesh_boost):
-        self.mesh = self.create(mesh_boost.current_vtk)
-
-        self.top_region_ids = mesh_boost.top_region_ids
-        self.bottom_region_ids = mesh_boost.bottom_region_ids
-
-        self.DOMAIN, self.field, self.omega = None, None, None
-        self.create_sfepy_instances()
-
-    def create(self, vtk_mesh):
-        # Save the mesh to a file
-        vtk_mesh.save('../meshes/current_mesh.vtk')
-        # Load the mesh as a sfepy mesh
-        return Mesh.from_file('../meshes/current_mesh.vtk')
-
-    def validate(self, threshold=0.04):
-
-        # Assume field is your Field instance.
-
-        integral = Integral('i', order=2)
-        region = self.field.region
-        mapping, _ = self.field.get_mapping(region, integral, 'volume')
-
-        #  a negative determinant might indicate that the mesh element is inverted or highly distorted.
-        det_jacobians = mapping.det.flatten()
-        # print the minimum determinant
-        print("AAAAA: ", det_jacobians.min())
-
-        # Check if the mesh is inverted
-        if np.any(det_jacobians < threshold):
-            return False
-        return True
-
-    def create_sfepy_instances(self):
-        # The domain of the mesh (allows defining regions or subdomains)
-        self.DOMAIN = FEDomain(name='domain', mesh=self.mesh)
-
-        # Omega is the entire domain of the mesh
-        self.omega = self.DOMAIN.create_region(name='Omega', select='all')
-
-        self.field = Field.from_args(
-            name='field', dtype=np.float64, shape='vector', region=self.omega, approx_order=1
-        )
-
-    def get_neighbouring_cells(self, vertex_id):
-        conn = self.mesh.get_conn(desc='3_8')
-        # get all cells that share the vertex
-        cells = [i for i, conn in enumerate(conn) if vertex_id in conn]
-        return cells
-
-    def get_regions(self, domain):
-        """
-        https://sfepy.org/doc-devel/users_guide.html
-        From documentation:
-        Regions serve to select a certain part of the computational domain using topological entities of the FE mesh.
-        They are used to define the boundary conditions, the domains of terms and materials etc.
-        :return: top and bottom regions
-        """
-
-        expr_base = 'vertex ' + ', '.join([str(i) for i in self.top_region_ids])
-        top = domain.create_region(name='Top', select=expr_base, kind='facet')
-
-        # Create a bottom region (Where the boundary conditions apply so that the positions are fixed)
-        # Define the cells by their Ids and use vertex <id>[, <id>, ...]
-        expr_extruded = 'vertex ' + ', '.join([str(i) for i in self.bottom_region_ids])
-        bottom = domain.create_region(name='Bottom', select=expr_extruded, kind='facet')
-
-        return top, bottom
-
-
 class GridMesh(MeshBoost):
 
     # Thickness of the mesh
@@ -163,7 +125,6 @@ class GridMesh(MeshBoost):
     def __init__(self, width, height, z_function=flat, layers=2):
         """
         Defines the mesh as a grid of vertices
-        Consists of HEXA elements(!)
 
         :param width: dimension of the grid
         :param height: dimension of the grid
@@ -238,7 +199,9 @@ class GridMesh(MeshBoost):
 
 
 class ArmMesh(MeshBoost):
+
     # Thickness of the mesh
+    # Make sure that thickness is not too big ( otherwise the mesh will crash :( )
     THICKNESS = 0.95
 
     OBJ_PATH = '../meshes/model_kfadrat.obj'
@@ -327,6 +290,9 @@ class ArmMesh(MeshBoost):
 
 
 def display_obj_file(path):
+    """
+    Display the obj file from a given path on the pyvista plot
+    """
     reader = pyvista.get_reader(path)
     mesh = reader.read()
     mesh.plot(cpos='yz', show_scalar_bar=False)

@@ -1,12 +1,14 @@
 from __future__ import absolute_import
+
+import numpy as np
 from sfepy.base.base import IndexedStruct
-from sfepy.discrete import (FieldVariable, Integral, Equation, Equations, Problem, Material)
-from sfepy.discrete.fem import FEDomain, Field
+from sfepy.discrete import (FieldVariable, Equation, Equations, Problem, Material, Integral, Field)
+from sfepy.discrete.fem import Mesh, FEDomain
 from sfepy.terms import Term
 from sfepy.discrete.conditions import Conditions, EssentialBC
 from sfepy.solvers.ls import ScipyDirect, ScipyIterative
 from sfepy.solvers.nls import Newton
-from AI.model.mesh_converter import *
+# from AI.model.mesh_converter import *
 
 
 """
@@ -219,3 +221,131 @@ class FENICS:
 
         for sensor in self.sensors.sensor_list:
             sensor.set_readings(stress_tensor_np)
+
+
+"""
+This class is used to create a mesh from a vtk file and to create the sfepy instances of the mesh.
+"""
+
+
+def transform_mesh(vtk_mesh):
+    """
+    This is the stupid way to create a mesh from a vtk file but there is no other way to do it.
+    (Sfepy mesh cannot be updated once it is created)
+
+    :param vtk_mesh: The vtk mesh instance
+    :return: The sfepy mesh instance
+    """
+    path = '../meshes/current_mesh.vtk'
+    # Save the mesh to a file
+    vtk_mesh.save(path)
+    # Load the mesh as a sfepy mesh
+    return Mesh.from_file(path)
+
+class SfepyMesh:
+
+    def __init__(self, mesh_boost):
+
+        # Create the mesh from the vtk instance of the mesh
+        self.fenics_mesh = transform_mesh(mesh_boost.current_vtk)
+
+        # These define regions where displacement is fixed (bottom) and where pressure is applied (top)
+        self.top_region_ids = mesh_boost.top_region_ids
+        self.bottom_region_ids = mesh_boost.bottom_region_ids
+
+        # This need to be defined for the sfepy mesh and are created in the create() method
+        self.DOMAIN, self.omega, self.field = None, None, None
+
+    def create(self):
+        """
+        Create the sfepy instances of the mesh
+        :return: True if the mesh is valid, False otherwise
+        """
+        try:
+            # Create the mesh instances that will be used to solve the problem
+
+            # The domain of the mesh (allows defining regions or subdomains)
+            self.DOMAIN = FEDomain(name='domain', mesh=self.fenics_mesh)
+            # Omega is the entire domain of the mesh
+            self.omega = self.DOMAIN.create_region(name='Omega', select='all')
+            # Create the finite element field
+            self.field = Field.from_args(
+                name='field', dtype=np.float64, shape='vector', region=self.omega, approx_order=1
+            )
+        except RuntimeError:
+            # Mesh is not valid
+            return False
+        return True
+
+    def validate(self, threshold=0.04):
+        """
+        Validate the mesh by checking the determinant of the Jacobian matrix at each point of the mesh.
+        :param threshold: The threshold for the determinant of the Jacobian matrix
+        :return: True if the mesh is valid, False otherwise
+        """
+        # Get the mapping of the mesh
+        try:
+            geo, _ = self.field.get_mapping(
+                self.field.region, Integral('i', order=2), 'volume'
+            )
+        except ValueError:
+            # Mesh is not valid
+            return False
+
+        """
+        The Jacobian matrix collects all first-order partial derivatives of a multivariate function.
+        It is used to map from a reference element (with standard coordinates) to the physical one in the actual mesh. 
+        It is necessary for integration over the physical domain.
+        
+        Determinants of the Jacobian matrices give a measure of how much the mapping distorts volumes. 
+        If the determinant of the Jacobian is negative at a given point, 
+        that means the mapping at that point is "inverting" the reference element. 
+        This is usually a sign that the mesh is badly distorted.
+        https://www.lusas.com/user_area/theory/jacobian.html
+        """
+
+        # Negative determinant might indicate that the mesh element is inverted or highly distorted.
+        det_jacobians = geo.det.flatten()
+        # Get the minimum determinant of the Jacobian matrix
+        min_det = det_jacobians.min()
+
+        # Check if the mesh is inverted
+        if min_det < threshold:
+            return False
+        else:
+            return True
+
+    def get_neighbouring_cells(self, vertex_id):
+        """
+        This method is used to interpolate the stress obtained in a solver.
+        Since the stress is calculated at the center of each cell, the stress at a vertex is calculated by
+        interpolating the stress of the cells that share the vertex.
+
+        :param vertex_id: The id of the vertex
+        :return: The ids of the cells that share the vertex
+        """
+        conn = self.fenics_mesh.get_conn(desc='3_8')
+        # get all cells that share the vertex
+        cells = [i for i, conn in enumerate(conn) if vertex_id in conn]
+        return cells
+
+    def get_regions(self, domain):
+        """
+        https://sfepy.org/doc-devel/users_guide.html
+        From documentation:
+        Regions serve to select a certain part of the computational domain using topological entities of the FE mesh.
+        They are used to define the boundary conditions, the domains of terms and materials etc.
+
+        Those regions will be used to define the boundary conditions and the force term.
+        :return: top and bottom regions
+        """
+
+        expr_base = 'vertex ' + ', '.join([str(i) for i in self.top_region_ids])
+        top = domain.create_region(name='Top', select=expr_base, kind='facet')
+
+        # Create a bottom region (Where the boundary conditions apply so that the positions are fixed)
+        # Define the cells by their Ids and use vertex <id>[, <id>, ...]
+        expr_extruded = 'vertex ' + ', '.join([str(i) for i in self.bottom_region_ids])
+        bottom = domain.create_region(name='Bottom', select=expr_extruded, kind='facet')
+
+        return top, bottom
